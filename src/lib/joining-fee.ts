@@ -82,7 +82,7 @@ export async function ensureJoiningClubFee(
   category: JoiningFeeCategory,
 ): Promise<{ raised: boolean; amount: number }> {
   const [{ data: member, error: memErr }, { data: existing, error: feeErr }] = await Promise.all([
-    fromExt("club_members").select("id, joined_at, billing_exempt").eq("id", clubMemberId).maybeSingle(),
+    fromExt("club_members").select("id, club_id, joined_at, billing_exempt").eq("id", clubMemberId).maybeSingle(),
     fromExt("club_member_fee_payments")
       .select("id")
       .eq("club_member_id", clubMemberId)
@@ -113,5 +113,34 @@ export async function ensureJoiningClubFee(
     season_year: decision.seasonYear,
   });
   if (error) throw error;
-  return { raised: true, amount: decision.amount };
+
+  // Once-off registration fee(s): only for genuinely new members, i.e. the
+  // same moment their first club fee is raised, and never twice.
+  let total = decision.amount;
+  const [{ data: regFees }, { data: existingReg }] = await Promise.all([
+    fromExt("national_body_fees")
+      .select("body_name, abbreviation, fee_annual, active")
+      .eq("club_id", member.club_id)
+      .eq("fee_type", "registration"),
+    fromExt("club_member_fee_payments")
+      .select("id").eq("club_member_id", clubMemberId).eq("fee_type", "registration").limit(1),
+  ]);
+  if (!(existingReg || []).length) {
+    const rows = (regFees || [])
+      .filter((f: any) => f.active !== false && Number(f.fee_annual) > 0)
+      .map((f: any) => ({
+        club_member_id: clubMemberId,
+        fee_type: "registration",
+        fee_label: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""),
+        amount: Number(f.fee_annual),
+        paid: false,
+        season_year: decision.seasonYear,
+      }));
+    if (rows.length) {
+      const { error: regErr } = await fromExt("club_member_fee_payments").insert(rows);
+      if (regErr) throw regErr;
+      total += rows.reduce((s: number, r: any) => s + r.amount, 0);
+    }
+  }
+  return { raised: true, amount: total };
 }

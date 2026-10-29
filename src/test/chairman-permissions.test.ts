@@ -28,3 +28,12 @@ describe("Chairman financial view-only rules", () => {
     expect(chairmanMayChangeFinance(true, false)).toBe(false);
   });
 });
+describe("Chairman fee category editing", () => {
+  it("lets the chairman add and edit fee categories without financial authority", () => {
+    expect(chairmanMayEditFeeCategories(true, false)).toBe(true);
+  });
+  it("keeps fee editing for finance staff and blocks plain members", () => {
+    expect(chairmanMayEditFeeCategories(false, true)).toBe(true);
+    expect(chairmanMayEditFeeCategories(false, false)).toBe(false);
+  });
+});

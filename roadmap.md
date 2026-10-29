@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Deploy only approved help-center-case-context and apply exact staged RPC SQL through supported migration; verify live pilot references removed and service-only execution. No frontend or unrelated releases.
 - [x] Remove only case-context per-ticket pilot checks; stage replacement RPC SQL alongside endpoint (managed migration folders reject source-only writes), test real handler and disposable SQL. No deployment/publication/live migration.
 - [ ] Dedicated scoped commit SHA: Git commits are platform-managed; cannot create a manual commit.
 - [x] Allow Chairman Banking & Payments setup and Stitch documents while preserving financial transaction denial. Gerrit's signed-in HSC preview shows setup and Stitch documents, hides R10 payment initiation, and reports setup allowed/transactions denied. No settings saved or documents sent.

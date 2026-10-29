@@ -136,7 +136,7 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
       }
     })().catch(() => {});
     return () => { active = false; };
-  }, [h.tournamentId, h.clubId]);
+  }, [h.tournamentId, h.clubId, includeVisitors]);
 
   /* ── Wide scope: club tree + region league tree ── */
   useEffect(() => {

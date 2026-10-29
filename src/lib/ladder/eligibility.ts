@@ -38,8 +38,18 @@ export interface LadderConfig {
   league_movement_policy: "swap" | "insert" | null;
   /** Movement style for championship / tournament results. null = inherit `movement_policy`. */
   tournament_movement_policy: "swap" | "insert" | null;
+  /** Ladder challenges move the ladder. */
+  ladder_from_challenges: boolean;
+  /** System League rubbers between two club members may move the ladder. */
+  ladder_from_system_leagues: boolean;
+  challenge_approval: LadderApproval;
+  tournament_approval: LadderApproval;
+  club_league_approval: LadderApproval;
+  system_league_approval: LadderApproval;
   is_active: boolean;
 }
+
+export type LadderApproval = "auto" | "approve";
 
 export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   format: "standard",
@@ -57,10 +67,16 @@ export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   ranking_mirror_margin: 1,
   ranking_auto_approve: false,
   ladder_auto_apply: true,
-  ladder_from_leagues: true,
-  ladder_from_tournaments: true,
+  ladder_from_leagues: false,
+  ladder_from_tournaments: false,
   league_movement_policy: null,
   tournament_movement_policy: null,
+  ladder_from_challenges: true,
+  ladder_from_system_leagues: false,
+  challenge_approval: "auto",
+  tournament_approval: "auto",
+  club_league_approval: "auto",
+  system_league_approval: "auto",
   is_active: true,
 };
 

@@ -832,7 +832,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return (rowStructure || cardStructure) && key && !fits(id, key) ? "" : key;
   };
   const manualFits = (id: string, key: string) => fits(id, key) || adminPlacementAllowed(eligOf(key), leaguesByMember.get(id) ?? [], isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType));
-  const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
+  const memberName = (id: string) => memberPool.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
   /** Import an entry-form CSV: tick matched members and place them per entered event; never creates people. */
   const importEntries = async (file: File) => {
@@ -1901,7 +1901,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {(() => {
                 // Organiser may add ANY member; those outside every event's scope are listed after, flagged.
                 const q = memberSearch.trim().toLowerCase();
-                const rows = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
+                const rows = memberPool.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
                 rows.sort((x, y) => Number(y.ok) - Number(x.ok));
                 const nOk = rows.filter((r) => r.ok).length;
                 return <>
@@ -1910,10 +1910,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     {rows.map(({ m, ok }) => (
                       <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
                         onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] }, removedPicks: unmarkRemoved(a.removedPicks, m.id) }); }}>
-                        <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
+                        <span>{m.name}{visitorIdSet.has(m.id) && <span className="ml-1 text-muted-foreground">· Visitor</span>}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
                       </button>
                     ))}
-                    {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
+                    {memberPool.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
                   </div>
                 </>; })()}
               {pickIds.length > 0 && (

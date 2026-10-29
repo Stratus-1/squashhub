@@ -209,3 +209,6 @@ The strongest mitigation is to preserve domain libraries and tests, centralize i
 - subdomains, custom domains, Vercel, and WebOnline DNS;
 - external provider contracts, quotas, and credentials;
 - GCP extraction contracts, logs, retries, cost, and rollback.
+
+### Family addition approval boundary
+Family additions require separate admin approval and (for existing members) recipient acceptance. New relatives are pending club members; activation and fee/payer linking use the private `family_activate_approved` writer through `family_review_addition`. Generic application approval delegates to that action. Existing approved families remain unchanged; direct member updates cannot activate a pending family link.

@@ -156,7 +156,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         <Card><CardContent className="space-y-2 p-4">
           <p className="text-xs text-muted-foreground">Switch on the tournament link here before sending draws — every draw, reminder and entry email then carries this same link. Print the QR for the venue.</p>
           <MatchDayAccessCard kind="tournament" competitionId={tournamentId} competitionName={h.name} />
-          {cur >= lifecycleIndex("finalise") && <Button onClick={() => { if (h.stage === "finalise") advance("finalise", "generate"); setQrOpen(false); setView(null); }}>Continue to {cur <= lifecycleIndex("generate") ? "Generate draw & fixtures" : "current stage"}<ChevronRight className="ml-1 h-4 w-4" /></Button>}
+          {cur >= lifecycleIndex("finalise") && <Button disabled={h.stage === "finalise" && (prereqs.length > 0 || blockersFor(h, "finalise").length > 0)} onClick={() => { if (h.stage === "finalise") { if (payWarn && !confirm(`${payWarn}. Continue anyway?`)) return; advance("finalise", "generate"); } setQrOpen(false); setView(null); }}>Continue to {cur <= lifecycleIndex("generate") ? "Generate draw & fixtures" : "current stage"}<ChevronRight className="ml-1 h-4 w-4" /></Button>}
         </CardContent></Card>
       )}
 

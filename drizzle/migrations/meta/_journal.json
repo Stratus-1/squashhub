@@ -2150,6 +2150,13 @@
       "when": 1793269295425,
       "tag": "0306_help_center_live_case_context_rpcs",
       "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1793279352488,
+      "tag": "0307_member_balance_corrections",
+      "breakpoints": true
     }
   ]
 }

@@ -11,9 +11,9 @@ export function useFinancialAccess(clubId?: string) {
       if (!clubId) throw new Error("Club required");
       const { data, error } = await supabase.rpc("club_financial_access" as never, { _club_id: clubId } as never);
       if (error) throw error;
-      return data as unknown as { chairman: boolean; can_change: boolean };
+      return data as unknown as { chairman: boolean; can_change: boolean; can_configure_banking: boolean };
     },
     staleTime: 0,
   });
-  return { ...query, canChange: query.data?.can_change === true, isChairman: query.data?.chairman === true };
+  return { ...query, canChange: query.data?.can_change === true, canConfigureBanking: query.data?.can_configure_banking === true, isChairman: query.data?.chairman === true };
 }

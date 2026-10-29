@@ -1,5 +1,5 @@
 /** Financial viewing never implies authority to change the club's books. */
-export const FINANCIAL_PERMISSION_SLUGS = ["finance", "fees", "banking"] as const;
+export const FINANCIAL_PERMISSION_SLUGS = ["finance", "fees"] as const;
 
 export function isChairmanRole(roleName?: string | null): boolean {
   return roleName?.trim().toLowerCase() === "chairman";

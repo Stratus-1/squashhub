@@ -1,4 +1,5 @@
 import { useFinancialAccess } from "@/hooks/use-financial-access";
+import { chairmanMayEditFeeCategories } from "@/lib/chairman-permissions";
 import { useState, useMemo } from "react";
 import { useClubRecurringSettings, recurringGatewayFor, clubRecurringAvailable } from "@/lib/recurring-payments";
 import { useNationalBodyFees, useMyClub, useFeeCategories, useLeagueAssociations, NationalBodyFee, MemberFeeCategory, LeagueAssociation } from "@/hooks/use-club";

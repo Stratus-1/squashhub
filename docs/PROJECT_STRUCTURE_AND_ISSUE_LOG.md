@@ -4076,3 +4076,8 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-10-29 — Counter PIN Add form still stopped at ten
 - Uitsig has ten active named counter PINs. The live server function correctly permits twenty, but CounterModeCard retained MAX_OPERATORS=10 and hid its Add form at ten.
 - Updated the shared screen limit to twenty; existing PINs, staff sessions and permission checks are unchanged. Regression tests cover adding at ten/nineteen and stopping at twenty. Shared web/PWA/native screen; no database changes.
+
+### 2026-10-29 — Cost-of-sales default and normal bar wages
+- Income statement defaults to historical sold-item costs; purchases remain selectable. Bar payroll salaries now debit salary_wages and credit bank_current; tip accounting, authority, audit and duplicate-run guards unchanged (0299).
+- One Salaries & Wages total expands into individual staff totals. Historical canonical payroll salary rows project as wages without changing saved journals or net profit; explicitly allocated custom direct costs stay unchanged.
+- 29 focused report/payroll tests pass; build OK. Signed-in Riverside report shows cost-of-sales default and R1,500 wages expanding to Sonja R1,000 / WP R500. No payout processed or live journal changed. Shared web/PWA/native screens preview-only.

@@ -90,7 +90,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
       let members: any[] = [];
       if (group) {
         const { data: rows } = await fromExt("club_family_members")
-          .select("id, club_member_id, relationship, status")
+          .select("id, club_member_id, relationship, status, approval_status, accepted_at")
           .eq("family_group_id", (group as any).id)
           .neq("status", "removed");
         const ids = (rows || []).map((r: any) => r.club_member_id);
@@ -179,13 +179,9 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         }
       }
 
-      toast.success(
-        mode === "new"
-          ? invited
-            ? "Added — we've emailed them a personal link to set up their login"
-            : "Added — they can now sign up with that email to claim their own account"
-          : "Request sent — they need to accept before they're linked",
-      );
+      toast.success(mode === "new"
+        ? invited ? "Submitted for club admin approval — login invitation emailed" : "Submitted for club admin approval"
+        : "Request sent — their acceptance and club admin approval are required");
       setOpen(false);
       setName(""); setSurname(""); setEmail(""); setPhone(""); setMemberNo("");
       qc.invalidateQueries({ queryKey: ["my-family", clubMemberId] });
@@ -241,7 +237,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">{m.name}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {m.relationship || "family"} · {m.status === "invited" ? "waiting for them to accept" : "linked"}
+                    {m.relationship || "family"} · {m.approval_status === "pending" ? "waiting for club admin approval" : m.status === "invited" ? "waiting for them to accept" : "linked"}
                     {m.outstanding > 0 ? ` · ${money(m.outstanding)} outstanding` : " · nothing outstanding"}
                   </p>
                   {(!m.email || !m.phone) && m.club_member_id !== clubMemberId && (
@@ -273,7 +269,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Add a family member</DialogTitle>
-            <DialogDescription>They stay their own member with their own login — you just pay for them.</DialogDescription>
+            <DialogDescription>Club admin approval is required before they join your family package. Each person keeps their own login.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -289,7 +285,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
               <div className="space-y-1">
                 <Label className="text-xs">Member number</Label>
                 <Input value={memberNo} onChange={(e) => setMemberNo(e.target.value)} className="h-9" placeholder="e.g. 1234" />
-                <p className="text-[10px] text-muted-foreground">They'll be asked to accept before they're linked.</p>
+                <p className="text-[10px] text-muted-foreground">Their acceptance and club admin approval are required before linking.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">

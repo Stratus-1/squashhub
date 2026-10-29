@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Family additions use pending club membership and separate administrator approval/recipient acceptance; activation and fee-payer changes use a private atomic writer, and generic application approval delegates to it. Why: adding or claiming a relative must not bypass club approval or change existing members before consent.
 - Chairman finance restrictions recognise elected offices and assigned roles, override club full-admin grants at canonical financial tables and write actions, and preserve ownership-validated personal payments; why: hiding controls cannot prevent financial edits or self-escalation.
 - Tournament final-ladder adjustments use a club-scoped, permission-checked preview/apply RPC with completion and stale-preview guards; only participants' occupied slots change, and an explicit tournament timing choice preserves legacy per-match behaviour until selected. Why: final standings must not reseed outsiders or mutate ladders during viewing/deployment.
 - Tournament Paid uses the club-scoped atomic `champ_admin_confirm_paid` action for existing champs/fees/finance permissions, settling only a linked existing fee and auditing once; why: finance staff must not require full tournament management or risk half-completed browser writes.

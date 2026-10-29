@@ -47,7 +47,7 @@ export function FamilyMembersStep({ primary, additional, drafts, onChange, money
         </p>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Add the people on your family membership now, or skip this and add them later from My Account.
-          Each person keeps their own membership and their own sign-in.
+          Each person keeps their own sign-in. Club admin approval is required before membership becomes active.
           {left !== null && ` Your club's package includes ${left} more ${left === 1 ? "person" : "people"}.`}
         </p>
       </Card>

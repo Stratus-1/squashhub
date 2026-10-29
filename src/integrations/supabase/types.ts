@@ -6325,12 +6325,17 @@ export type Database = {
       }
       club_family_members: {
         Row: {
+          accepted_at: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           club_member_id: string
           confirmed_at: string | null
           created_at: string
           family_group_id: string
           id: string
           invited_at: string
+          is_new_member: boolean
           pending_change_status: string
           pending_standard_category_id: string | null
           relationship: string | null
@@ -6339,12 +6344,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           club_member_id: string
           confirmed_at?: string | null
           created_at?: string
           family_group_id: string
           id?: string
           invited_at?: string
+          is_new_member?: boolean
           pending_change_status?: string
           pending_standard_category_id?: string | null
           relationship?: string | null
@@ -6353,12 +6363,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           club_member_id?: string
           confirmed_at?: string | null
           created_at?: string
           family_group_id?: string
           id?: string
           invited_at?: string
+          is_new_member?: boolean
           pending_change_status?: string
           pending_standard_category_id?: string | null
           relationship?: string | null
@@ -22429,6 +22444,10 @@ export type Database = {
         Args: { _club_id: string; _email: string }
         Returns: string
       }
+      family_activate_approved: {
+        Args: { _family_member_id: string }
+        Returns: boolean
+      }
       family_add_member: {
         Args: {
           _email: string
@@ -22450,6 +22469,10 @@ export type Database = {
       }
       family_respond_invite: {
         Args: { _accept: boolean; _family_member_id: string }
+        Returns: boolean
+      }
+      family_review_addition: {
+        Args: { _approve: boolean; _family_member_id: string }
         Returns: boolean
       }
       finance_decide_member_transaction: {

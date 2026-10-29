@@ -20,6 +20,8 @@ Booking-grid presentation uses `src/lib/booking-grid.ts` to retain every court-r
 
 Stock product current cost and weighted average are distinct: purchase receipts maintain the latest per-container cost, while the existing opt-in stock engine calculates the average per smallest stock unit. Item editing displays that saved average read-only after container conversion; historical sale snapshots remain immutable.
 
+Stock purchase invoices attach photo/PDF files through `bar-invoice-files` and private `bar-purchase-invoices` storage, with a club-first object path and identical `invoice_files` metadata on each invoice line. The existing single purchase insert remains the stock/accounting authority; upload failures prevent that insert and purchase failures remove unlinked uploads. Storage reads permit club bar/finance administrators and Chairman viewing; uploads require bar authority and the existing Chairman write guard. Linked invoices cannot be deleted through the cleanup policy. Camera capture uses the native file picker; saved invoices open via short-lived signed links.
+
 SquashHub is a multi-tenant platform for squash clubs and the wider squash ecosystem. It combines club SaaS, member self-service, bookings, competitions, league/federation operations, payments, communications, access automation, live scoring, PWA delivery, and native mobile capabilities in one codebase.
 
 ## Runtime context

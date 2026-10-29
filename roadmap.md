@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add private stock purchase invoice uploads/camera and saved invoice viewing; six tests and authenticated private upload/read/cleanup passed without changing stock. Preview-only; physical camera and real-purchase save not exercised.
 - [x] Confirm main family-package eligibility; require admin approval for new family additions. 21 focused tests pass, including disposable database activation/denial/consent checks. Existing families unchanged; shared approval rules live, screens preview-only.
 - [ ] Family addition/approval through real member and admin screens: Riverside has no configured family package; requires an approved isolated club setup before live UI mutations.
 - [x] Default income statement to cost of sales; salaries post to normal wages, one expandable total; tips/bank unchanged. 29 tests pass; signed-in Riverside report verified with R1,500 total and two staff details. Screens preview-only; no payroll processed.

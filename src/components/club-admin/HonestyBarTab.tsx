@@ -52,6 +52,8 @@ import { ImportItemsDialog } from "./bar/ImportItemsDialog";
 import { ComponentPicker } from "./bar/ComponentPicker";
 import { categoryLabel } from "@/lib/bar-categories";
 import { StockItemPicker } from "./bar/StockItemPicker";
+import { PurchaseInvoiceFiles } from "./bar/PurchaseInvoiceFiles";
+import { saveWithInvoiceFiles, openInvoiceFile, type InvoiceFile } from "@/lib/bar-invoice-files";
 
 const SPECIAL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) =>
   `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`,
@@ -354,6 +356,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                         {p.quantity}× {p.bar_items?.name || "Item"} @ {money(Number(p.unit_cost))} · {format(new Date(p.created_at), "dd MMM yyyy")}
                         {p.payment_method ? ` · ${p.payment_method}` : ""}
                       </p>
+                      {(p.invoice_files as InvoiceFile[] | undefined)?.map((file, index) => (
+                        <Button key={file.path} variant="link" size="sm" className="h-auto max-w-full p-0 text-xs" title={file.name} onClick={() => openInvoiceFile(file).catch(error => toast.error(error.message || "Could not open invoice"))}>
+                          <FileText className="mr-1 h-3 w-3 shrink-0" />View invoice{p.invoice_files.length > 1 ? ` ${index + 1}` : ""}
+                        </Button>
+                      ))}
                     </div>
                     <Badge variant="secondary" className="text-xs">{money(Number(p.total_cost))}</Badge>
                   </div>
@@ -1106,6 +1113,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
   const [submitting, setSubmitting] = useState(false);
 
   /** Only real stock lines can be bought in — specials and option rows are left out. */
+  const [invoiceFiles, setInvoiceFiles] = useState<File[]>([]);
   const stockItems = useMemo(
     () => items.filter(i => !i.archived_at && (i.item_kind || "stock") === "stock"),
     [items],
@@ -1153,8 +1161,10 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         payment_method: paymentMethod,
       }; });
 
-      const { error } = await fromExt("bar_stock_purchases").insert(purchases);
-      if (error) throw error;
+      await saveWithInvoiceFiles(clubId, invoiceFiles, async attachments => {
+        const { error } = await fromExt("bar_stock_purchases").insert(purchases.map(p => ({ ...p, invoice_files: attachments })));
+        if (error) throw error;
+      });
 
       qc.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
       qc.invalidateQueries({ queryKey: ["income-statement", clubId] });
@@ -1164,8 +1174,10 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       setSupplier("");
       setInvoiceDate(format(new Date(), "yyyy-MM-dd"));
       setPaymentMethod("cash");
+      setInvoiceFiles([]);
       setLines([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
       qc.invalidateQueries({ queryKey: ["bar-items"] });
+      qc.invalidateQueries({ queryKey: ["bar-stock-purchases", clubId] });
     } catch (err: any) {
       toast.error(err.message || "Failed to record purchase");
     } finally {
@@ -1187,7 +1199,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         </div>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={value => { if (!submitting) setOpen(value); }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Record Purchase Invoice</DialogTitle>
@@ -1235,6 +1247,8 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                 </Select>
               </div>
             </div>
+
+            <PurchaseInvoiceFiles files={invoiceFiles} onChange={setInvoiceFiles} disabled={submitting} />
 
             {/* Line items */}
             <div>

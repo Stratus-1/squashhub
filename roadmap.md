@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Check family-package eligibility and enforce admin approval for new family additions without changing existing approved families.
 - [x] Default income statement to cost of sales; salaries post to normal wages, one expandable total; tips/bank unchanged. 29 tests pass; signed-in Riverside report verified with R1,500 total and two staff details. Screens preview-only; no payroll processed.
 - [x] Implement Chairman financial view-only boundaries and controls; 36 focused tests pass including isolated database writes; finance functions deployed, frontend not published, live balances unchanged.
 - [ ] Authenticated Chairman end-to-end finance/report and denial checks: needs a Chairman session; available session is platform Super Admin (isolated database and UI action denial tests passed).

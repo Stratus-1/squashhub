@@ -16,6 +16,8 @@ vi.mock("@/components/smart-builder/StepInformPanel", () => ({ StepInformPanel: 
 vi.mock("@/components/smart-builder/StepInvitePanel", () => ({ StepInvitePanel: () => <div>Invite controls</div> }));
 vi.mock("@/components/smart-builder/StepGenerateDrawPanel", () => ({ StepGenerateDrawPanel: () => <div>Generate controls</div> }));
 vi.mock("@/components/smart-builder/StepRunOverview", () => ({ StepRunOverview: () => null }));
+vi.mock("@/components/smart-builder/CategoryProgressPanel", () => ({ CategoryProgressPanel: () => null }));
+vi.mock("@/components/smart-builder/FixtureDrawNoticePrompt", () => ({ FixtureDrawNoticePrompt: () => null }));
 vi.mock("@/components/smart-builder/StepSwissRoundsPanel", () => ({ StepSwissRoundsPanel: () => null }));
 vi.mock("@/components/smart-builder/StepKnockoutRoundsPanel", () => ({ StepKnockoutRoundsPanel: () => null }));
 vi.mock("@/components/smart-builder/StandingsAwardsSection", () => ({ StandingsAwardsSection: () => null }));

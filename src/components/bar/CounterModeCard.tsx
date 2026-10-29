@@ -1,7 +1,7 @@
 /**
  * Counter mode setup — lets a club admin / bar-permission user manage the short
  * staff PINs that unlock a bar tablet from the menu QR code (no login needed).
- * Each person behind the bar gets their own named PIN (up to 10), so the club
+ * Each person behind the bar gets their own named PIN (up to 20), so the club
  * can see who served which tab.
  */
 import { useState } from "react";
@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { Store, Loader2, Plus, Trash2, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const MAX_OPERATORS = 10;
+const MAX_OPERATORS = 20;
 
 interface Operator {
   id: string;

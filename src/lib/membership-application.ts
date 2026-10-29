@@ -14,6 +14,9 @@ export interface ApplicationRow {
   applied_at?: string | null;
   joined_at?: string | null;
   billing_exempt?: boolean | null;
+  phone?: string | null;
+  id_number?: string | null;
+  gender?: string | null;
 }
 
 const SIGNUP_WINDOW_MS = 10 * 60 * 1000;
@@ -33,7 +36,16 @@ export function isApplicationIncomplete(row: ApplicationRow | null | undefined, 
   const role = String(row.role || "").toLowerCase();
   if (role === "visitor" || role === "admin" || role === "captain") return false;
   if (row.billing_exempt) return false;
-  return !row.fee_category_id && isSelfApplication(row, ownerCreatedAt);
+  if (!row.fee_category_id && isSelfApplication(row, ownerCreatedAt)) {
+    // The signup wizard writes phone, ID number and gender to the member row
+    // only on its final save. If all three are stored, the steps WERE saved —
+    // the club simply had no fee category to capture at the time (members who
+    // joined before their club set up categories). Never loop them through
+    // onboarding again; admins can assign a category from the Members tab.
+    const completedSignup = !!row.phone && !!row.id_number && !!row.gender;
+    if (!completedSignup) return true;
+  }
+  return false;
 }
 
 export type ApplicationStatus = "incomplete" | "awaiting_payment" | "awaiting_approval";

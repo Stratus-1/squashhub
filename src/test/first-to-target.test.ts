@@ -11,6 +11,7 @@ describe("First to target", () => {
     expect(targetWinner(6, 6, 7)).toBeNull();
     expect(targetWinner(7, 6, 7)).toBe("a");
     expect(targetWinner(6, 7, 7)).toBe("b");
+    expect(targetWinner(8, 6, 7)).toBeNull();
   });
   it("honours a different configured target", () => {
     expect(targetWinner(8, 8, 9)).toBeNull();

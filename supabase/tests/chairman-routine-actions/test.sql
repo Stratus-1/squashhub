@@ -4,6 +4,8 @@ CREATE TRIGGER chairman_finance_read_only BEFORE INSERT OR UPDATE OR DELETE ON c
 CREATE TRIGGER chairman_registration_finance BEFORE UPDATE ON club_champs_registrations FOR EACH ROW EXECUTE FUNCTION guard_chairman_registration_finance();
 CREATE TRIGGER fee_assessment AFTER INSERT ON club_member_fee_payments FOR EACH ROW EXECUTE FUNCTION journal_fee_assessment();
 CREATE TRIGGER entry_fee AFTER INSERT OR UPDATE ON club_champs_registrations FOR EACH ROW EXECUTE FUNCTION tg_registration_ensure_entry_fee();
+CREATE TRIGGER derive_status BEFORE INSERT OR UPDATE ON club_champs_registrations FOR EACH ROW EXECUTE FUNCTION derive_champ_registration_statuses();
+CREATE TRIGGER seed_member AFTER INSERT ON club_members FOR EACH ROW EXECUTE FUNCTION trg_seed_member_default_fees();
 INSERT INTO clubs VALUES('11111111-1111-1111-1111-111111111111',null);
 INSERT INTO member_fee_categories VALUES('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','Social',1200,false,1,1,true,null,null);
 INSERT INTO national_body_fees VALUES('11111111-1111-1111-1111-111111111111','registration','Registration','',100,true);

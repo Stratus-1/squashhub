@@ -1,5 +1,6 @@
 # Roadmap
-- [ ] Restore chairman self tournament entry and routine member add/approval through narrowly authorized fee writers; awaiting approval of the security-boundary plan.
+- [x] Restore chairman self tournament entry and routine member add/approval through scoped automatic-fee writers; isolated database tests and 24 focused tests pass, shared server fix applied, member-screen changes preview-only.
+- [ ] Genuine chairman member-add/approval and self-entry UI submission: current session is Super Admin, not Chairman; no real member/competition records changed. Needs authorized Chairman session and disposable test setup.
 - [x] Open Tournament link & QR after Finalise entries, before draw generation; preserve existing tournament progress. Six navigation tests pass, build OK; preview only.
 - [x] Automatically show saved category/pool slot times on Courts/Schedule and use per-pool capacity; duplicate inherited-time inputs are read-only. 37 tests pass, build OK; existing schedules untouched. UI confirmation pending with the existing identity-session blocker.
 - [x] Correct First-to-target visibility to use Riverside's existing enabled tournament pilot switch; verified live switch is enabled, 30 scoring/structure tests pass, build OK. Browser verification remains blocked by identity confirmation.

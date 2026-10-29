@@ -10,7 +10,7 @@
  */
 
 export type ForfeitRule = "walkover_win" | "award_points" | "neutral";
-export type LeagueScoring = "standard" | "time_capped_points";
+export type LeagueScoring = "standard" | "time_capped_points" | "first_to_target";
 
 export interface ForfeitPoints {
   opponent: number;

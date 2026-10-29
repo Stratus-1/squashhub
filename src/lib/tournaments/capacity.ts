@@ -33,7 +33,7 @@ export interface CapacityLeagueInput {
   label?: string;
   format: LeagueFormat;
   /** Scoring mode: Bells ("time_capped_points") is a time-capped round robin. */
-  scoring?: "standard" | "time_capped_points" | "swiss" | "";
+  scoring?: "standard" | "time_capped_points" | "swiss" | "first_to_target" | "";
   /** Planned minutes per match for this league (its own duration, not a global one). */
   slotMinutes: number;
 

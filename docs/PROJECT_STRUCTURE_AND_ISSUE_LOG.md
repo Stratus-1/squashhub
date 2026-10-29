@@ -1,3 +1,6 @@
+## 2026-10-29 — First-to-target scoring preview
+- Added per-division first-to-target scoring with configurable target (default seven), selectable Win by two / Sudden death, one game and win-based standings. Shared target validation feeds marker and quick result entry; target and winning condition follow the existing division scoring maps into play-offs. Riverside new-draft pilot only; no existing fixtures, live tournament data or publication changed. Signed-in preview verification is blocked by an identity-confirmation prompt; no identity linking performed.
+
 ## 2026-10-29 — Chairman Family package visibility
 - Removed the financial-write-only visibility gate from the club Fees screen's Family package panel. Family configuration remains visible read-only when financial edits are denied; inputs, saving and approval actions remain restricted. No server permissions, membership, fees or financial data changed; frontend not published.
 

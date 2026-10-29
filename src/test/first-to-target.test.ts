@@ -17,6 +17,20 @@ describe("First to target", () => {
     expect(targetWinner(8, 8, 9)).toBeNull();
     expect(targetWinner(8, 9, 9)).toBe("b");
   });
+  it("target ten finishes at 10–9 in sudden death", () => {
+    expect(targetWinner(9, 9, 10, "sudden_death")).toBeNull();
+    expect(targetWinner(10, 9, 10, "sudden_death")).toBe("a");
+  });
+  it("win by two at target seven requires 8–6 or 9–7 after deuce", () => {
+    expect(targetWinner(7, 6, 7, "win_by_2")).toBeNull();
+    expect(targetWinner(8, 6, 7, "win_by_2")).toBe("a");
+    expect(targetWinner(7, 9, 7, "win_by_2")).toBe("b");
+    expect(targetWinner(9, 6, 7, "win_by_2")).toBeNull();
+  });
+  it("retains win by two and target ten through saved division settings", () => {
+    const cols = divisionScoringColumns([{ scoring: { mode: "first_to_target", pointsPerGame: 10, winCondition: "win_by_2" } }]);
+    expect(effectiveTournamentSettings(cols, 1)).toMatchObject({ pointsPerGame: 10, bestOf: 1, winCondition: "win_by_2" });
+  });
   it("round-trips target seven, one game and sudden death into marker and playoffs", () => {
     const cols = divisionScoringColumns([{ scoring: { mode: "first_to_target", pointsPerGame: 7 } }]);
     const effective = effectiveTournamentSettings(cols, 1);

@@ -66,7 +66,8 @@ export function EnterResultDialog({
     queryKey: ["champ-category-scoring", champId],
     enabled: open && !!champId,
     queryFn: async () => {
-      const { data } = await fromExt("tournaments").select("league_points_per_game, league_best_of, league_scoring_modes, league_win_conditions").eq("id", champId!).maybeSingle();
+      if (!champId) return null;
+      const { data } = await fromExt("tournaments").select("league_points_per_game, league_best_of, league_scoring_modes, league_win_conditions").eq("id", champId).maybeSingle();
       return (data ?? null) as any;
     },
   });
@@ -100,7 +101,7 @@ export function EnterResultDialog({
   const tallies = useMemo(() => possibleGameTallies(bo), [bo]);
   const validation = useMemo(() => {
     if (catMode === "first_to_target" && (games.length !== 1 || !games[0] || !targetWinner(games[0].a, games[0].b, target, targetCondition))) {
-      return { valid: false, error: `One player must reach ${target}`, gamesA: 0, gamesB: 0 };
+      return { valid: false, error: targetCondition === "win_by_2" ? `Reach ${target} with a two-point lead` : `One player must reach ${target}`, gamesA: 0, gamesB: 0 };
     }
     return validateQuickResult(games, bo);
   }, [games, bo, catMode, target, targetCondition]);

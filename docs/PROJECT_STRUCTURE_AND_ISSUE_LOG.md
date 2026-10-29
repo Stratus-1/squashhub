@@ -1,3 +1,6 @@
+## 2026-10-29 — Help Center live on-demand context (source only)
+- Removed only the case-context endpoint's per-ticket pilot lookup; staged replacement RPC SQL beside the function removes the two matching predicates, preserving active tickets, private service-only execution and excerpt limits. Publisher, delivery, secrets, outbox, UI and hosted functions are unchanged. No migration applied and no deployment/publication performed.
+
 ## 2026-10-29 — Chairman banking setup versus transactions
 - Banking & Payments now uses separate server-validated setup access, not the financial transaction flag. Chairman can configure bank/gateway and recurring settings and access existing Stitch onboarding documents; R10 checkout initiation stays hidden. Narrow database setup-field exceptions retain journals, payments, billing, payroll, collections and self-escalation guards. No club settings or financial records changed.
 

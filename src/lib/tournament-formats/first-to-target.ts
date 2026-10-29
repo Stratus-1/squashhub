@@ -2,7 +2,7 @@ import { StandardFormat } from "./standard";
 import type { TournamentFormat } from "./types";
 
 export function targetWinner(a: number, b: number, target: number): "a" | "b" | null {
-  if (!Number.isInteger(target) || target < 1 || a === b || Math.max(a, b) < target) return null;
+  if (![a, b, target].every(Number.isInteger) || a < 0 || b < 0 || target < 1 || a === b || Math.max(a, b) !== target) return null;
   return a > b ? "a" : "b";
 }
 

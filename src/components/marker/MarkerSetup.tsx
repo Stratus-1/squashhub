@@ -792,6 +792,7 @@ export function MarkerSetup({ onStart }: Props) {
       matchType,
       scoringFormat: scoring?.scoringFormat ?? scoringFormat,
       bestOf: scoring?.bestOf ?? bestOf,
+      targetPoints: scoring?.targetPoints,
       playAllGames: scoring?.playAllGames ?? playAllGames,
       deuceRule: scoring?.deuceRule ?? deuceRule,
       source,

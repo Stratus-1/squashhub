@@ -3,6 +3,7 @@ import type { OriginalStructure } from "@/lib/smart-builder/original-structure";
 import { SwissRrFinishControls } from "@/components/smart-builder/SwissRrFinishControls";
 import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { categoryLockKey, setCategoryLocked, type CategoryLocks } from "@/lib/smart-builder/category-locks";
 import { Lock as CategoryLockIcon, LockOpen as CategoryUnlockIcon } from "lucide-react";
 import { CategorySeedingSelect } from "./CategorySeedingSelect";
@@ -1497,6 +1498,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Standard its own game length (par 11 / par 15), best-of and win
   // condition (win-by-2 / sudden death). Missing entries fall back to the
   // tournament-level values.
+  const { data: firstToTargetPilot = false } = useClubBetaFeature(clubId, "tournament_first_to_target");
   const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points" | "first_to_target">>({});
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, number>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 1 | 3 | 5>>({});
@@ -9940,7 +9942,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 options={[
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
-                                  ...(clubId === RIVERSIDE_CLUB_ID && structureOnly && !editingChampId ? [{ v: "first_to_target", l: "First to target" }] : []),
+                                  ...(clubId === RIVERSIDE_CLUB_ID && firstToTargetPilot && structureOnly && !structureOnly.initial?._identity_locked && !editingChampId ? [{ v: "first_to_target", l: "First to target" }] : []),
                                 ]}
                                 onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points" | "first_to_target"); advanceReveal(key, 3); }}
                               /></div>}

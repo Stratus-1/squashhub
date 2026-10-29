@@ -1818,6 +1818,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   );
                 })}
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sbs-include-visitors" className="text-sm font-medium">Include registered visitors</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Visitors who signed in at the club may be picked and invited, just like members. Off = members only.
+                  </p>
+                </div>
+                <Switch id="sbs-include-visitors" checked={!!a.includeVisitors} onCheckedChange={(v) => setA({ ...a, includeVisitors: v })} />
+              </div>
             </>
           )}
 

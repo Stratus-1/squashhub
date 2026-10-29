@@ -1,4 +1,5 @@
 ## 2026-10-29 — First-to-target scoring preview
+- Corrected the selector's pilot lookup to Riverside's existing enabled tournament_beta switch: the newly named scoring switch had no saved row, so the option was hidden. Riverside/new-draft restrictions remain; no database settings or existing tournaments changed.
 - Added 10 minutes to the existing planned match-time selector; retained all prior choices and the existing duration save/capacity path. No saved schedules or fixtures changed.
 - Added per-division first-to-target scoring with configurable target (default seven), selectable Win by two / Sudden death, one game and win-based standings. Shared target validation feeds marker and quick result entry; target and winning condition follow the existing division scoring maps into play-offs. Riverside new-draft pilot only; no existing fixtures, live tournament data or publication changed. Signed-in preview verification is blocked by an identity-confirmation prompt; no identity linking performed.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chairmanCapabilityAllowed, chairmanMayChangeFinance, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
+import { chairmanCapabilityAllowed, chairmanMayChangeFinance, chairmanMayEditFeeCategories, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
 
 describe("Chairman financial view-only rules", () => {
   it("recognises the Chairman role regardless of case", () => {
@@ -26,5 +26,14 @@ describe("Chairman financial view-only rules", () => {
     expect(FINANCIAL_PERMISSION_SLUGS).not.toContain("banking");
     expect(FINANCIAL_PERMISSION_SLUGS).toContain("finance");
     expect(chairmanMayChangeFinance(true, false)).toBe(false);
+  });
+});
+describe("Chairman fee category editing", () => {
+  it("lets the chairman add and edit fee categories without financial authority", () => {
+    expect(chairmanMayEditFeeCategories(true, false)).toBe(true);
+  });
+  it("keeps fee editing for finance staff and blocks plain members", () => {
+    expect(chairmanMayEditFeeCategories(false, true)).toBe(true);
+    expect(chairmanMayEditFeeCategories(false, false)).toBe(false);
   });
 });

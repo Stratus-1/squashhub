@@ -1,4 +1,5 @@
 import { useFinancialAccess } from "@/hooks/use-financial-access";
+import { chairmanMayEditFeeCategories } from "@/lib/chairman-permissions";
 import { useState, useMemo } from "react";
 import { useClubRecurringSettings, recurringGatewayFor, clubRecurringAvailable } from "@/lib/recurring-payments";
 import { useNationalBodyFees, useMyClub, useFeeCategories, useLeagueAssociations, NationalBodyFee, MemberFeeCategory, LeagueAssociation } from "@/hooks/use-club";
@@ -50,7 +51,8 @@ interface UnifiedFee {
 
 
 export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
-  const { canChange } = useFinancialAccess(clubId);
+  const { canChange, isChairman } = useFinancialAccess(clubId);
+  const canEditFees = chairmanMayEditFeeCategories(isChairman, canChange);
   const isAssociation = tenantType === "association";
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
@@ -265,7 +267,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button disabled={!canChange} size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
+            <Button disabled={!canEditFees} size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
           </div>
         </div>
 
@@ -312,11 +314,11 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell className="text-sm">{fee.visitorPassKind ? <span className="text-muted-foreground italic">On purchase</span> : fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : fee.billingPeriod === "monthly" ? <span className="text-muted-foreground">Monthly (day {fee.dueDay})</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
-                    <Switch disabled={!canChange} checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
+                    <Switch disabled={!canEditFees} checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
                   </TableCell>
                   <TableCell className="text-center">
                     {fee.source === "member_fee_categories" || (fee.source === "national_body_fees" && fee.type === "registration") ? (
-                      <Switch disabled={!canChange} checked={!!fee.showOnLanding} onCheckedChange={() => handleToggleLanding(fee)} className="mx-auto" />
+                      <Switch disabled={!canEditFees} checked={!!fee.showOnLanding} onCheckedChange={() => handleToggleLanding(fee)} className="mx-auto" />
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
                     )}
@@ -327,7 +329,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                         <span className="text-muted-foreground text-xs">—</span>
                       ) : (
                         <div className="flex flex-col items-center gap-0.5">
-                          <Switch disabled={!canChange} checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
+                          <Switch disabled={!canEditFees} checked={fee.debitOrderEligible} onCheckedChange={() => handleToggleDebitOrder(fee)} className="mx-auto" />
                           {fee.debitOrderEligible && (
                             <span className="text-[10px] text-muted-foreground uppercase">{fee.debitOrderRail}</span>
                           )}
@@ -337,8 +339,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   )}
                   <TableCell>
                     <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!canChange} onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" disabled={!canChange} onClick={() => handleDelete(fee)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!canEditFees} onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" disabled={!canEditFees} onClick={() => handleDelete(fee)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -354,7 +356,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       <Card className="p-4 bg-muted/50 space-y-3">
         <div className="flex items-center gap-3">
           <Label className="whitespace-nowrap">Reminder days before due date:</Label>
-          <Input disabled={!canChange} type="number" min={1} max={90} className="w-20" value={reminderDays} onChange={e => handleReminderDays(Number(e.target.value))} />
+          <Input disabled={!canEditFees} type="number" min={1} max={90} className="w-20" value={reminderDays} onChange={e => handleReminderDays(Number(e.target.value))} />
         </div>
         <p className="text-xs text-muted-foreground">
           <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining.
@@ -397,7 +399,8 @@ interface FeeDialogProps {
 }
 
 function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", recurringEnabled = false }: FeeDialogProps) {
-  const { canChange } = useFinancialAccess(clubId);
+  const { canChange, isChairman } = useFinancialAccess(clubId);
+  const canEditFees = chairmanMayEditFeeCategories(isChairman, canChange);
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const isVisitorPass = !!existing?.visitorPassKind;
@@ -649,7 +652,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           {/* Pro-rate */}
           {!isVisitorPass && feeType !== "registration" && billingPeriod !== "monthly" && (
             <div className="flex items-center gap-2 h-10">
-              <Switch disabled={!canChange} checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+              <Switch disabled={!canEditFees} checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
             </div>
           )}
@@ -659,7 +662,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           {!isVisitorPass && feeType !== "registration" && recurringEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
-                <Switch disabled={!canChange} checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
+                <Switch disabled={!canEditFees} checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
                 <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for recurring payment</Label>
               </div>
               {debitOrderEligible && (

@@ -10,6 +10,7 @@ setpriv --reuid=1000 --regid=1000 --clear-groups pg_ctl -D "$D/data" -o "-p 5445
 P=(psql -X -q -v ON_ERROR_STOP=1 -h "$D" -p 54450 -U lovable -d postgres)
 "${P[@]}" -f "$HERE/stubs.sql"
 "${P[@]}" -f "$HERE/canonical.sql"
+"${P[@]}" -f "$HERE/seed-trigger.sql"
 "${P[@]}" -f "${CHAIRMAN_ACTION_MIGRATION:-$ROOT/drizzle/migrations/0309_chairman_routine_actions.sql}"
 "${P[@]}" -f "$HERE/test.sql"
 echo 'CHAIRMAN ROUTINE ACTION TESTS PASSED'

@@ -31,3 +31,20 @@ export function pickPoolPreview(input: {
     const unit = byId.get(id); return unit ? [unit] : [];
   })), issue: null };
 }
+/** Apply a saved manual pool arrangement to the current entries: keep saved spots, drop withdrawn entries, add new ones to the smallest pool. */
+export function applyManualPools(calculated: string[][], saved: string[][] | undefined | null): string[][] {
+  if (!saved || saved.length !== calculated.length) return calculated;
+  const all = calculated.flat(); const live = new Set(all);
+  const pools = saved.map((p) => p.filter((id) => live.has(id)));
+  const placed = new Set(pools.flat());
+  for (const id of all) if (!placed.has(id)) { let k = 0; pools.forEach((p, i) => { if (p.length < pools[k].length) k = i; }); pools[k].push(id); placed.add(id); }
+  return pools;
+}
+
+/** Move one entry to a pool (optionally before another entry); everything else keeps its place. */
+export function moveInPools(pools: string[][], id: string, to: number, beforeId?: string): string[][] {
+  const next = pools.map((p) => p.filter((x) => x !== id));
+  const i = beforeId ? next[to].indexOf(beforeId) : -1;
+  next[to].splice(i < 0 ? next[to].length : i, 0, id);
+  return next;
+}

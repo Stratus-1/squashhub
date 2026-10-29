@@ -26,3 +26,4 @@
 - [x] Removed the accidentally selected 2 Sparkling Water (R20) from Andre Visser's open Nelspruit tab; stock restored.
 - [x] Ladder source rules (club switches, per-source approval, per-league setting)
 - [x] Explain how Quintin (Nelspruit) moved down from 1
+- [x] Edit structure must keep First to target scoring + its settings

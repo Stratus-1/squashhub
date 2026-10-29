@@ -131,6 +131,7 @@ import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 import { PickPoolPreview } from "./PickPoolPreview";
+import { applyManualPools, moveInPools } from "@/lib/smart-builder/pick-pool-preview";
 import { CourtsCapacitySummary } from "./CourtsCapacitySummary";
 import { structureSlotTimes } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
@@ -284,6 +285,8 @@ export type StepAnswers = {
   removedPicks?: string[];
   /** Players locked in place on the board — Refresh by ladder skips them. */
   lockedIds?: string[];
+  /** Organiser's manual pool arrangement per category (entry ids per pool, in seed order); used as-is by Generate draw. */
+  poolPicks?: Record<string, string[][]>;
   /** Club Champs (over a period) only. */
   name: string;
   periodStart: string;
@@ -1957,7 +1960,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     const nudge = (k: string, id: string, d: number) => { const l = orderFor(k); const i = l.indexOf(id); const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; withOrder(a.picks, k, l); };
                     const onDrop = (e: React.DragEvent, to: string, beforeId?: string) => { e.preventDefault(); e.stopPropagation(); const [id, from] = e.dataTransfer.getData("text/plain").split("|"); if (id) move(id, from ?? "", to, beforeId); };
                     const unplaced = pickIds.filter((id) => placesFor(id).length === 0).sort((x, y) => memberName(x).localeCompare(memberName(y)));
-                    const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...pickUnits.map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
+                    const pooledKeys = new Set<string>();
                     const poolPreviews = pickUnits.flatMap((u) => {
                       const stage = rowStages(a, u.key)[0];
                       const pools = Number(stage?.pools ?? formatFor(u.key).pools) || 1;
@@ -1965,8 +1968,65 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                       const group = units.findIndex((x) => x.key === u.key) + 1;
                       const mode = stage?.poolAllocation ?? a.originalStructure?.league_pool_placement?.[String(group)] ?? "snake";
                       const preview = pickPoolPreview({ ids: pickIds.filter((id) => inUnit(id, u.key)), pairs: pairsFor(u.key), registrations: entrySnapshot.owner === entryOwner ? entrySnapshot.rows : [], group, groups: units.length, doubles: u.disc === "doubles", pools, seeding: seedFor(u.key), scope: a.scope, points: new Map(members.map((m) => [m.id, m.points ?? null])), ladder: new Map(members.map((m) => [m.id, m.ladder ?? null])), order: a.seedOrder?.[u.key], mode });
-                      return [<PickPoolPreview key={u.key} label={u.label} names={stage?.poolNames} preview={preview} memberName={memberName} method={`${seedFor(u.key) === "ranking" ? "Rankings" : seedFor(u.key) === "ladder" ? "Club ladder" : "Entry order"} · ${mode === "banded" ? "Strength band" : "Snake"}`} />];
+                      const method = `${seedFor(u.key) === "ranking" ? "Rankings" : seedFor(u.key) === "ladder" ? "Club ladder" : "Entry order"} · ${mode === "banded" ? "Strength band" : "Snake"}`;
+                      if (preview.issue) return [<PickPoolPreview key={u.key} label={u.label} names={stage?.poolNames} preview={preview} memberName={memberName} method={method} />];
+                      pooledKeys.add(u.key);
+                      const uid = (x: { member: string; partner?: string | null }) => (x.partner ? `${x.member}+${x.partner}` : x.member);
+                      const byId = new Map(preview.pools.flat().map((x) => [uid(x), x]));
+                      const saved = a.poolPicks?.[u.key];
+                      const shown = applyManualPools(preview.pools.map((p) => p.map(uid)), saved);
+                      const savePools = (next: string[][]) => setA({ ...a, poolPicks: { ...(a.poolPicks ?? {}), [u.key]: next } });
+                      const resetPools = () => { const n = { ...(a.poolPicks ?? {}) }; delete n[u.key]; setA({ ...a, poolPicks: n }); };
+                      const dropOn = (e: React.DragEvent, to: number, beforeId?: string) => {
+                        e.preventDefault(); e.stopPropagation();
+                        const [id, from] = e.dataTransfer.getData("text/plain").split("|");
+                        if (!id) return;
+                        if (from === `pool:${u.key}`) { savePools(moveInPools(shown, id, to, beforeId)); return; }
+                        if (!id.includes("+")) move(id, from ?? "", u.key); // joins this category; lands in the smallest pool
+
+                      };
+                      const nameOf = (id: string) => { const x = byId.get(id); return x ? `${memberName(x.member)}${x.partner ? ` + ${memberName(x.partner)}` : ""}` : memberName(id); };
+                      const removeEntry = (id: string) => { const n = { ...(a.poolPicks ?? {}), [u.key]: shown.map((p) => p.filter((x) => x !== id)) }; let p = a.picks; for (const m of id.split("+")) if (placesOf(p, m).includes(u.key)) p = togglePlace(p, m, u.key, false); setA({ ...a, picks: p, poolPicks: n }); };
+                      return [<section key={u.key} className="space-y-2" aria-label={`${u.label} pools`} data-testid={`pool-board-${u.key}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold">{u.label} · {shown.length} pools · {saved ? "Arranged by you" : method}</h3>
+                          {saved && <Button size="sm" variant="ghost" onClick={resetPools}>Reset to calculated pools</Button>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Drag players between pools or use the arrows. The pools are used exactly as shown when you generate the draw.</p>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {shown.map((pool, pi) => <div key={pi} className="min-w-0 rounded-md border border-border" data-testid={`planned-pool-${pi + 1}`} onDragOver={(e) => e.preventDefault()} onDrop={(e) => dropOn(e, pi)}>
+                            <h4 className="border-b border-border bg-muted/60 px-2 py-1.5 text-xs font-semibold">{stage?.poolNames?.[pi] || `Pool ${pi + 1}`} · {pool.length} {pool.some((id) => id.includes("+")) ? "pairs" : "entries"}</h4>
+                            <ol className="min-h-[4rem] space-y-1 p-1">
+                              {pool.map((id, j) => {
+                                const single = !id.includes("+"); const locked = single && lockedSet.has(id);
+                                return <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|pool:${u.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => dropOn(e, pi, id)}
+                                  className={cn("cursor-grab rounded border px-1 py-1 text-xs", locked ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary/40" : "border-border bg-background")} data-testid={`pool-row-${id}`}>
+                                  <div className="flex items-center gap-1">
+                                    <span className="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{j + 1}</span>
+                                    <span className={cn("min-w-0 flex-1 truncate", single && !enteredIds.has(id) ? "italic text-muted-foreground" : "font-medium")} title={nameOf(id)}>{nameOf(id)}</span>
+                                    <button type="button" aria-label={`Move ${nameOf(id)} up`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={j === 0} onClick={() => savePools(moveInPools(shown, id, pi, pool[j - 1]))}>▲</button>
+                                    <button type="button" aria-label={`Move ${nameOf(id)} down`} className="px-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={j === pool.length - 1} onClick={() => savePools(moveInPools(shown, id, pi, pool[j + 2]))}>▼</button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild><button type="button" aria-label={`Move ${nameOf(id)} to`} title="Move to another pool" className="rounded px-0.5 text-muted-foreground hover:text-foreground"><ArrowRight className="h-3.5 w-3.5" /></button></DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
+                                        <DropdownMenuLabel>Move to pool</DropdownMenuLabel>
+                                        {shown.map((_, k) => k !== pi && <DropdownMenuItem key={k} onSelect={() => savePools(moveInPools(shown, id, k))}>{stage?.poolNames?.[k] || `Pool ${k + 1}`}</DropdownMenuItem>)}
+                                        {single && pickUnits.some((o) => o.key !== u.key) && <><DropdownMenuSeparator /><DropdownMenuLabel>Move to category</DropdownMenuLabel>
+                                          {pickUnits.filter((o) => o.key !== u.key && !placesFor(id).includes(o.key)).map((o) => <DropdownMenuItem key={o.key} disabled={!manualFits(id, o.key)} onSelect={() => move(id, u.key, o.key)}>{o.label}</DropdownMenuItem>)}</>}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    {single && <Button type="button" size="sm" variant="ghost" aria-pressed={locked} aria-label={locked ? `Unlock ${nameOf(id)}` : `Lock ${nameOf(id)} in place`} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", locked ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{locked ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>}
+                                    <button type="button" aria-label={`Remove ${nameOf(id)} from ${u.label}`} title={`Remove from ${u.label}`} className="rounded px-0.5 text-muted-foreground hover:text-destructive" onClick={() => removeEntry(id)}><Trash2 className="h-3.5 w-3.5" /></button>
+                                  </div>
+                                </li>;
+                              })}
+                              {pool.length === 0 && <li className="p-2 text-center text-[11px] text-muted-foreground">Drop players here</li>}
+                            </ol>
+                          </div>)}
+                        </div>
+                      </section>];
                     });
+                    const cols: { key: string; label: string; ids: string[] }[] = [...(unplaced.length ? [{ key: "", label: "Not placed", ids: unplaced }] : []), ...pickUnits.filter((u) => !pooledKeys.has(u.key)).map((u) => ({ key: u.key, label: u.label, ids: orderFor(u.key) }))];
                     const board = (<div className="space-y-4">{poolPreviews}
                       <div className={cn("grid gap-2 pb-2", boardFull ? "player-board-full" : "sm:grid-cols-2 lg:grid-cols-3")} data-testid="pick-board" style={boardFull ? { zoom: boardZoom / 100, "--player-board-zoom": boardZoom / 100 } as CSSProperties : undefined}>
                         {cols.map((c) => (

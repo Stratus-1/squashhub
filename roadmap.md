@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Open Tournament link & QR after Finalise entries, before draw generation; preserve existing tournament progress.
+- [x] Open Tournament link & QR after Finalise entries, before draw generation; preserve existing tournament progress. Six navigation tests pass, build OK; preview only.
 - [x] Automatically show saved category/pool slot times on Courts/Schedule and use per-pool capacity; duplicate inherited-time inputs are read-only. 37 tests pass, build OK; existing schedules untouched. UI confirmation pending with the existing identity-session blocker.
 - [x] Correct First-to-target visibility to use Riverside's existing enabled tournament pilot switch; verified live switch is enabled, 30 scoring/structure tests pass, build OK. Browser verification remains blocked by identity confirmation.
 - [x] Add 10 minutes to planned match time, preserving 20/30/40/45/60-minute choices; 27 capacity tests pass, preview build OK. Not published.

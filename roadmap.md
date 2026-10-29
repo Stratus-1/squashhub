@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Default income statement to cost of sales; route bar salaries to normal Salaries & Wages with one expandable total; retain tips and bank accounting.
 - [x] Implement Chairman financial view-only boundaries and controls; 36 focused tests pass including isolated database writes; finance functions deployed, frontend not published, live balances unchanged.
 - [ ] Authenticated Chairman end-to-end finance/report and denial checks: needs a Chairman session; available session is platform Super Admin (isolated database and UI action denial tests passed).
 - [x] Add final singles standings ladder preview/apply and explicit final-only timing; 21 focused tests pass, Riverside unfinished controls checked. No live ladder changed; completed apply flow still needs an isolated test before rollout.

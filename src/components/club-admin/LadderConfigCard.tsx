@@ -262,6 +262,14 @@ export function LadderConfigCard({ clubId }: Props) {
 
       <div className="flex items-center gap-3 rounded-md border p-3">
         <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Post rating changes automatically</p>
+          <p className="text-[11px] text-muted-foreground">Off = rating changes wait in "Pending rating changes".</p>
+        </div>
+        <Switch checked={draft.ranking_auto_approve} onCheckedChange={(v) => set("ranking_auto_approve", v)} />
+      </div>
+
+      <div className="flex items-center gap-3 rounded-md border p-3">
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Challenges open</p>
           <p className="text-[11px] text-muted-foreground">
             Turn off to pause new challenges without losing the ladder.

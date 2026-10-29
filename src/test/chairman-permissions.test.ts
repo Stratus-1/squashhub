@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chairmanCapabilityAllowed, chairmanMayChangeFinance, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
+import { chairmanCapabilityAllowed, chairmanMayChangeFinance, chairmanMayEditFeeCategories, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
 
 describe("Chairman financial view-only rules", () => {
   it("recognises the Chairman role regardless of case", () => {

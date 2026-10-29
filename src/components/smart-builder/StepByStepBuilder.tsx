@@ -284,6 +284,8 @@ export type StepAnswers = {
   removedPicks?: string[];
   /** Players locked in place on the board — Refresh by ladder skips them. */
   lockedIds?: string[];
+  /** Organiser's manual pool arrangement per category (entry ids per pool, in seed order); used as-is by Generate draw. */
+  poolPicks?: Record<string, string[][]>;
   /** Club Champs (over a period) only. */
   name: string;
   periodStart: string;

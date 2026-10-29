@@ -41,6 +41,14 @@ function isNetworkError(err: any) {
   );
 }
 
+export function shouldFallbackToShellyBle(err: any) {
+  const status = Number(err?.context?.status ?? err?.status ?? err?.context?.response?.status);
+  // A server-side response (especially 401/403) is authoritative. Offline
+  // mode must never turn an authorization failure into a local unlock.
+  if (Number.isFinite(status) && status >= 400 && status < 500) return false;
+  return (Number.isFinite(status) && status >= 500) || isNetworkError(err);
+}
+
 function makeAccessEvent(
   opts: ShellyDoorOptions,
   eventType: string,
@@ -73,13 +81,15 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     if (error) throw error;
     return { ok: true, via: "cloud", message: "Door pulsed via Shelly Cloud" };
   } catch (cloudErr: any) {
+    if (!shouldFallbackToShellyBle(cloudErr)) {
+      throw new Error(await extractFunctionError(cloudErr, "Failed to open door"));
+    }
     const cloudMessage = isNetworkError(cloudErr)
       ? "Shelly Cloud is unreachable"
       : await extractFunctionError(cloudErr, "Failed to open door");
 
-    // 2) Fallback: BLE whenever the Cloud path cannot confirm actuation (not
-    // only when this phone is offline). This covers an offline Shelly Cloud
-    // connection and commands acknowledged by Cloud but not executed.
+    // 2) Fall back only for transport outages or server failures, never for
+    // an authoritative client error such as 401/403.
     const ble = opts.ble ? { ...opts.ble, mac: resolveBleMac(opts.ble.mac) } : null;
     if (!ble?.enabled || !ble.mac) {
       // Queue an "attempted while offline" event so it shows in the audit trail.

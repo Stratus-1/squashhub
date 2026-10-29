@@ -108,7 +108,7 @@ import "./tournament-admin.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, RotateCcw, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, RotateCcw, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight, Save } from "lucide-react";
 import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2917,9 +2917,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
           {cur !== "Summary" && (
             <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-              {a.createdTournamentId && <Button variant="outline" size="sm" disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>{savingDraft ? "Saving…" : setupUnsaved ? "Save & update fixtures •" : "Save & update fixtures"}</Button>}
               <Button variant="outline" size="sm" className="min-h-10 min-w-24" disabled={step === 0 || rowStructureDirty} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
-              <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
+              <div className="flex items-center gap-2">
+                {a.createdTournamentId && (
+                  <Button size="sm" className={"min-h-10 min-w-40 font-semibold shadow-sm " + (setupUnsaved ? "ring-2 ring-primary/50" : "")} disabled={!serverReady || savingDraft || rowStructureDirty} onClick={() => void saveSetupDraft()}>
+                    {savingDraft ? "Saving…" : <><Save className="mr-1 h-4 w-4" />{setupUnsaved ? "Save & update fixtures •" : "Save & update fixtures"}</>}
+                  </Button>
+                )}
+                <Button size="sm" className="min-h-10 min-w-24" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
+              </div>
             </div>
           )}
         </CardContent></Card>

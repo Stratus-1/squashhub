@@ -349,7 +349,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
         </Card>
       </div>
 
-      {canChange && !isAssociation && <FamilyPackageCard clubId={clubId} />}
+      {!isAssociation && <FamilyPackageCard clubId={clubId} />}
 
       <Card className="p-4 bg-muted/50 space-y-3">
         <div className="flex items-center gap-3">

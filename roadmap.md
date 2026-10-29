@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Resolve duplicate planning durations: use saved per-pool slot times in setup capacity and preserve existing schedules.
+- [ ] Resolve duplicate planning durations: automatically show saved category/pool slot times on Courts/Schedule pages and capacity; preserve existing schedules.
 - [x] Correct First-to-target visibility to use Riverside's existing enabled tournament pilot switch; verified live switch is enabled, 30 scoring/structure tests pass, build OK. Browser verification remains blocked by identity confirmation.
 - [x] Add 10 minutes to planned match time, preserving 20/30/40/45/60-minute choices; 27 capacity tests pass, preview build OK. Not published.
 - [x] Implement First-to-target preview with configurable target and Win by two / Sudden death; 50 focused tests pass, preview build OK. Existing tournaments unchanged; not published.

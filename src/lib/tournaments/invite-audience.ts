@@ -92,6 +92,12 @@ export function resolveInviteAudience(input: {
    */
   trustedMemberIds?: Iterable<string>;
   excludedIds?: Iterable<string>;
+  /**
+   * Explicit organiser opt-in (Step-by-Step "Include registered visitors"):
+   * active visitor-role member rows may be invited. Default false — visitors
+   * are never invited unless the organiser asked for them.
+   */
+  includeVisitors?: boolean;
 
 
 }): ResolvedAudience {
@@ -105,8 +111,16 @@ export function resolveInviteAudience(input: {
     }
     const status = String(m.status ?? "active").toLowerCase();
     const role = String(m.role ?? "member").toLowerCase();
-    if (role === "visitor") excludedCounts.visitors += 1;
-    else if (status !== "active") excludedCounts.inactive += 1;
+    if (role === "visitor") {
+      // Explicit opt-in only: an active, real visitor row may be invited.
+      if (input.includeVisitors && status === "active" && m.billing_exempt !== true && m.is_placeholder !== true) {
+        invitable.set(m.id, m);
+      } else {
+        excludedCounts.visitors += 1;
+      }
+      return;
+    }
+    if (status !== "active") excludedCounts.inactive += 1;
     else excludedCounts.placeholders += 1;
   });
   const excluded = new Set(Array.from(input.excludedIds || []));

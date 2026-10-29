@@ -4,6 +4,7 @@ import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfir
 import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
+import { fetchClubVisitors, promoteVisitors, type ClubVisitor } from "@/lib/tournaments/visitor-promotion";
 import { categoryDisplayName, categoryLabelOnlyChange } from "@/lib/smart-builder/category-labels";
 import { syncSwissRoundsToSpec } from "@/lib/smart-builder/sync-live-rounds";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
@@ -298,6 +299,8 @@ export type StepAnswers = {
   playoffSync: boolean | "later" | null;
   /** Event level / owner context (planning only). */
   scope: Scope | null;
+  /** Explicit opt-in: registered visitors (club sign-ins) may be picked and invited. Default off. */
+  includeVisitors?: boolean;
   ownerName: string;
   syncCutoff: string;
 };
@@ -555,6 +558,34 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return () => { cancelled = true; };
   }, [clubId]);
 
+  // Registered visitors (club sign-ins), promoted to visitor member rows — only
+  // when the organiser opted in on "Who may enter". Idempotent; never billed.
+  const [visitorMembers, setVisitorMembers] = useState<{ id: string; name: string; ladder?: number | null; points?: number | null }[]>([]);
+  useEffect(() => {
+    if (!a.includeVisitors) { setVisitorMembers([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const vs: ClubVisitor[] = await fetchClubVisitors(clubId);
+        if (vs.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
+        const promoted = await promoteVisitors(clubId, vs);
+        const ids = vs.map((v) => promoted.get(v.id)).filter(Boolean) as string[];
+        if (ids.length === 0) { if (!cancelled) setVisitorMembers([]); return; }
+        const { data } = await supabase.from("club_members").select("id, name, gender, ladder_position, ranking_points").in("id", ids);
+        if (cancelled) return;
+        const rows = ((data ?? []) as any[]).map((m) => ({ id: String(m.id), name: m.name || "Visitor", ladder: m.ladder_position ?? null, points: m.ranking_points ?? null, gender: m.gender ?? null }));
+        setVisitorMembers(rows.map(({ gender, ...r }) => r));
+        setGenderByMember((m) => { const n = new Map(m); rows.forEach((r) => n.set(r.id, r.gender)); return n; });
+      } catch { /* leave visitors out rather than block the step */ }
+    })();
+    return () => { cancelled = true; };
+  }, [a.includeVisitors, clubId]);
+  const visitorIdSet = useMemo(() => new Set(visitorMembers.map((v) => v.id)), [visitorMembers]);
+  const memberPool = useMemo(
+    () => (a.includeVisitors ? [...members, ...visitorMembers.filter((v) => !members.some((m) => m.id === v.id))] : members),
+    [a.includeVisitors, members, visitorMembers],
+  );
+
   const [phoneCh, setPhoneCh] = useState<{ whatsapp: boolean; sms: boolean }>({ whatsapp: false, sms: false });
   useEffect(() => {
     supabase.from("clubs").select("whatsapp_enabled, sms_enabled").eq("id", clubId).maybeSingle()
@@ -801,7 +832,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     return (rowStructure || cardStructure) && key && !fits(id, key) ? "" : key;
   };
   const manualFits = (id: string, key: string) => fits(id, key) || adminPlacementAllowed(eligOf(key), leaguesByMember.get(id) ?? [], isPlayerEligibleForCategory(genderByMember.get(id), units.find((u) => u.key === key)?.categoryType));
-  const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
+  const memberName = (id: string) => memberPool.find((m) => m.id === id)?.name ?? "Member";
   const pickIds = Object.keys(a.picks);
   /** Import an entry-form CSV: tick matched members and place them per entered event; never creates people. */
   const importEntries = async (file: File) => {
@@ -1816,6 +1847,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   );
                 })}
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sbs-include-visitors" className="text-sm font-medium">Include registered visitors</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Visitors who signed in at the club may be picked and invited, just like members. Off = members only.
+                  </p>
+                </div>
+                <Switch id="sbs-include-visitors" checked={!!a.includeVisitors} onCheckedChange={(v) => setA({ ...a, includeVisitors: v })} />
+              </div>
             </>
           )}
 
@@ -1861,7 +1901,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               {(() => {
                 // Organiser may add ANY member; those outside every event's scope are listed after, flagged.
                 const q = memberSearch.trim().toLowerCase();
-                const rows = members.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
+                const rows = memberPool.filter((m) => !(m.id in a.picks) && m.name.toLowerCase().includes(q)).map((m) => ({ m, ok: units.some((u) => fits(m.id, u.key)) }));
                 rows.sort((x, y) => Number(y.ok) - Number(x.ok));
                 const nOk = rows.filter((r) => r.ok).length;
                 return <>
@@ -1870,10 +1910,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                     {rows.map(({ m, ok }) => (
                       <button key={m.id} type="button" className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs hover:bg-muted"
                         onClick={() => { const k = ok ? autoPlace(m.id) : null; setA({ ...a, picks: { ...a.picks, [m.id]: k ? [k] : [] }, removedPicks: unmarkRemoved(a.removedPicks, m.id) }); }}>
-                        <span>{m.name}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
+                        <span>{m.name}{visitorIdSet.has(m.id) && <span className="ml-1 text-muted-foreground">· Visitor</span>}{!ok && <span className="ml-1 text-muted-foreground">· outside chosen leagues</span>}</span><Plus className="h-3 w-3" />
                       </button>
                     ))}
-                    {members.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
+                    {memberPool.length === 0 && <div className="text-xs text-muted-foreground">No active members found.</div>}
                   </div>
                 </>; })()}
               {pickIds.length > 0 && (

@@ -29,5 +29,5 @@
 - [x] Edit structure must keep First to target scoring + its settings
 - [x] Stop repeated onboarding/info loop for Gerrit Oosthuizen (chairman, HSC): signup rows with saved details (phone + ID + gender) count as completed applications; 9 Highveld June sign-ups stop looping; verified signed-in as Gerrit in preview, dashboard opens normally.
 - [done] Chairman access: tournaments/leagues already open; fee-category editing unlocked for chairman (FeesTab); member editing already passes server-side
-- [ ] Bar menu images: Coke Zero can, full Powerade bottle, clearer Black Cat (Highveld) — uploaded and rows updated; URLs verified 200.
+- [x] Bar menu images: Coke Zero can, full Powerade bottle, clearer Black Cat (Highveld) — uploaded and rows updated; URLs verified 200.
 - [x] Beta builder: Include registered visitors toggle (Who may enter) -> Pick players + Invitations audience; visitor-promotion lib; 37 invite tests pass

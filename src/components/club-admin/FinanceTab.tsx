@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
-import { addMemberOutstandingBalance, OUTSTANDING_BALANCE_KEY } from "@/lib/finance/member-outstanding";
+import { postMemberCorrection, CORRECTION_UP_KEY, CORRECTION_DOWN_KEY } from "@/lib/finance/member-outstanding";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -249,7 +249,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [billFeeTypeKey, setBillFeeTypeKey] = useState<string>("");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [billSubmitting, setBillSubmitting] = useState(false);
-  const billOutstanding = billFeeTypeKey === OUTSTANDING_BALANCE_KEY;
+  const billOutstanding = billFeeTypeKey === CORRECTION_UP_KEY || billFeeTypeKey === CORRECTION_DOWN_KEY;
+  const correctionDown = billFeeTypeKey === CORRECTION_DOWN_KEY;
   const billRequestRef = useRef<{ signature: string; id: string } | null>(null);
   const billBusyRef = useRef(false);
 
@@ -540,12 +541,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     setBillSubmitting(true);
     try {
       if (billOutstanding) {
-        const signature = JSON.stringify([clubId, billMemberId, billAmount, billLabel.trim(), billDate]);
+        const signature = JSON.stringify([clubId, billMemberId, billAmount, billLabel.trim(), billDate, billFeeTypeKey]);
         if (billRequestRef.current?.signature !== signature) {
           billRequestRef.current = { signature, id: crypto.randomUUID() };
         }
-        await addMemberOutstandingBalance({
-          clubId, memberId: billMemberId, amount: billAmount,
+        await postMemberCorrection({
+          clubId, memberId: billMemberId, amount: billAmount, direction: correctionDown ? "down" : "up",
           description: billLabel, date: billDate, requestId: billRequestRef.current.id,
         });
         billRequestRef.current = null;
@@ -560,7 +561,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       });
       if (error) throw error;
       }
-      toast.success(billOutstanding ? "Outstanding balance increased" : "Member billed");
+      toast.success(billOutstanding ? (correctionDown ? "Correction down posted" : "Correction up posted") : "Member billed");
       setBillOpen(false);
       setBillAmount(""); setBillLabel("");
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
@@ -846,7 +847,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button disabled={!canChange} size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
-                  <Receipt className="w-3.5 h-3.5" /> Bill {Party}
+                  <Receipt className="w-3.5 h-3.5" /> Bill {Party} / Post correction
                 </Button>
                 <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
@@ -1561,7 +1562,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   setBillOpen(true);
                 }}
               >
-                <Receipt className="w-3.5 h-3.5" /> Bill {Party}
+                <Receipt className="w-3.5 h-3.5" /> Bill {Party} / Post correction
               </Button>
             </div>
 
@@ -1948,10 +1949,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Receipt className="w-4 h-4" /> Bill a Member
+              <Receipt className="w-4 h-4" /> Bill a Member / Post correction
             </DialogTitle>
             <DialogDescription>
-              {billOutstanding ? "Outstanding balance adjustment" : "Member fee billing"}
+              {billOutstanding ? (correctionDown ? "Correction down — reduces what the member owes (may go into credit)" : "Correction up — increases what the member owes") : "Member fee billing"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1961,7 +1962,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 value={billFeeTypeKey}
                 onValueChange={(key) => {
                   setBillFeeTypeKey(key);
-                  if (key === OUTSTANDING_BALANCE_KEY) {
+                  if (key === CORRECTION_UP_KEY || key === CORRECTION_DOWN_KEY) {
                     setBillLabel("");
                     setBillAmount("");
                     return;
@@ -1975,7 +1976,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               >
                 <SelectTrigger className="h-9 text-xs" aria-label="Billing type"><SelectValue placeholder="Select billing type…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={OUTSTANDING_BALANCE_KEY}>Outstanding balance</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Post correction</SelectLabel>
+                    <SelectItem value={CORRECTION_UP_KEY} className="text-xs">Correction up — member owes more</SelectItem>
+                    <SelectItem value={CORRECTION_DOWN_KEY} className="text-xs">Correction down — member owes less</SelectItem>
+                  </SelectGroup>
                   {(["Membership", "League", "National body"] as const).map(group => {
                     const items = (billFeeOptions as BillFeeOption[]).filter(o => o.group === group);
                     if (items.length === 0) return null;
@@ -2065,20 +2070,25 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             </div>
             <div>
               <Label className="text-xs">{billOutstanding ? "Reason" : "Fee description"}</Label>
-              <Input placeholder={billOutstanding ? "e.g. Brought-forward outstanding balance" : "e.g. Court hire — 12 June"} maxLength={billOutstanding ? 500 : undefined} value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
+              <Input placeholder={billOutstanding ? (correctionDown ? "e.g. Overcharged league fee corrected" : "e.g. Brought-forward outstanding balance") : "e.g. Court hire — 12 June"} maxLength={billOutstanding ? 500 : undefined} value={billLabel} onChange={e => setBillLabel(e.target.value)} className="h-9 text-xs" />
             </div>
             {billAmount && parseFloat(billAmount) > 0 && (
               <div className="p-2 rounded bg-muted/60 text-[10px] space-y-0.5">
                 <p className="font-semibold text-foreground text-xs">GL Preview:</p>
-                <p>• Debit Accounts Receivable {money(parseFloat(billAmount))}</p>
-                <p>• Credit {getLabel(billOutstanding ? "opening_balance_equity" : billIncome)} {money(parseFloat(billAmount))}</p>
+                {correctionDown ? (<>
+                  <p>• Debit {getLabel("opening_balance_equity")} {money(parseFloat(billAmount))}</p>
+                  <p>• Credit Accounts Receivable {money(parseFloat(billAmount))}</p>
+                </>) : (<>
+                  <p>• Debit Accounts Receivable {money(parseFloat(billAmount))}</p>
+                  <p>• Credit {getLabel(billOutstanding ? "opening_balance_equity" : billIncome)} {money(parseFloat(billAmount))}</p>
+                </>)}
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setBillOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={handleBillMember} disabled={billSubmitting}>
-              {billSubmitting ? "Posting…" : billOutstanding ? "Add outstanding balance" : `Bill ${Party}`}
+              {billSubmitting ? "Posting…" : billOutstanding ? "Post correction" : `Bill ${Party}`}
             </Button>
           </DialogFooter>
         </DialogContent>

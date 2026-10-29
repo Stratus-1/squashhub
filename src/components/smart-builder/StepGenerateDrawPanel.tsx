@@ -211,6 +211,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     const bo: Record<number, string[]> = {};
     labels.forEach((l, k) => { const v = so[unitKeyOf(l)]; if (Array.isArray(v) && v.length) bo[k + 1] = v; });
     setBoardOrder(bo);
+    // Pools the organiser arranged on the player board are used exactly as arranged (only while entries still match).
+    const pp = (tt as any)?.beta_lifecycle?.answers?.poolPicks ?? {};
+    setManual((m) => {
+      const n = { ...m };
+      labels.forEach((l, k) => {
+        const v = pp[unitKeyOf(l)] as string[][] | undefined; const g = k + 1;
+        if (!Array.isArray(v) || !v.length || n[g]?.pools) return;
+        const ids = new Set((units[k] ?? []).map(unitId)); const flat = v.flat();
+        if (flat.length === ids.size && flat.every((x) => ids.has(x))) n[g] = { ...n[g], pools: { ids: flat, sizes: v.map((p) => p.length) } };
+      });
+      return n;
+    });
     setBaseUnits(units); setDivs(defaultCrossAll(list, unspecifiedCross)); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);

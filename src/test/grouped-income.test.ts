@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupedIncome } from "@/lib/finance/grouped-income";
+import { groupedIncome, DEFAULT_INCOME_STATEMENT_BASIS } from "@/lib/finance/grouped-income";
 import { accountCategoryPatch } from "@/hooks/use-club-gl-accounts";
 const accounts = Object.fromEntries([
   ["membership_income", "Member fees", "Income"], ["bar_income", "Bar", "Income"], ["shop_income", "Shop", "Income"],
@@ -11,6 +11,30 @@ const lines = [
   { account: "bar_cost_of_sales", debit: 100, credit: 0, description: "Barman salary" }, { account: "shop_cost_of_sales", debit: 80, credit: 0, description: "Shop wages" }, { account: "rent", debit: 50, credit: 0 },
 ];
 describe("grouped income statement", () => {
+  it("defaults to sold-item costs rather than stock purchases", () => {
+    expect(DEFAULT_INCOME_STATEMENT_BASIS).toBe("cost_of_sales");
+    const report = groupedIncome([{ account: "bar_income", debit: 0, credit: 1000 }, { account: "bar_expense", debit: 700, credit: 0 }], accounts, false, undefined, [{ division: "bar", cogs: 300, uncosted_lines: 0 }]);
+    expect(report.divisions[0].tradingCost).toBe(300);
+    expect(report.netProfit).toBe(700);
+  });
+  it("totals bar salaries as normal expenses with separate staff details, leaving tips in Bar", () => {
+    const source = [
+      { account: "bar_income", debit: 0, credit: 1000 },
+      { account: "bar_cost_of_sales", debit: 100, credit: 0, description: "Salary — Aiden" },
+      { account: "salary_wages", debit: 200, credit: 0, description: "Salary — Wynand" },
+      { account: "salary_wages", debit: 0, credit: 25, description: "Salary — Wynand" },
+      { account: "bar_cost_of_sales", debit: 50, credit: 0, description: "Tips paid — Aiden" },
+      { account: "bank_current", debit: 0, credit: 325 },
+    ];
+    const before = JSON.stringify(source);
+    const report = groupedIncome(source, accounts, false);
+    expect(report.expenses).toEqual([{ label: "Salaries & Wages", amount: 275 }]);
+    expect(report.salaryDetails).toEqual([{ label: "Aiden", amount: 100 }, { label: "Wynand", amount: 175 }]);
+    expect(report.divisions[0].directCosts).toBe(50);
+    expect(report.generalExpenses).toBe(275);
+    expect(report.netProfit).toBe(675);
+    expect(JSON.stringify(source)).toBe(before);
+  });
   it("separates Grant's R100 tip income from R900 product sales", () => {
     const report = groupedIncome([{ account: "bar_income", debit: 0, credit: 900 }, { account: "bar_income", debit: 0, credit: 100, description: "Tip income — Grant" }], accounts, true, "purchases");
     expect(report.divisions[0].sales).toBe(900);

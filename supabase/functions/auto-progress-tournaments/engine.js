@@ -7117,7 +7117,7 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
     pools = main.mapping.pools;
     poolSize = main.mapping.poolSize;
   } else if (main.kind === "pools" || main.kind === "round_robin") {
-    pools = main.kind === "pools" ? main.pools ?? 1 : 1;
+    pools = main.kind === "pools" ? main.pools ?? 1 : main.poolMembers?.length ?? 1;
     poolSize = main.poolMembers?.length ? Math.min(...main.poolMembers.map((p) => p.length)) : main.poolSize ?? 0;
   } else if (main.kind === "swiss") {
     pools = 1;
@@ -8398,7 +8398,8 @@ function buildProposedSwissGrid(model, opts = {}) {
     const snapshot = locked ? [...model.rows].sort((a, b) => (a.positions[1] ?? 0) - (b.positions[1] ?? 0)).map((r) => r.id) : [...model.rows].sort((a, b) => (a.current ?? 0) - (b.current ?? 0)).map((r) => r.id);
     const byId = new Map(model.rows.map((r) => [r.id, r]));
     const history = model.rounds.flatMap((r) => r.fixtures.map((f) => ({ a: f.a, b: f.b, winner: f.winner, round: r.round, state: f.state })));
-    const conflicts = locked && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
+    const approvedChart = (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
+    const conflicts = locked && !approvedChart && !usesTenRemainderChart(model.rrFinish, snapshot.length - (model.rrFinish.groups ?? 0) * 4) ? rrFinishRepeats(snapshot, model.rrFinish.groups, history.filter((f) => f.round <= 2 && f.a && f.b).map((f) => [f.a, f.b])) : [];
     const issues = conflicts.length ? ["The fixed round-robin groups would repeat qualifying opponents; confirm a different grouping before generating Round 3."] : [];
     const warnings = [];
     const openR2 = !locked ? model.rounds.filter((r) => r.round <= 2 && r.created && !r.complete).sort((a, b) => a.round - b.round)[0] ?? null : null;
@@ -8731,6 +8732,9 @@ function buildProposedSwissGrid(model, opts = {}) {
 }
 
 // src/lib/tournaments/projected-court-fixtures.ts
+function usesUitsigMensCRemainderChart(tournamentId, entrants, rounds, rrGroups) {
+  return tournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && entrants === 18 && rounds === 5 && rrGroups === 3;
+}
 function swissStage(champ, arch, gn) {
   if (arch?.builder_architecture === "structured") {
     const spec = arch?.builder_spec;
@@ -8859,8 +8863,9 @@ function projectSwissFixtures(i, playByOnly) {
     model.rrFinish = st.rrFinish;
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
+    const mensCRemainderChart = usesUitsigMensCRemainderChart(champ.id, gEntries.length, st.rounds, st.rrFinish?.groups);
     try {
-      grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...i.partialGeneration ? { partialGeneration: true } : {} });
+      grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...mensCRemainderChart ? { mensCRemainderChart: true } : {}, ...i.partialGeneration ? { partialGeneration: true } : {} });
     } catch {
       continue;
     }

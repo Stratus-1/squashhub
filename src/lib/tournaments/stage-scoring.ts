@@ -26,7 +26,7 @@ export function inheritedScoringForGroup(t: any, groupNumber: number, categoryNa
   if (m === "first_to_target") {
     const target = Number(rawP);
     if (!Number.isInteger(target) || target < 1) return { ok: false, issue: `${categoryName} has no valid winning target — ${fix}.`, ...base };
-    return { ok: true, mode: m, pointsPerGame: target, bestOf: 1, text: `First to ${target} · sudden death`, ...base };
+    return { ok: true, mode: m, pointsPerGame: target, bestOf: 1, text: `First to ${target} · ${at(t?.league_win_conditions, groupNumber) === "win_by_2" ? "win by 2" : "sudden death"}`, ...base };
   }
   const rawB = at(t?.league_best_of, groupNumber) ?? t?.best_of;
   const p = pts(rawP), b = bo(rawB);

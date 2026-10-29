@@ -9947,7 +9947,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points" | "first_to_target"); advanceReveal(key, 3); }}
                               /></div>}
                               {stageOf(key) >= 4 && scoringForLeague(gn) === "first_to_target" && (
-                                <div><Label>Winning score</Label><Input aria-label="Winning score" type="number" min={1} step={1} value={pointsForLeague(gn)} onChange={(e) => setLeaguePointsPerGame((m) => ({ ...m, [key]: Math.max(1, Math.floor(Number(e.target.value) || 7)) }))} /></div>
+                                <div className="space-y-2">
+                                  <div><Label>Winning score</Label><Input aria-label="Winning score" type="number" min={1} step={1} value={pointsForLeague(gn)} onChange={(e) => setLeaguePointsPerGame((m) => ({ ...m, [key]: Math.max(1, Math.floor(Number(e.target.value) || 7)) }))} /></div>
+                                  <SegRow label="Win condition" value={winConditionForLeague(gn)} color="cyan" options={[{ v: "win_by_2", l: "Win by 2" }, { v: "sudden_death", l: "Sudden death" }]} onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")} />
+                                </div>
                               )}
                               {stageOf(key) < 4 || scoringForLeague(gn) === "first_to_target" ? null : scoringForLeague(gn) === "standard" ? (
                                 <div className="space-y-2">

@@ -40,7 +40,7 @@ const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringif
   categories: ["Open Doubles"], categoryTypes: { "Open Doubles": "open" }, disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
   seeding: "later", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
   picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },
-  fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"], confirmNeedsPay: false },
+  fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"], confirmNeedsPay: false, basis: "per_player" },
   planId: "plan1",
   stages: [
     { id: "r1", unit: "", name: "Round 1", mode: "scheduled", deadline: "", date: "2026-11-03", from: "18:00", to: "21:00", courtIds: ["20", "21"], phase: "main" },

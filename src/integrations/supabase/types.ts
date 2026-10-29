@@ -21943,6 +21943,10 @@ export type Database = {
           phone: string
         }[]
       }
+      chairman_banking_setup_change_allowed: {
+        Args: { _new: Json; _old: Json; _operation: string; _table: string }
+        Returns: boolean
+      }
       chairman_financial_write_allowed: {
         Args: { _club_id: string }
         Returns: boolean

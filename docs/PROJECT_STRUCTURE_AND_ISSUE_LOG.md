@@ -1,4 +1,5 @@
 ## 2026-10-29 — First-to-target scoring preview
+- Finalise entries now opens Tournament link & QR first; its Continue action proceeds to draw generation. Visiting QR does not save or rewind lifecycle; existing later stages return to their current stage.
 - Courts/Schedule now read saved pool durations before category defaults or legacy singles/doubles estimates; inherited values display read-only instead of a second editable time. Capacity uses individual RR pool minutes and shows each pool's slot. 37 focused tests pass; build OK. No saved fixtures or schedules changed; authenticated UI verification remains pending.
 - Corrected the selector's pilot lookup to Riverside's existing enabled tournament_beta switch: the newly named scoring switch had no saved row, so the option was hidden. Riverside/new-draft restrictions remain; no database settings or existing tournaments changed.
 - Added 10 minutes to the existing planned match-time selector; retained all prior choices and the existing duration save/capacity path. No saved schedules or fixtures changed.

@@ -281,15 +281,16 @@ export function RoundRobinCombinedCleanView({ pools }: { pools: { view: RRPoolVi
           <thead><tr className="text-left text-muted-foreground"><th className="px-2">Pool</th><th className="px-2">Rank</th><th className="px-2">Pos.</th><th className="px-2">Player</th><th className="px-2">P</th>{pointsScoring ? <><th className="px-2">Total points</th><th className="px-2">Points against</th></> : <><th className="px-2">W</th><th className="px-2">L</th><th className="px-2">Games</th><th className="px-2">GD</th><th className="px-2">Pts F/A</th></>}</tr></thead>
           {pools.map((p) => {
             const tone = ((p.group - 1) % 6) + 1;
-            const standings = [...p.view.players].sort((a, b) => (p.view.rank[a.id] ?? 99) - (p.view.rank[b.id] ?? 99));
             const anyPlayed = Object.values(p.view.totals).some((t) => t.played > 0);
+            // Before a pool's first result, rank follows the draw (seeded) position so every pool shows 1, 2, 3…
+            const standings = anyPlayed ? [...p.view.players].sort((a, b) => (p.view.rank[a.id] ?? 99) - (p.view.rank[b.id] ?? 99)) : [...p.view.players];
             const pos = (id: string) => p.view.players.findIndex((pl) => pl.id === id) + 1;
             return (
             <tbody key={p.group}>
               {standings.map((pl, ri) => { const t = p.view.totals[pl.id]; return (
                 <tr key={pl.id} className="riverside-rr-band border-t border-border" data-rr-group={tone} data-testid={`rr-clean-row-${pl.id}`}>
                   {ri === 0 ? <td rowSpan={standings.length} className="px-2 py-1 font-semibold">{p.groupLabel}</td> : null}
-                  <td className="px-2 py-1 font-semibold">{anyPlayed ? p.view.rank[pl.id] ?? "—" : "—"}</td><td className="px-2 tabular-nums">{pos(pl.id)}</td>
+                  <td className="px-2 py-1 font-semibold">{anyPlayed ? p.view.rank[pl.id] ?? "—" : ri + 1}</td><td className="px-2 tabular-nums">{pos(pl.id)}</td>
                   <td className="px-2 whitespace-nowrap">{pl.name}</td><td className="px-2">{t.played}</td>{pointsScoring ? <><td className="px-2 font-semibold">{t.played ? t.pointsFor : "—"}</td><td className="px-2">{t.played ? t.pointsAgainst : "—"}</td></> : <><td className="px-2">{t.wins}</td><td className="px-2">{t.losses}</td>
                   <td className="px-2">{t.gamesFor}–{t.gamesAgainst}</td><td className="px-2">{t.gamesFor - t.gamesAgainst}</td>
                   <td className="px-2 whitespace-nowrap">{t.pointsKnown && t.played ? `${t.pointsFor}/${t.pointsAgainst}` : "—"}</td></>}

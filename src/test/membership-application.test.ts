@@ -19,6 +19,23 @@ describe("new member application state", () => {
     expect(isSelfApplication(row, created)).toBe(false);
     expect(isApplicationIncomplete(row, created)).toBe(false);
   });
+  it("signup that saved its details (Highveld June self-signups) is complete even with no category — no repeat onboarding loop", () => {
+    // Gerrit Oosthuizen HSC0003: wizard final save wrote phone + ID + gender; the club had no category then.
+    const row = { role: "member", fee_category_id: null, joined_at: created, is_pending_approval: false, phone: "+27824526083", id_number: "8511075012086", gender: "Men" };
+    expect(isApplicationIncomplete(row, created)).toBe(false);
+  });
+  it("phone-only self-signup (details never saved) still resumes onboarding", () => {
+    const row = { role: "member", fee_category_id: null, joined_at: created, is_pending_approval: false, phone: "0766026084" };
+    expect(isApplicationIncomplete(row, created)).toBe(true);
+  });
+  it("each of phone, ID number and gender is required as saved-details evidence", () => {
+    for (const partial of [
+      { phone: "082", id_number: "8501015009083" },
+      { phone: "082", gender: "Men" },
+      { id_number: "8501015009083", gender: "Men" },
+    ])
+      expect(isApplicationIncomplete({ role: "member", joined_at: created, ...partial }, created)).toBe(true);
+  });
   it("visitors, admins and billing-exempt rows are never pushed into the application", () => {
     for (const r of [{ role: "visitor" }, { role: "admin" }, { role: "member", billing_exempt: true }])
       expect(isApplicationIncomplete({ ...r, is_pending_approval: true }, created)).toBe(false);

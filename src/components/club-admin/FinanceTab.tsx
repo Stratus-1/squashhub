@@ -1733,7 +1733,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
       {/* Member Balances Dialog */}
       <Dialog open={balancesOpen} onOpenChange={setBalancesOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wallet className="w-4 h-4" /> {Party} Balances
@@ -1819,7 +1819,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         <span className="text-right">Credits</span>
                         <span className="text-right">Net Balance</span>
                       </div>
-                      <div className="divide-y max-h-[420px] overflow-y-auto">
+                      <div className="divide-y max-h-[calc(92dvh-330px)] min-h-[160px] overflow-y-auto">
                         {rows.map(r => (
                           <button
                             key={r.id}
@@ -1843,7 +1843,50 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       </div>
                     </div>
                   )}
-                  <p className="text-[10px] text-muted-foreground">Click any member to open their full statement.</p>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[10px] text-muted-foreground">Click any member to open their full statement.</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" disabled={rows.length === 0}
+                        onClick={() => {
+                          const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+                          const lines = [["Member", "Receivable", "Credits", "Net Balance"].join(",")]
+                            .concat(rows.map(r => [esc(r.name), r.debtors.toFixed(2), r.credits.toFixed(2), r.net.toFixed(2)].join(",")))
+                            .concat([["Total", "", "", total.toFixed(2)].join(",")]);
+                          const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url; a.download = `member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.csv`;
+                          document.body.appendChild(a); a.click(); a.remove();
+                          setTimeout(() => URL.revokeObjectURL(url), 30000);
+                        }}>
+                        <FileText className="w-3 h-3 mr-1" /> Excel
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" disabled={rows.length === 0}
+                        onClick={async () => {
+                          const { default: jsPDF } = await import("jspdf");
+                          const { default: autoTable } = await import("jspdf-autotable");
+                          const doc = new jsPDF();
+                          doc.setFontSize(14);
+                          doc.text(`${club?.name ?? "Club"} — Member Balances (${balancesFilter})`, 14, 16);
+                          doc.setFontSize(9);
+                          doc.text(`Generated ${new Date().toLocaleString("en-ZA")} · ${rows.length} members`, 14, 22);
+                          const fmt = (n: number) => `R ${Math.abs(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${n < -0.01 ? " Cr" : ""}`;
+                          autoTable(doc, {
+                            startY: 27,
+                            head: [["Member", "Receivable", "Credits", "Net Balance"]],
+                            body: rows.map(r => [r.name, r.debtors > 0.01 ? fmt(r.debtors) : "", r.credits > 0.01 ? fmt(r.credits) : "", fmt(r.net)]),
+                            foot: [["Total", "", "", fmt(total)]],
+                            styles: { fontSize: 9 },
+                            headStyles: { fillColor: [30, 58, 95] },
+                            footStyles: { fillColor: [30, 58, 95] },
+                            columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
+                          });
+                          doc.save(`member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.pdf`);
+                        }}>
+                        <FileText className="w-3 h-3 mr-1" /> PDF
+                      </Button>
+                    </div>
+                  </div>
                 </>
               );
             })()}

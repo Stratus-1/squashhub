@@ -156,6 +156,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         <Card><CardContent className="space-y-2 p-4">
           <p className="text-xs text-muted-foreground">Switch on the tournament link here before sending draws — every draw, reminder and entry email then carries this same link. Print the QR for the venue.</p>
           <MatchDayAccessCard kind="tournament" competitionId={tournamentId} competitionName={h.name} />
+          {cur >= lifecycleIndex("finalise") && <Button onClick={() => { if (h.stage === "finalise") advance("finalise", "generate"); setQrOpen(false); setView(null); }}>Continue to {cur <= lifecycleIndex("generate") ? "Generate draw & fixtures" : "current stage"}<ChevronRight className="ml-1 h-4 w-4" /></Button>}
         </CardContent></Card>
       )}
 
@@ -224,7 +225,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 {payWarn && <p className="text-destructive">{payWarn} — this doesn't block the draw because entries are confirmed without payment.</p>}
                 {why.length
                   ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><Button variant="outline" className="ml-2" onClick={() => onEditSetup("Guide")}>Review / Finalise Structure & Format</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
-                  : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) advance("finalise", "generate"); }}>Continue to Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) setQrOpen(true); }}>Continue to Tournament link &amp; QR<ChevronRight className="ml-1 h-4 w-4" /></Button>
                       <Button variant="outline" className="ml-2" onClick={() => onEditSetup("Guide")}>Review / Finalise Structure & Format</Button>
                       <p className="text-muted-foreground">Prerequisites are met. Next you confirm the final format, preview the draw and generate it.</p></>}
               </>;

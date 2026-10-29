@@ -2,13 +2,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Handover } from "@/lib/smart-builder/step-handover";
 
-const mocks = vi.hoisted(() => ({ handover: null as Handover | null, edit: vi.fn() }));
+const mocks = vi.hoisted(() => ({ handover: null as Handover | null, edit: vi.fn(), saveLife: vi.fn(), saveHandover: vi.fn() }));
 vi.mock("@/lib/smart-builder/step-handover", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/smart-builder/step-handover")>(),
   loadHandover: () => mocks.handover,
-  saveHandover: vi.fn(),
+  saveHandover: mocks.saveHandover,
+  saveLifecycle: mocks.saveLife,
   loadLifecycle: async () => ({ stage: mocks.handover?.stage, completed: mocks.handover?.completed }),
-  loadRegistrations: async () => ({ rows: [], feeCents: 0 }),
+  loadRegistrations: async () => ({ rows: [{ id: "entry", status: "paid", memberName: "Player" }], feeCents: 0 }),
 }));
 vi.mock("@/lib/tournaments/diamond-guard", () => ({ isDiamondTournament: async () => false }));
 vi.mock("@/components/smart-builder/StepInformPanel", () => ({ StepInformPanel: () => <div>Inform controls</div> }));
@@ -27,6 +28,8 @@ import { StepTournamentManagement } from "@/components/smart-builder/StepTournam
 
 beforeEach(() => {
   mocks.edit.mockReset();
+  mocks.saveLife.mockReset().mockResolvedValue(undefined);
+  mocks.saveHandover.mockReset();
   mocks.handover = {
     tournamentId: "test-tournament", clubId: "test-club", name: "Test Champs", kind: "period",
     mode: "invite", feeDue: false, channels: [], messageTemplate: "", entrantMessages: [], invitePreview: "",
@@ -38,6 +41,18 @@ afterEach(cleanup);
 const open = () => render(<StepTournamentManagement clubId="test-club" tournamentId="test-tournament" onEditSetup={mocks.edit} onBack={vi.fn()} />);
 
 describe("invitation blockers remain visible and actionable", () => {
+  it("visits the QR page before advancing finalised entries to the draw", async () => {
+    if (!mocks.handover) throw new Error("Missing fixture");
+    mocks.handover.stage = "finalise";
+    mocks.handover.completed = ["planning", "invite", "registrations"];
+    mocks.handover.deferred = [];
+    open();
+    const next = await screen.findByRole("button", { name: /Continue to Tournament link/ });
+    fireEvent.click(next);
+    expect(mocks.saveLife).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Continue to Generate draw/ }));
+    expect(mocks.saveLife).toHaveBeenCalledWith("test-tournament", expect.objectContaining({ stage: "generate", completed: ["planning", "invite", "registrations", "finalise"] }));
+  });
   it.each(["invite", "inform"] as const)("explains blocked %s mode and opens setup", async (mode) => {
     if (!mocks.handover) return;
     mocks.handover.mode = mode;

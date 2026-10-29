@@ -137,7 +137,7 @@ export function divisionScoringColumns(divs: Array<{ scoring?: DivisionScoring |
     league_points_per_game: pick((s) => s.mode === "first_to_target" ? Math.max(1, Math.floor(s.pointsPerGame || 7)) : (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
     league_best_of: pick((s) => s.mode === "first_to_target" ? 1 : (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
     league_play_all_games: pick((s) => s.mode === "first_to_target" ? false : (s.playAllGames != null ? s.playAllGames : undefined)),
-    league_win_conditions: pick((s) => s.mode === "first_to_target" ? "sudden_death" : s.winCondition),
+    league_win_conditions: pick((s) => s.mode === "first_to_target" ? s.winCondition ?? "sudden_death" : s.winCondition),
     ...(divs.some((d) => d.scoring?.mode === "time_capped_points" && Number(d.scoring.slotMinutes) > 0) ? {
       group_durations: pick((s) => (s.mode === "time_capped_points" && Number(s.slotMinutes) > 0 ? Number(s.slotMinutes) : undefined)),
       group_break_minutes: pick((s) => (s.mode === "time_capped_points" && Number(s.slotMinutes) > 0 ? Math.max(0, Number(s.breakMinutes) || 0) : undefined)),

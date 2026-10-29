@@ -149,7 +149,7 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
     const a = Number(score.a) || 0;
     const b = Number(score.b) || 0;
     if (a === 0 && b === 0) continue;
-    const winnerId = config.targetPoints ? targetWinner(a, b, pointsToWin) : isGameWon(a, b, pointsToWin, config.deuceRule);
+    const winnerId = config.targetPoints ? targetWinner(a, b, pointsToWin, config.deuceRule) : isGameWon(a, b, pointsToWin, config.deuceRule);
     if (!winnerId) {
       scoreA = a;
       scoreB = b;
@@ -413,7 +413,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       // Check game won before broadcasting live current-game state. A winning
       // point must be persisted as a finished game only, not re-saved as the
       // in-progress `current_game` value after the parent clears it.
-      const gameWinner = config.targetPoints ? targetWinner(newA, newB, pointsToWin) : isGameWon(newA, newB, pointsToWin, config.deuceRule);
+      const gameWinner = config.targetPoints ? targetWinner(newA, newB, pointsToWin, config.deuceRule) : isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (!gameWinner) {
         try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
       }

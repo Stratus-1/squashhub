@@ -19,7 +19,7 @@ export function effectiveScoring(def: TournamentDefinition | null | undefined, s
   const merged = { ...clean(def?.scoring), ...clean(st.scoring), ...clean(r) };
   // Choosing Bells or PAR at a lower level replaces the other family entirely.
   const top = clean(r).mode ? clean(r) : clean(st.scoring).mode ? clean(st.scoring) : null;
-  if ((top?.mode ?? merged.mode) === "first_to_target") return { mode: "first_to_target", pointsPerGame: top?.pointsPerGame ?? merged.pointsPerGame ?? 7, bestOf: 1, playAllGames: false, winCondition: "sudden_death" };
+  if ((top?.mode ?? merged.mode) === "first_to_target") return { mode: "first_to_target", pointsPerGame: top?.pointsPerGame ?? merged.pointsPerGame ?? 7, bestOf: 1, playAllGames: false, winCondition: top?.winCondition ?? merged.winCondition ?? "sudden_death" };
   if (top?.mode === "time_capped_points") return { mode: "time_capped_points", timeCapMinutes: top.timeCapMinutes ?? null };
   if (top?.mode === "standard") { const { timeCapMinutes: _t, ...rest } = merged; return { ...rest, mode: "standard" }; }
   return merged;
@@ -44,7 +44,7 @@ export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scor
 }
 
 export function scoringText(sc: Scoring): string {
-  if (sc.mode === "first_to_target") return `First to ${sc.pointsPerGame ?? 7} · one game · sudden death`;
+  if (sc.mode === "first_to_target") return `First to ${sc.pointsPerGame ?? 7} · one game · ${sc.winCondition === "win_by_2" ? "win by 2" : "sudden death"}`;
   if (isBells(sc)) return `Bells — ${sc.timeCapMinutes ? `bell at ${sc.timeCapMinutes} min` : "time cap not set"}`;
   if (sc.pointsPerGame || sc.bestOf) return `PAR ${sc.pointsPerGame ?? 11} — best of ${sc.bestOf ?? 5}${sc.playAllGames ? ", play all games" : ""}`;
   return "Needs confirmation (no match format chosen for this stage or the tournament)";

@@ -81,7 +81,7 @@ export function effectiveTournamentSettings(
       typeof mapValue(tournament?.league_play_all_games, groupNumber) === "boolean"
         ? Boolean(mapValue(tournament?.league_play_all_games, groupNumber))
         : Boolean(tournament?.play_all_games),
-    winCondition: mode === "first_to_target" ? "sudden_death" :
+    winCondition: mode === "first_to_target" ? (winCondition(mapValue(tournament?.league_win_conditions, groupNumber)) ?? "sudden_death") :
       winCondition(mapValue(tournament?.league_win_conditions, groupNumber)) ??
       winCondition(tournament?.win_condition) ??
       "win_by_2",

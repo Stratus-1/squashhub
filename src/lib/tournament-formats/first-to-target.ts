@@ -1,8 +1,11 @@
 import { StandardFormat } from "./standard";
 import type { TournamentFormat } from "./types";
 
-export function targetWinner(a: number, b: number, target: number): "a" | "b" | null {
-  if (![a, b, target].every(Number.isInteger) || a < 0 || b < 0 || target < 1 || a === b || Math.max(a, b) !== target) return null;
+export function targetWinner(a: number, b: number, target: number, condition: "sudden_death" | "win_by_2" = "sudden_death"): "a" | "b" | null {
+  if (![a, b, target].every(Number.isInteger) || a < 0 || b < 0 || target < 1 || a === b) return null;
+  const high = Math.max(a, b), low = Math.min(a, b);
+  if (high < target) return null;
+  if (condition === "sudden_death" ? high !== target : (low < target - 1 ? high !== target : high - low !== 2)) return null;
   return a > b ? "a" : "b";
 }
 

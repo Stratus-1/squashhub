@@ -91,7 +91,7 @@ export function resolveInviteAudience(input: {
    * trusted even though the browser holds no local roster row for them.
    */
   trustedMemberIds?: Iterable<string>;
-  excludedIds?: Iterable<number>;
+  excludedIds?: Iterable<string>;
   /**
    * Explicit organiser opt-in (Step-by-Step "Include registered visitors"):
    * active visitor-role member rows may be invited. Default false — visitors

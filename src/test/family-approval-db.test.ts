@@ -25,7 +25,7 @@ const port = process.env.FAMILY_TEST_PORT;
       CREATE POLICY "Family member can accept or decline own invite" ON club_family_members FOR UPDATE USING(true);
       CREATE TABLE notifications(user_id uuid,club_member_id uuid,title text,message text,type text,url text);
       CREATE TABLE club_member_fee_payments(club_member_id uuid,fee_type text,fee_label text,amount numeric,paid boolean,season_year int,paid_by_member_id uuid,family_group_id uuid);
-      CREATE FUNCTION family_respond_invite(_family_member_id uuid,_accept boolean) RETURNS boolean LANGUAGE plpgsql AS $$ DECLARE v_member public.club_members%ROWTYPE; v_cat public.member_fee_categories%ROWTYPE; BEGIN
+      CREATE FUNCTION family_respond_invite(_family_member_id uuid,_accept boolean) RETURNS boolean LANGUAGE plpgsql AS $$ DECLARE v_member public.club_members%ROWTYPE; v_cat public.member_fee_categories%ROWTYPE; v_group public.club_family_groups%ROWTYPE; v_primary public.club_members%ROWTYPE; v_row public.club_family_members%ROWTYPE; BEGIN
         IF NOT (v_member.user_id=auth.uid()) THEN RETURN false; END IF;
         SELECT * INTO v_cat FROM member_fee_categories LIMIT 1; RETURN true; END $$;
       CREATE FUNCTION review_membership_application(_member_id uuid,_approve boolean) RETURNS void LANGUAGE plpgsql AS $$ BEGIN
@@ -39,7 +39,7 @@ const port = process.env.FAMILY_TEST_PORT;
     `);
     await sql.unsafe(readFileSync("drizzle/migrations/0301_family_additions_admin_approval.sql", "utf8"));
     // The live migration preserves the pre-existing writer; use that exact writer here.
-    await sql.unsafe(readFileSync("/tmp/family-db/activate.sql", "utf8"));
+    await sql.unsafe(readFileSync("src/test/fixtures/family-approved-writer.sql", "utf8"));
     await sql`SELECT set_config('test.uid',${primary},false)`;
   });
   afterAll(async () => { await sql.end(); });

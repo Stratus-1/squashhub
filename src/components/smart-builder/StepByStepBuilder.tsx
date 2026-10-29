@@ -108,7 +108,7 @@ import "./tournament-admin.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, RotateCcw, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil, Plus, Minus, RotateCcw, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet, Maximize2, Minimize2, ArrowRight, Save } from "lucide-react";
 import { createPortal } from "react-dom";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";

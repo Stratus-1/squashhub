@@ -2157,6 +2157,13 @@
       "when": 1793279352488,
       "tag": "0307_member_balance_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1793282156751,
+      "tag": "0308_bar_tab_previous_day_block",
+      "breakpoints": true
     }
   ]
 }

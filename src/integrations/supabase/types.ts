@@ -2640,6 +2640,54 @@ export type Database = {
           },
         ]
       }
+      bar_tab_day_overrides: {
+        Row: {
+          club_id: string
+          created_at: string
+          granted_by_member: string | null
+          granted_by_user: string
+          id: string
+          override_date: string
+          reason: string | null
+          tab_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          granted_by_member?: string | null
+          granted_by_user: string
+          id?: string
+          override_date: string
+          reason?: string | null
+          tab_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          granted_by_member?: string | null
+          granted_by_user?: string
+          id?: string
+          override_date?: string
+          reason?: string | null
+          tab_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tab_day_overrides_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_day_overrides_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "bar_guest_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_tab_entries: {
         Row: {
           bar_item_id: string
@@ -20480,6 +20528,7 @@ export type Database = {
         Args: { _id: string; _member?: string; _method: string }
         Returns: undefined
       }
+      _bar_local_today: { Args: never; Returns: string }
       _bar_member_tip_ownership: {
         Args: { _club_id: string; _member_id: string }
         Returns: undefined
@@ -20541,6 +20590,7 @@ export type Database = {
         }
         Returns: number
       }
+      _bar_tab_is_overdue: { Args: { _tab_id: string }; Returns: boolean }
       _bar_tab_sales: { Args: { _tab: string }; Returns: number }
       _bar_tip_authorise: {
         Args: { _club: string; _token: string }
@@ -21843,6 +21893,10 @@ export type Database = {
         Returns: Json
       }
       bar_tip_config: { Args: { _club_id: string }; Returns: Json }
+      bar_treasurer_allow_tab_today: {
+        Args: { _reason?: string; _tab_id: string }
+        Returns: undefined
+      }
       bar_units_per_sale: {
         Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
         Returns: number

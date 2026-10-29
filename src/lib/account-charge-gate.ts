@@ -50,6 +50,8 @@ const rand = (n: number) => `R${n.toFixed(2)}`;
 
 /** Friendly message for any bar error; explains account-limit refusals. */
 export function barChargeErrorMessage(err: unknown, fallback: string): string {
+  const overdue = String((err as any)?.message ?? "").match(/TAB_OVERDUE\|(.+)$/s);
+  if (overdue) return overdue[1];
   const info = parseAccountLimit(err);
   if (!info) return (err as any)?.message || fallback;
   return `Not added to the member account: this would take the account to ${rand(info.projectedOwing)} owing, `

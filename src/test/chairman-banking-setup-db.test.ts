@@ -9,7 +9,7 @@ const port = process.env.CHAIRMAN_TEST_PORT;
     try {
       const migration = readFileSync("drizzle/migrations/0305_chairman_banking_setup_access.sql", "utf8");
       await sql.unsafe(migration.slice(0, migration.indexOf("REVOKE ALL")));
-      const allowed = async (table: string, operation: string, next: object, previous: object = {}) => {
+      const allowed = async (table: string, operation: string, next: Record<string, string | number | boolean | null>, previous: Record<string, string | number | boolean | null> = {}) => {
         const rows = await sql`SELECT public.chairman_banking_setup_change_allowed(${table},${operation},${sql.json(next)},${sql.json(previous)}) AS allowed`;
         return rows[0].allowed;
       };

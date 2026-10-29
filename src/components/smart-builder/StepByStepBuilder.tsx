@@ -298,6 +298,8 @@ export type StepAnswers = {
   playoffSync: boolean | "later" | null;
   /** Event level / owner context (planning only). */
   scope: Scope | null;
+  /** Explicit opt-in: registered visitors (club sign-ins) may be picked and invited. Default off. */
+  includeVisitors?: boolean;
   ownerName: string;
   syncCutoff: string;
 };

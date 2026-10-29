@@ -29,6 +29,12 @@ function fmtWhen(iso: string) {
   return sameDay ? `today ${time}` : `${d.toLocaleDateString()} ${time}`;
 }
 
+/** Opened on an earlier Johannesburg calendar day (server blocks new items on these). */
+function isPreviousDay(iso: string) {
+  const d = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+  return d(new Date(iso)) < d(new Date());
+}
+
 export function OpenTabsTab({ clubId }: { clubId: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [removing, setRemoving] = useState<OpenTab | null>(null);
@@ -57,6 +63,26 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
     refetchInterval: 30000,
   });
 
+  const { data: isTreasurer = false } = useQuery({
+    queryKey: ["bar-is-treasurer", clubId],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return false;
+      const { data } = await (supabase as any).from("club_offices")
+        .select("id, club_members!inner(user_id)")
+        .eq("club_id", clubId).eq("office", "treasurer").is("ended_at", null)
+        .eq("club_members.user_id", u.user.id).limit(1);
+      return (data?.length ?? 0) > 0;
+    },
+  });
+  const allowToday = useMutation({
+    mutationFn: async (tabId: string) => {
+      const { error } = await (supabase as any).rpc("bar_treasurer_allow_tab_today", { _tab_id: tabId });
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Tab may take items again today"),
+    onError: (e: Error) => toast.error(e.message || "Could not allow tab"),
+  });
   const grandTotal = tabs.reduce((s, t) => s + Number(t.total || 0), 0);
   const stale = tabs.filter(t => Date.now() - new Date(t.opened_at).getTime() > 24 * 3600 * 1000);
 
@@ -133,6 +159,16 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                           <span>{money(l.total)}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {t.status === "open" && isPreviousDay(t.opened_at) && (
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-destructive">Blocked: no new items until this tab is paid or put on the member account.</span>
+                      {isTreasurer && (
+                        <Button variant="outline" size="sm" onClick={() => allowToday.mutate(t.tab_id)} disabled={allowToday.isPending}>
+                          Allow today (treasurer)
+                        </Button>
+                      )}
                     </div>
                   )}
                   {t.status === "open" && Number(t.total) === 0 && (

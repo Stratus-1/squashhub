@@ -131,6 +131,7 @@ import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 import { PickPoolPreview } from "./PickPoolPreview";
+import { applyManualPools, moveInPools } from "@/lib/smart-builder/pick-pool-preview";
 import { CourtsCapacitySummary } from "./CourtsCapacitySummary";
 import { structureSlotTimes } from "@/lib/smart-builder/original-structure";
 import { rowStages } from "@/lib/smart-builder/structure-rows";
@@ -1981,8 +1982,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                         const [id, from] = e.dataTransfer.getData("text/plain").split("|");
                         if (!id) return;
                         if (from === `pool:${u.key}`) { savePools(moveInPools(shown, id, to, beforeId)); return; }
-                        if (!id.includes("+") && from !== u.key) { move(id, from ?? "", u.key); }
-                        savePools(moveInPools(shown, id, to, beforeId));
+                        if (!id.includes("+")) move(id, from ?? "", u.key); // joins this category; lands in the smallest pool
+
                       };
                       const nameOf = (id: string) => { const x = byId.get(id); return x ? `${memberName(x.member)}${x.partner ? ` + ${memberName(x.partner)}` : ""}` : memberName(id); };
                       const removeEntry = (id: string) => { const n = { ...(a.poolPicks ?? {}), [u.key]: shown.map((p) => p.filter((x) => x !== id)) }; let p = a.picks; for (const m of id.split("+")) if (placesOf(p, m).includes(u.key)) p = togglePlace(p, m, u.key, false); setA({ ...a, picks: p, poolPicks: n }); };

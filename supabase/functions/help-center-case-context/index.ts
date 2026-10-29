@@ -83,8 +83,7 @@ Deno.serve(async (req) => {
     .eq("event_id", eventId).maybeSingle();
   if (eventError || !event || event.held_at || !CONTEXT_EVENT_TYPES.has(event.event_type)) return reply(404, "case_context_unavailable");
 
-  const [{ data: allowed }, { data: thread, error: threadError }, { data: latest }] = await Promise.all([
-    db.from("help_center_pilot_allowlist").select("ticket_id").eq("ticket_id", event.ticket_id).maybeSingle(),
+  const [{ data: thread, error: threadError }, { data: latest }] = await Promise.all([
     db.rpc("help_center_case_context_thread", { p_ticket: event.ticket_id }).maybeSingle(),
     db.from("help_center_ticket_outbox").select("event_id,revision")
       .eq("ticket_id", event.ticket_id).order("revision", { ascending: false }).limit(1).maybeSingle(),
@@ -92,7 +91,7 @@ Deno.serve(async (req) => {
   const sourceThread = thread as {
     ticket_id: string; subject: string | null; status: string; created_at: string; updated_at: string;
   } | null;
-  if (!allowed || threadError || !sourceThread || !ACTIVE_STATUSES.has(sourceThread.status) || event.status !== sourceThread.status
+  if (threadError || !sourceThread || !ACTIVE_STATUSES.has(sourceThread.status) || event.status !== sourceThread.status
     || Date.parse(event.ticket_created_at) !== Date.parse(sourceThread.created_at)
     || !latest || latest.event_id !== event.event_id || latest.revision !== event.revision) {
     return reply(404, "case_context_unavailable");

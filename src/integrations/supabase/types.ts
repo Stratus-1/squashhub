@@ -2455,6 +2455,7 @@ export type Database = {
           created_at: string
           id: string
           invoice_date: string
+          invoice_files: Json
           invoice_number: string | null
           payment_method: string
           purchased_by: string | null
@@ -2471,6 +2472,7 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_date?: string
+          invoice_files?: Json
           invoice_number?: string | null
           payment_method?: string
           purchased_by?: string | null
@@ -2487,6 +2489,7 @@ export type Database = {
           created_at?: string
           id?: string
           invoice_date?: string
+          invoice_files?: Json
           invoice_number?: string | null
           payment_method?: string
           purchased_by?: string | null

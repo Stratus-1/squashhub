@@ -19,6 +19,7 @@ export function effectiveScoring(def: TournamentDefinition | null | undefined, s
   const merged = { ...clean(def?.scoring), ...clean(st.scoring), ...clean(r) };
   // Choosing Bells or PAR at a lower level replaces the other family entirely.
   const top = clean(r).mode ? clean(r) : clean(st.scoring).mode ? clean(st.scoring) : null;
+  if ((top?.mode ?? merged.mode) === "first_to_target") return { mode: "first_to_target", pointsPerGame: top?.pointsPerGame ?? merged.pointsPerGame ?? 7, bestOf: 1, playAllGames: false, winCondition: "sudden_death" };
   if (top?.mode === "time_capped_points") return { mode: "time_capped_points", timeCapMinutes: top.timeCapMinutes ?? null };
   if (top?.mode === "standard") { const { timeCapMinutes: _t, ...rest } = merged; return { ...rest, mode: "standard" }; }
   return merged;
@@ -29,17 +30,21 @@ export const isBells = (sc: Scoring) => sc.mode === "time_capped_points";
 export function choiceOf(sc?: Scoring | null): ScoringChoice {
   if (!sc?.mode) return "";
   if (sc.mode === "time_capped_points") return "bells";
+  if (sc.mode === "first_to_target") return "";
   return `par${sc.pointsPerGame ?? 11}_${sc.bestOf ?? 5}` as ScoringChoice;
 }
 
 export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scoring | undefined {
   if (!c) return undefined;
   if (c === "bells") return { mode: "time_capped_points", timeCapMinutes: prev?.mode === "time_capped_points" ? prev.timeCapMinutes ?? null : null };
-  const [, p, b] = c.match(/par(\d+)_(\d)/)!;
+  const match = c.match(/par(\d+)_(\d)/);
+  if (!match) return undefined;
+  const [, p, b] = match;
   return { mode: "standard", pointsPerGame: Number(p) as 11 | 15, bestOf: Number(b) as 3 | 5 };
 }
 
 export function scoringText(sc: Scoring): string {
+  if (sc.mode === "first_to_target") return `First to ${sc.pointsPerGame ?? 7} · one game · sudden death`;
   if (isBells(sc)) return `Bells — ${sc.timeCapMinutes ? `bell at ${sc.timeCapMinutes} min` : "time cap not set"}`;
   if (sc.pointsPerGame || sc.bestOf) return `PAR ${sc.pointsPerGame ?? 11} — best of ${sc.bestOf ?? 5}${sc.playAllGames ? ", play all games" : ""}`;
   return "Needs confirmation (no match format chosen for this stage or the tournament)";

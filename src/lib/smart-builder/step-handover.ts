@@ -270,7 +270,8 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     if (error) throw error;
     // Screens/server checks that read the tournament-wide mode must agree when every category uses the same scoring.
     const modes = [...new Set(i.divisions.map((d) => d.scoring?.mode).filter(Boolean))];
-    if (modes.length === 1 && i.divisions.every((d) => d.scoring)) {
+    // First-to-target is explicitly per-division; legacy root constraints remain unchanged.
+    if (modes.length === 1 && modes[0] !== "first_to_target" && i.divisions.every((d) => d.scoring)) {
       const { error: rErr } = await fromExt("tournament_rules").update({ scoring_mode: modes[0] }).eq("tournament_id", tid);
       if (rErr) throw rErr;
     }

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { MarkerConfig, ScoringFormat, DeuceRule } from "./MarkerSetup";
+import { targetWinner } from "@/lib/tournament-formats/first-to-target";
 import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -101,6 +102,7 @@ function getPointsToWin(format: ScoringFormat): number {
 }
 
 function isGameWon(scoreA: number, scoreB: number, pointsToWin: number, deuceRule: DeuceRule = "win_by_2"): "a" | "b" | null {
+  if (deuceRule === "sudden_death") return targetWinner(scoreA, scoreB, pointsToWin);
   const max = Math.max(scoreA, scoreB);
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
@@ -610,8 +612,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
             {cast.casting ? (cast.paired ? "Live on TV" : "Pairing…") : "Cast"}
           </Button>
           <Badge variant="outline" className="text-[10px]">
-            {config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
-            {" · "}{config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
+            {config.targetPoints ? `First to ${config.targetPoints}` : config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
+            {" · "}{config.targetPoints ? "One game" : config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
           </Badge>
         </div>
       </div>

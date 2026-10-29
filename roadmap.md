@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Remove only case-context per-ticket pilot checks; stage SQL source, add security regression tests, do not deploy/publish. Commit SHA depends on platform-managed Git.
 - [x] Allow Chairman Banking & Payments setup and Stitch documents while preserving financial transaction denial. Gerrit's signed-in HSC preview shows setup and Stitch documents, hides R10 payment initiation, and reports setup allowed/transactions denied. No settings saved or documents sent.
 - [x] Add private stock purchase invoice uploads/camera and saved invoice viewing; six tests and authenticated private upload/read/cleanup passed without changing stock. Preview-only; physical camera and real-purchase save not exercised.
 - [x] Confirm main family-package eligibility; require admin approval for new family additions. 21 focused tests pass, including disposable database activation/denial/consent checks. Existing families unchanged; shared approval rules live, screens preview-only.

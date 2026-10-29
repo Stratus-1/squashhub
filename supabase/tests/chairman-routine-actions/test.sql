@@ -39,6 +39,10 @@ DO $$ DECLARE mid uuid; f uuid; result jsonb; BEGIN
  BEGIN INSERT INTO club_journal_entries(club_id,debit) VALUES('11111111-1111-1111-1111-111111111111',10); RAISE EXCEPTION 'Journal bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN UPDATE club_champs_registrations SET status='waived' WHERE id='55555555-5555-5555-5555-555555555555'; RAISE EXCEPTION 'Waiver bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN PERFORM chairman_add_member('66666666-6666-6666-6666-666666666666','{"name":"Wrong club"}'); RAISE EXCEPTION 'Scope bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ INSERT INTO tournaments VALUES('99999999-9999-9999-9999-999999999999','11111111-1111-1111-1111-111111111111','Free test',0,false,'2026-10-29','on_entry');
+ INSERT INTO club_champs_registrations(id,champ_id,club_member_id,status) VALUES('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','99999999-9999-9999-9999-999999999999','33333333-3333-3333-3333-333333333333','invited');
+ PERFORM accept_tournament_invite('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',true,ARRAY[1]);
+ IF (SELECT status FROM club_champs_registrations WHERE id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')<>'paid' THEN RAISE EXCEPTION 'Free entry blocked'; END IF;
  IF EXISTS(SELECT 1 FROM chairman_action_context) THEN RAISE EXCEPTION 'Context leaked'; END IF;
  IF EXISTS(SELECT 1 FROM information_schema.role_table_grants WHERE table_name='chairman_action_context' AND grantee IN ('authenticated','anon')) THEN RAISE EXCEPTION 'Context client access'; END IF;
 END $$;

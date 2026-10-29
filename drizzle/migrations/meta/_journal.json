@@ -2101,6 +2101,13 @@
       "when": 1793256054675,
       "tag": "0299_bar_payroll_normal_salary_expense",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1793261200236,
+      "tag": "0300_club_financial_year_end",
+      "breakpoints": true
     }
   ]
 }

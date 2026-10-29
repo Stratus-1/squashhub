@@ -8526,6 +8526,7 @@ export type Database = {
           fee_reminder_days_before: number | null
           fill_top_down_enabled: boolean
           fill_up_leagues_enabled: boolean
+          financial_year_end_month: number
           free_tier_until: string | null
           free_visitor_bookings_per_year: number
           gateway_fee_pct_capitec: number | null
@@ -8689,6 +8690,7 @@ export type Database = {
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
           fill_up_leagues_enabled?: boolean
+          financial_year_end_month?: number
           free_tier_until?: string | null
           free_visitor_bookings_per_year?: number
           gateway_fee_pct_capitec?: number | null
@@ -8852,6 +8854,7 @@ export type Database = {
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
           fill_up_leagues_enabled?: boolean
+          financial_year_end_month?: number
           free_tier_until?: string | null
           free_visitor_bookings_per_year?: number
           gateway_fee_pct_capitec?: number | null

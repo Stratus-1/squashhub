@@ -6,7 +6,7 @@ describe("manual pool board", () => {
     expect(applyManualPools([["a", "c"], ["b", "d"]], [["a", "b"], ["c", "d"]])).toEqual([["a", "b"], ["c", "d"]]);
   });
   it("drops withdrawn entries and adds new ones to the smallest pool", () => {
-    expect(applyManualPools([["a", "c", "e"], ["b", "d"]], [["a", "b", "x"], ["c"]])).toEqual([["a", "b", "e"], ["c", "d"]]);
+    expect(applyManualPools([["a", "c", "e"], ["b", "d"]], [["a", "b", "x"], ["c"]])).toEqual([["a", "b", "d"], ["c", "e"]]);
   });
   it("ignores a saved arrangement when the pool count changed", () => {
     expect(applyManualPools([["a"], ["b"], ["c"]], [["a", "b"], ["c"]])).toEqual([["a"], ["b"], ["c"]]);

@@ -109,3 +109,27 @@ SELECT pg_temp.ok(NOT has_function_privilege('authenticated','public.help_center
   AND NOT has_function_privilege('authenticated','public.help_center_set_delivery_mode(text)','EXECUTE')
   AND NOT has_function_privilege('anon','public.help_center_delivery_mode()','EXECUTE'), 'procedures service_role only');
 SELECT pg_temp.ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.help_center_pilot_allowlist'::regclass), 'RLS on allowlist');
+
+-- 10. Live mode re-arms the existing retry job only while unheld work exists.
+SELECT public.help_center_set_delivery_mode('live');
+SELECT public.help_center_outbox_wake();
+SELECT pg_temp.ok(public.help_center_outbox_disarm() = false, 'live: pending work keeps the backstop armed');
+SELECT pg_temp.ok((SELECT bool_and(active) FROM cron.job), 'live: pending work re-arms a previously paused job');
+SELECT pg_temp.ok((SELECT count(*) FROM public.help_center_ticket_outbox WHERE held_at IS NOT NULL AND delivered_at IS NULL AND dead_at IS NULL)=24, 'live: held backlog stays held while retries arm');
+
+-- Simulate successful drains, then ensure an empty wake does not keep cron running.
+DO $$ DECLARE r record; BEGIN
+  FOR r IN SELECT id FROM public.help_center_ticket_outbox
+    WHERE delivered_at IS NULL AND dead_at IS NULL AND held_at IS NULL
+  LOOP
+    PERFORM public.help_center_outbox_result(r.id, true, NULL, 12);
+  END LOOP;
+END $$;
+SELECT pg_temp.ok(public.help_center_outbox_disarm(), 'live: empty queue disarms retry job');
+SELECT public.help_center_outbox_wake();
+SELECT pg_temp.ok(NOT (SELECT bool_or(active) FROM cron.job), 'live: empty wake leaves retry job disarmed');
+
+-- A later live support write must wake delivery and re-arm the existing job.
+INSERT INTO support_threads(status) VALUES ('open');
+SELECT pg_temp.ok((SELECT bool_and(active) FROM cron.job), 'live: new ticket re-arms retries after an empty drain');
+SELECT pg_temp.ok((SELECT count(*) FROM public.help_center_ticket_outbox WHERE held_at IS NOT NULL AND delivered_at IS NULL AND dead_at IS NULL)=24, 'live: new ticket does not release held backlog');

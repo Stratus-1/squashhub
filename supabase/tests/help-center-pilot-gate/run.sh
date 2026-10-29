@@ -11,5 +11,6 @@ $P -f "$HERE/stubs.sql"
 for m in 20260930105238 20260930112318 20260930115650; do $P -f "$ROOT"/supabase/migrations/${m}_*.sql; done
 $P -f "$HERE/seed_pre_gate.sql"
 $P -f "$ROOT/supabase/pending-migrations/20260930150800_help_center_pilot_gate.sql"
+$P -f "$ROOT/supabase/migrations/20261029090000_help_center_live_retry_rearm.sql"
 $P -f "$HERE/test.sql" 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "ALL PILOT-GATE TESTS PASSED"

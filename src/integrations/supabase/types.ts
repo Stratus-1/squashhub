@@ -19340,6 +19340,7 @@ export type Database = {
           league_genders: Json | null
           league_match_types: Json | null
           league_play_all_games: Json | null
+          league_playoff_match_formats: Json | null
           league_playoff_modes: Json | null
           league_playoff_points_per_game: Json | null
           league_playoff_qualifiers: Json | null
@@ -19460,6 +19461,7 @@ export type Database = {
           league_genders?: Json | null
           league_match_types?: Json | null
           league_play_all_games?: Json | null
+          league_playoff_match_formats?: Json | null
           league_playoff_modes?: Json | null
           league_playoff_points_per_game?: Json | null
           league_playoff_qualifiers?: Json | null
@@ -19580,6 +19582,7 @@ export type Database = {
           league_genders?: Json | null
           league_match_types?: Json | null
           league_play_all_games?: Json | null
+          league_playoff_match_formats?: Json | null
           league_playoff_modes?: Json | null
           league_playoff_points_per_game?: Json | null
           league_playoff_qualifiers?: Json | null

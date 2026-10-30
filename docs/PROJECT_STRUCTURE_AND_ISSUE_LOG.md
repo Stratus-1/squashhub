@@ -1,3 +1,6 @@
+## 2026-10-30 — Template preview entry and multiple documents
+- Add a direct Templates-list preview entry, retaining unsaved new-template preview. Templates and campaign-only email overrides accept multiple document uploads; email bodies retain persistent authenticated document links. Existing private club document policies enforce access, with short-lived signed download URLs generated only after sign-in. No new bucket, permission changes, email sends or campaign records created.
+
 ## 2026-10-30 — Active-only All members audience
 - Restrict All members preview and campaign dispatch to active memberships, excluding suspended/manual-held memberships and all non-active statuses. Recheck current club membership before dispatch to catch mid-send standing changes; selected/tournament and other audiences remain unchanged. No emails sent or member records changed.
 

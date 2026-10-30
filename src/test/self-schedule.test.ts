@@ -5,6 +5,7 @@ import {
   isMatchTerminal,
   isParticipant,
   buildSlots,
+  planningSlotStep,
   isSlotFree,
   isSlotFreeForMatch,
   freeSlotsForCourt,

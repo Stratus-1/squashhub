@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { isActiveCommsMember } from "../_shared/comms-active-members.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,9 +39,11 @@ function renderMerge(tpl: string, vars: Record<string, string>) {
 async function buildRecipients(clubId: string, campaign: any) {
   const audience = campaign.audience_type as string;
   let memberQ = admin.from("club_members")
-    .select("id,name,email,phone,club_member_number,id_number")
+    .select("id,name,email,phone,club_member_number,id_number,status,suspension_status")
     .eq("club_id", clubId)
     .not("email", "is", null);
+
+  if (audience === "all") memberQ = memberQ.eq("status", "active").in("suspension_status", ["active", "warning"]);
 
   if (audience === "selected") {
     const ids = (campaign.audience_member_ids ?? []) as string[];
@@ -58,7 +61,8 @@ async function buildRecipients(clubId: string, campaign: any) {
   }
 
   const { data: members } = await memberQ;
-  return (members ?? []).filter((m: any) => m.email && m.email.includes("@"));
+  return (members ?? []).filter((m: any) => m.email && m.email.includes("@") &&
+    (audience !== "all" || isActiveCommsMember(m)));
 }
 
 async function getMergeVars(member: any, club: any, leagueId: string | null) {
@@ -180,6 +184,11 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0;
     for (const m of recipients) {
       try {
+        if (campaign.audience_type === "all") {
+          const { data: fresh } = await admin.from("club_members").select("status,suspension_status")
+            .eq("club_id", campaign.club_id).eq("id", m.id).maybeSingle();
+          if (!isActiveCommsMember(fresh)) continue;
+        }
         const vars = await getMergeVars(m, club, campaign.audience_league_id);
         const subject = renderMerge(campaign.subject, vars);
         const bodyHtml = renderMerge(campaign.body_html, vars);

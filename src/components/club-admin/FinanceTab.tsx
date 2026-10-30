@@ -33,6 +33,7 @@ import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { BalanceSheetTab } from "./BalanceSheetTab";
+import { thisFinancialYear, previousFinancialYear } from "@/lib/finance/financial-year";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
@@ -393,6 +394,59 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     return getLabel(value);
   };
 
+
+  const fyEndMonth = Number((club as any)?.financial_year_end_month || 2);
+  const [glPreset, setGlPreset] = useState<string>("all");
+  const [glFrom, setGlFrom] = useState<string>("");
+  const [glTo, setGlTo] = useState<string>("");
+  const applyGlPreset = (p: string) => {
+    setGlPreset(p);
+    const now = new Date();
+    const f = (d: Date) => format(d, "yyyy-MM-dd");
+    if (p === "all") { setGlFrom(""); setGlTo(""); }
+    else if (p === "this_fy") { const r = thisFinancialYear(fyEndMonth, now); setGlFrom(r.from); setGlTo(r.to); }
+    else if (p === "prev_fy") { const r = previousFinancialYear(fyEndMonth, now); setGlFrom(r.from); setGlTo(r.to); }
+    else if (p === "this_month") { setGlFrom(f(new Date(now.getFullYear(), now.getMonth(), 1))); setGlTo(f(new Date(now.getFullYear(), now.getMonth() + 1, 0))); }
+    else if (p === "last_month") { setGlFrom(f(new Date(now.getFullYear(), now.getMonth() - 1, 1))); setGlTo(f(new Date(now.getFullYear(), now.getMonth(), 0))); }
+  };
+  const glShown: any[] = (journalEntries || []).filter((e: any) => {
+    const d = format(new Date(e.created_at), "yyyy-MM-dd");
+    if (glFrom && d < glFrom) return false;
+    if (glTo && d > glTo) return false;
+    const q = journalSearch.trim().toLowerCase();
+    if (!q) return true;
+    const memberName = e.club_member_id ? getMemberName(e.club_member_id) : "";
+    const parts = [e.description, getAccountLabel(e.custom_account_id ? `custom:${e.custom_account_id}` : e.account), e.account, memberName,
+      format(new Date(e.created_at), "dd MMM yyyy HH:mm"),
+      Number(e.debit || 0) > 0 ? Number(e.debit).toFixed(2) : "", Number(e.credit || 0) > 0 ? Number(e.credit).toFixed(2) : ""];
+    return parts.some(p => String(p || "").toLowerCase().includes(q));
+  });
+  const exportGl = (kind: "csv" | "print") => {
+    const rows = glShown.map((e: any) => [
+      format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
+      String(e.description || ""),
+      getAccountLabel(e.custom_account_id ? `custom:${e.custom_account_id}` : e.account),
+      e.club_member_id ? getMemberName(e.club_member_id) : "",
+      Number(e.debit || 0).toFixed(2), Number(e.credit || 0).toFixed(2),
+    ]);
+    const totD = glShown.reduce((s, e: any) => s + Number(e.debit || 0), 0);
+    const totC = glShown.reduce((s, e: any) => s + Number(e.credit || 0), 0);
+    const period = glFrom || glTo ? `${glFrom || "start"} to ${glTo || "today"}` : "All dates";
+    const head = ["Date", "Description", "Account", "Member", "Debit", "Credit"];
+    if (kind === "csv") {
+      const esc = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+      const csv = [head, ...rows, ["", "Total", "", "", totD.toFixed(2), totC.toFixed(2)]].map(r => r.map(esc).join(",")).join("\n");
+      const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a"); a.href = url; a.download = `gl-entries-${glFrom || "all"}-${glTo || "today"}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+      return;
+    }
+    const h = (v: string) => v.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<html><head><title>General Ledger</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:4px;text-align:left}td.n,th.n{text-align:right}tfoot td{font-weight:bold;border-top:2px solid #000}@page{size:A4 landscape;margin:12mm}</style></head><body><h2>${h(club?.name || "")} — General Ledger</h2><p>${h(period)} · ${rows.length} entries</p><table><thead><tr>${head.map((x, i) => `<th class="${i > 3 ? "n" : ""}">${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((x, i) => `<td class="${i > 3 ? "n" : ""}">${h(x)}</td>`).join("")}</tr>`).join("")}</tbody><tfoot><tr><td></td><td>Total</td><td></td><td></td><td class="n">${totD.toFixed(2)}</td><td class="n">${totC.toFixed(2)}</td></tr></tfoot></table><script>window.onload=()=>window.print()</script></body></html>`);
+    w.document.close();
+  };
 
   const totalIncome = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Income").reduce((s, a) => s + getBalance(a), 0);
   const totalExpenses = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Expense").reduce((s, a) => s + getBalance(a), 0);
@@ -911,7 +965,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-primary" />
                 <h3 className="font-semibold text-sm">All GL Entries</h3>
-                <Badge variant="outline" className="text-[10px]">{(journalEntries || []).length} entries</Badge>
+                <Badge variant="outline" className="text-[10px]">{glShown.length} entries</Badge>
               </div>
               <div className="flex items-center gap-2">
                 {false && (
@@ -950,28 +1004,33 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               />
             </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={glPreset} onValueChange={v => applyGlPreset(v)}>
+                <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All dates</SelectItem>
+                  <SelectItem value="this_fy">This Financial Year</SelectItem>
+                  <SelectItem value="prev_fy">Previous Financial Year</SelectItem>
+                  <SelectItem value="this_month">This Month</SelectItem>
+                  <SelectItem value="last_month">Last Month</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              <Label className="text-[10px] text-muted-foreground">From</Label>
+              <Input type="date" value={glFrom} onChange={e => { setGlFrom(e.target.value); setGlPreset("custom"); }} className="h-8 text-xs w-[140px]" />
+              <Label className="text-[10px] text-muted-foreground">To</Label>
+              <Input type="date" value={glTo} onChange={e => { setGlTo(e.target.value); setGlPreset("custom"); }} className="h-8 text-xs w-[140px]" />
+              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => exportGl("csv")}><Download className="w-3.5 h-3.5" /> CSV / Excel</Button>
+              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => exportGl("print")}><FileText className="w-3.5 h-3.5" /> Print / PDF</Button>
+            </div>
+
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (journalEntries || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No journal entries yet.</p>
             ) : (() => {
-              const q = journalSearch.trim().toLowerCase();
-              const shown = q
-                ? (journalEntries || []).filter((e: any) => {
-                    const memberName = e.club_member_id ? getMemberName(e.club_member_id) : "";
-                    const dateStr = format(new Date(e.created_at), "dd MMM yyyy HH:mm");
-                    const parts = [
-                      e.description,
-                      getLabel(e.account),
-                      e.account,
-                      memberName,
-                      dateStr,
-                      Number(e.debit || 0) > 0 ? Number(e.debit).toFixed(2) : "",
-                      Number(e.credit || 0) > 0 ? Number(e.credit).toFixed(2) : "",
-                    ];
-                    return parts.some(p => String(p || "").toLowerCase().includes(q));
-                  })
-                : (journalEntries || []);
+              const shown = glShown;
+              
               return (
                 <div className="overflow-hidden border rounded-lg">
                   <div className="grid grid-cols-[110px_1fr_120px_80px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

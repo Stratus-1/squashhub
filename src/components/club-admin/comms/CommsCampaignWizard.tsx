@@ -22,6 +22,8 @@ import { isActiveCommsMember } from "../../../../supabase/functions/_shared/comm
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
 import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
+import { CommsDocumentUpload } from "./CommsDocumentUpload";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 type AudienceType = "all" | "unlinked" | "selected" | "league" | "skills";
 
@@ -44,6 +46,9 @@ export function CommsCampaignWizard({
   const [step, setStep] = useState(0);
   const [templateId, setTemplateId] = useState(initialTemplate?.id ?? templates[0]?.id ?? "");
   const template = templates.find((t) => t.id === templateId) ?? null;
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
+  const campaignVersions = { ...template?.versions, email: { subject: template?.versions.email?.subject ?? "", body: emailOverride ?? template?.versions.email?.body ?? "" } };
+  useEffect(() => setEmailOverride(null), [templateId]);
 
   const [name, setName] = useState(initialTemplate?.name ?? "");
   const [audienceType, setAudienceType] = useState<AudienceType>("all");
@@ -158,7 +163,7 @@ export function CommsCampaignWizard({
         templateId: template.id,
         channels,
         content: Object.fromEntries(
-          channels.map((ch) => [ch, template.versions[ch] ?? { subject: "", body: "" }]),
+          channels.map((ch) => [ch, campaignVersions[ch] ?? { subject: "", body: "" }]),
         ),
         action,
         audience:
@@ -243,6 +248,11 @@ export function CommsCampaignWizard({
             <div className="rounded border border-border p-3">
               <CommsActionPicker value={action} onChange={setActionOverride} clubSubdomain={club?.subdomain} />
             </div>
+            <div className="flex items-center justify-between">
+              <Label>Email documents</Label>
+              <CommsDocumentUpload clubId={clubId} onInsert={(html) => setEmailOverride((body) => `${body ?? template?.versions.email?.body ?? ""}${html}`)} />
+            </div>
+            {emailOverride !== null && <RichTextEditor enableTables value={emailOverride} onChange={setEmailOverride} />}
           </div>
         )}
 
@@ -361,7 +371,7 @@ export function CommsCampaignWizard({
               {channels.map((c) => <TabsTrigger key={c} value={c}>{CHANNEL_LABEL[c]}</TabsTrigger>)}
             </TabsList>
             {channels.map((c) => {
-              const rendered = renderChannel(c, template?.versions[c] ?? {}, previewVars, resolved);
+              const rendered = renderChannel(c, campaignVersions[c] ?? {}, previewVars, resolved);
               return (
                 <TabsContent key={c} value={c} className="mt-3">
                   <div className="rounded border border-border p-3 space-y-2">

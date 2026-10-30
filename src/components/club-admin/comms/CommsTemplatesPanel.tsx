@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Plus, Send, Trash2 } from "lucide-react";
+import { Edit, Eye, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { COMMS_ACTION_MAP, COMMS_CHANNELS } from "@/lib/comms/actions";
 import type { TemplateRecord } from "./CommsTemplateEditor";
@@ -15,6 +15,7 @@ export function CommsTemplatesPanel({
   onNew,
   onEdit,
   onSend,
+  onPreview,
 }: {
   clubId: string;
   templates: TemplateRecord[];
@@ -22,6 +23,7 @@ export function CommsTemplatesPanel({
   onNew: () => void;
   onEdit: (t: TemplateRecord) => void;
   onSend: (t: TemplateRecord) => void;
+  onPreview: (t: TemplateRecord) => void;
 }) {
   const qc = useQueryClient();
   const del = useMutation({
@@ -73,6 +75,7 @@ export function CommsTemplatesPanel({
                 ))}
               </div>
               <Button size="sm" variant="ghost" title="Send as campaign" onClick={() => onSend(t)}><Send className="w-3.5 h-3.5" /></Button>
+              <Button size="sm" variant="ghost" title="Preview template" aria-label={`Preview ${t.name}`} onClick={() => onPreview(t)}><Eye className="w-3.5 h-3.5" /></Button>
               <Button size="sm" variant="ghost" onClick={() => onEdit(t)}><Edit className="w-3.5 h-3.5" /></Button>
               <Button size="sm" variant="ghost" onClick={() => { if (confirm(`Delete "${t.name}"?`)) del.mutate(t.id); }}>
                 <Trash2 className="w-3.5 h-3.5 text-destructive" />

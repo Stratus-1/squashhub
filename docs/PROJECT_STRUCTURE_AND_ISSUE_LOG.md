@@ -1,3 +1,6 @@
+## 2026-10-30 — Communications email formatting and preview
+- Replace app-themed body-only campaign preview with sandboxed email HTML including the configured club signature and disclaimer. Add an unsaved Preview email toggle in template editing, labelled bullet-list controls and opt-in editable tables. Delivery, audiences and saved campaigns remain unchanged; browser email rendering can differ from individual inbox clients.
+
 ## 2026-10-30 — Cash-up excludes payroll EFT tips
 - Uitsig 29 October cash-up incorrectly counted R421 payroll tips as cash, with an offsetting R421 cash movement. Restrict the shared summary to cash-method payouts; preserve all-method staff balance deductions so EFT tips cannot be paid twice.
 - Correct only the identified saved Uitsig summary fields with an audit record, preserving R133 counted/expected cash, period, sales and all payment journals. Isolated SQL regression covers R421 EFT exclusion, real cash deduction, club and period isolation.

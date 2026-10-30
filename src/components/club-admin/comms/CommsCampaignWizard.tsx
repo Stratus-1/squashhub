@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import DOMPurify from "dompurify";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
 import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
+import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
 
 type AudienceType = "all" | "unlinked" | "selected" | "league" | "skills";
 
@@ -34,7 +34,7 @@ export function CommsCampaignWizard({
   onClose,
 }: {
   clubId: string;
-  club: { name?: string | null; email?: string | null; phone?: string | null; subdomain?: string | null } | null;
+  club: ({ name?: string | null; email?: string | null; phone?: string | null; subdomain?: string | null } & EmailPreviewClub) | null;
   templates: TemplateRecord[];
   initialTemplate?: TemplateRecord | null;
   onClose: () => void;
@@ -56,6 +56,9 @@ export function CommsCampaignWizard({
   const [scheduleFor, setScheduleFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [previewChannel, setPreviewChannel] = useState<CommsChannel>("email");
+  useEffect(() => {
+    if (channels.length && !channels.includes(previewChannel)) setPreviewChannel(channels[0]);
+  }, [channels, previewChannel]);
 
   const action = actionOverride ?? template?.action ?? { key: "none" };
   const isOnboarding = action.key === "register_existing_member";
@@ -369,10 +372,7 @@ export function CommsCampaignWizard({
                     )}
                     {c !== "whatsapp" && <p className="text-sm font-semibold">{rendered.subject}</p>}
                     {c === "email" ? (
-                      <div
-                        className="prose prose-sm max-w-none dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(rendered.body) }}
-                      />
+                      <CommsEmailPreview body={rendered.body} subject={rendered.subject} club={club} />
                     ) : (
                       <pre className="text-xs whitespace-pre-wrap font-sans">{rendered.body}</pre>
                     )}

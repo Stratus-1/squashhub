@@ -1340,11 +1340,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             const playoffMade = (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
             // The approved pool-to-play-off bracket stays the view even once real play-off games exist
             // (display only); the generic knockout draw is only a fallback when no planned play-offs exist.
-            const plannedRowsNow = plannedPlayoffBracket(arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null, unitKeyOf(rrDivision?.label ?? champ?.group_labels?.[String(gn)] ?? ""), pc, null);
+            const plannedRowsNow = plannedPlayoffBracket((arch?.beta_lifecycle?.format_plan ? { ...arch.beta_lifecycle.format_plan, originalStructure: arch.beta_lifecycle.format_plan.originalStructure ?? arch?.beta_lifecycle?.answers?.originalStructure } : arch?.beta_lifecycle?.answers ?? null), unitKeyOf(rrDivision?.label ?? champ?.group_labels?.[String(gn)] ?? ""), pc, null);
             if (!ko.length && playoffMade && !plannedRowsNow.length) return null;
             if (!ko.length || plannedRowsNow.length) {
               // Planned play-offs shown upfront: positions until the round robin is complete, then names.
-              const plan = arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null;
+              const plan = (arch?.beta_lifecycle?.format_plan ? { ...arch.beta_lifecycle.format_plan, originalStructure: arch.beta_lifecycle.format_plan.originalStructure ?? arch?.beta_lifecycle?.answers?.originalStructure } : arch?.beta_lifecycle?.answers ?? null);
               const done = gm.every((m: any) => m.is_bye || !!m.winner_member_id || m.status === "completed");
               const live = Array.from({ length: Math.max(1, pc) }, (_, i) => (getGroupStandings(gn, pc > 1 ? i + 1 : null) as any[]).map((r: any) => r.name as string));
               const standings = done ? live : null;
@@ -4601,7 +4601,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     // never for a category whose play-offs already render in its own pool-to-play-off bracket.
     const cardMatches = !isStructured ? playoffMatches : playoffMatches.filter((m: any) => {
       if (catGroup != null && m.group_number !== catGroup) return false;
-      const planned = plannedPlayoffBracket(arch?.beta_lifecycle?.format_plan ?? arch?.beta_lifecycle?.answers ?? null, unitKeyOf(champ?.group_labels?.[String(m.group_number)] ?? ""), 1, null);
+      const planned = plannedPlayoffBracket((arch?.beta_lifecycle?.format_plan ? { ...arch.beta_lifecycle.format_plan, originalStructure: arch.beta_lifecycle.format_plan.originalStructure ?? arch?.beta_lifecycle?.answers?.originalStructure } : arch?.beta_lifecycle?.answers ?? null), unitKeyOf(champ?.group_labels?.[String(m.group_number)] ?? ""), 1, null);
       return !planned.length;
     });
     const playoffCard = cardMatches.length ? (() => {

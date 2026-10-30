@@ -2241,6 +2241,13 @@
       "when": 1793450000002,
       "tag": "0319_agm_preview_nominee_search",
       "breakpoints": true
+    },
+    {
+      "idx": 320,
+      "version": "7",
+      "when": 1793450000003,
+      "tag": "0320_agm_proxies",
+      "breakpoints": true
     }
   ]
 }

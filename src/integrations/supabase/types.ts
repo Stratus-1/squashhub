@@ -629,6 +629,58 @@ export type Database = {
           },
         ]
       }
+      agm_proxies: {
+        Row: {
+          ballot_id: string
+          created_at: string
+          grantor_member_id: string
+          id: string
+          proxy_member_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          ballot_id: string
+          created_at?: string
+          grantor_member_id: string
+          id?: string
+          proxy_member_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          ballot_id?: string
+          created_at?: string
+          grantor_member_id?: string
+          id?: string
+          proxy_member_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_proxies_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "agm_ballots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_proxies_grantor_member_id_fkey"
+            columns: ["grantor_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agm_proxies_proxy_member_id_fkey"
+            columns: ["proxy_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_assist_interactions: {
         Row: {
           action_args: Json | null
@@ -20559,6 +20611,7 @@ export type Database = {
         }
         Returns: Json
       }
+      _agm_proxy_list: { Args: { _ballot: string }; Returns: Json }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_final_staff: {
         Args: { _club: string; _staff: string }
@@ -20917,6 +20970,10 @@ export type Database = {
         Returns: Json
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      agm_appoint_proxy: {
+        Args: { p_proxy_member_id: string; p_token: string }
+        Returns: undefined
+      }
       agm_ballot_for_token: { Args: { p_token: string }; Returns: Json }
       agm_ballot_results: { Args: { p_ballot_id: string }; Returns: Json }
       agm_ballot_turnout: {
@@ -20975,6 +21032,14 @@ export type Database = {
         Args: { p_ballot_id: string; p_deadline: string }
         Returns: string
       }
+      agm_proxy_search: {
+        Args: { p_query: string; p_token: string }
+        Returns: {
+          club_member_id: string
+          name: string
+        }[]
+      }
+      agm_proxy_summary: { Args: { p_ballot_id: string }; Returns: Json }
       agm_reissue_nomination_token: {
         Args: { p_ballot_id: string; p_member_id: string }
         Returns: string
@@ -20985,6 +21050,10 @@ export type Database = {
       }
       agm_respond_nomination: {
         Args: { p_accept: boolean; p_nomination_id: string; p_token: string }
+        Returns: undefined
+      }
+      agm_respond_proxy: {
+        Args: { p_accept: boolean; p_proxy_id: string; p_token: string }
         Returns: undefined
       }
       agm_rsvp: {

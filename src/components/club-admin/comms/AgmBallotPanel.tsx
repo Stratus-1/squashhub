@@ -500,6 +500,7 @@ function OpenBallot({ clubId, ballot, runoff, onSelect }: { clubId: string; ball
         supabase.from("clubs").select("name,logo_url").eq("id", clubId).maybeSingle(),
         (supabase as any).from("agm_invitees").select("rsvp,club_members(name)").eq("ballot_id", ballot.runoff_parent_id ?? ballot.id),
       ]);
+      const { data: px } = await rpc("agm_proxy_summary", { p_ballot_id: ballot.runoff_parent_id ?? ballot.id });
       if (ie) throw ie;
       const list = (inv ?? []) as any[];
       const names = (pred: (r: string | null) => boolean) => list.filter((i) => pred(i.rsvp)).map((i) => i.club_members?.name ?? "Member").sort();
@@ -511,6 +512,7 @@ function OpenBallot({ clubId, ballot, runoff, onSelect }: { clubId: string; ball
         clubName: (club as any)?.name ?? "Club", clubLogoUrl: (club as any)?.logo_url, title: ballot.title, closedAt: ballot.deadline,
         turnout: { voted, eligible: turnout.length },
         attendance: { inPerson, online, apologies, noReply: list.length - inPerson.length - online.length - apologies.length },
+        proxies: (px as any[]) ?? [],
         results,
       });
       doc.save(`${ballot.title.replace(/[^\w\- ]+/g, "")} - results.pdf`);
@@ -533,6 +535,7 @@ function OpenBallot({ clubId, ballot, runoff, onSelect }: { clubId: string; ball
         {closed && <Button size="sm" variant="outline" disabled={!results || pdfBusy} onClick={downloadPdf} className="print:hidden">
           {pdfBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}Results PDF</Button>}
       </div>
+      <AgmProxyStats ballotId={ballot.runoff_parent_id ?? ballot.id} />
       <p className="text-sm">Turnout: <strong>{voted}</strong> of {turnout.length} eligible voters ({turnout.length ? Math.round((voted / turnout.length) * 100) : 0}%)</p>
       {ballot.runoff_parent_id && !closed && <Button size="sm" variant="outline" disabled={sendRunoff.isPending || !turnout.some((t) => !t.voted)}
         onClick={() => { if (confirm("Email a run-off voting link to eligible members who have not yet voted in this round?")) sendRunoff.mutate(); }}>
@@ -618,5 +621,28 @@ function OpenBallot({ clubId, ballot, runoff, onSelect }: { clubId: string; ball
         </div>
       )}
     </Card>
+  );
+}
+
+function AgmProxyStats({ ballotId }: { ballotId: string }) {
+  const { data } = useQuery({
+    queryKey: ["agm-proxies", ballotId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("agm_proxy_summary", { p_ballot_id: ballotId });
+      if (error) throw error;
+      return (data ?? []) as { id: string; grantor: string; proxy: string; status: "pending" | "accepted" | "declined" }[];
+    },
+  });
+  if (!data?.length) return null;
+  const accepted = data.filter((p) => p.status === "accepted");
+  const pending = data.filter((p) => p.status === "pending").length;
+  const holders = new Set(accepted.map((p) => p.proxy)).size;
+  return (
+    <details className="rounded border border-border p-2 text-sm">
+      <summary className="cursor-pointer">Proxies: <strong>{accepted.length}</strong> accepted (held by {holders}) · {pending} awaiting acceptance — extra in-person meeting votes</summary>
+      <ul className="mt-2 space-y-0.5 text-xs">
+        {data.map((p) => <li key={p.id}><strong>{p.proxy}</strong> on behalf of {p.grantor} — {p.status}</li>)}
+      </ul>
+    </details>
   );
 }

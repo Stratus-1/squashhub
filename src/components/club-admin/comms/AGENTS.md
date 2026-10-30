@@ -1,2 +1,3 @@
 # Comms / AGM rules
 - AGM nominations precede the secret ballot on the same draft: hashed personal links, eligible-only name search, self-nominations ("make yourself available") auto-accepted only when `allow_self_actions` is on; voting for oneself is the separate `allow_self_vote` option (off = own name hidden and rejected server-side); others need acceptance; at close accepted nominees become candidates and positions lock; why: ballots list only consenting eligible nominees.
+- AGM proxies are appointed on the invite link among invitees only, need the holder's acceptance, carry in-person meeting votes only (never online ballot weight), and accepted proxies are disclosed by name; why: the secret ballot stays one vote per member.

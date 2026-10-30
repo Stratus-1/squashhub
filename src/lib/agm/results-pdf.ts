@@ -11,6 +11,7 @@ export interface AgmResultsPdfInput {
   generatedAt?: Date;
   turnout: { voted: number; eligible: number };
   attendance: { inPerson: string[]; online: string[]; apologies: string[]; noReply: number };
+  proxies?: { grantor: string; proxy: string; status: string }[];
   results: any;
 }
 
@@ -74,6 +75,16 @@ export async function buildAgmResultsPdf(input: AgmResultsPdfInput): Promise<jsP
   y = (doc as any).lastAutoTable.finalY + 4;
   doc.setFontSize(9); doc.setFont("helvetica", "normal");
   doc.text(`No reply: ${a.noReply}`, M, y); y += 9;
+
+  const accepted = (input.proxies ?? []).filter((p) => p.status === "accepted");
+  if (accepted.length) {
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text(`Proxies (${accepted.length}) — in-person meeting votes only`, M, y); y += 2;
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M }, head: [["Proxy holder", "On behalf of"]],
+      body: accepted.map((p) => [p.proxy, p.grantor]), styles: { fontSize: 9 }, headStyles: { fillColor: [30, 58, 95] },
+    });
+    y = (doc as any).lastAutoTable.finalY + 9;
+  }
 
   // Results
   doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Voting results", M, y); y += 2;

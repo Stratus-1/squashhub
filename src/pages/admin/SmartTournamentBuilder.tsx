@@ -542,7 +542,7 @@ function ScoringRow({ def, edit }: { def: TournamentDefinition; edit: (m: (d: To
         <option value="standard">Standard games</option><option value="time_capped_points">Bells — timed points</option>
       </select>
       {bells ? <span className="text-white/70">Timed points · match length on Schedule</span> : <>
-      <select className={sel} value={s.pointsPerGame ?? ""} onChange={(e) => set({ pointsPerGame: e.target.value ? (Number(e.target.value) as 11 | 15) : null })}>
+      <select className={sel} value={s.pointsPerGame ?? ""} onChange={(e) => set({ pointsPerGame: e.target.value ? (Number(e.target.value) as 7 | 11 | 15) : null })}>
         <option value="">PAR — default 11</option><option value="11">PAR 11</option><option value="15">PAR 15</option>
       </select>
       <select className={sel} value={s.bestOf ?? ""} onChange={(e) => set({ bestOf: e.target.value ? (Number(e.target.value) as 3 | 5) : null })}>

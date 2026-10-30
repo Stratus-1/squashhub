@@ -1,7 +1,7 @@
 import { reconcileFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
 import { crossoverLabel, samePositionLabel } from "@/lib/smart-builder/playoff-chain";
 import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfirmIssues, roundsBreakdown } from "@/lib/smart-builder/swiss-progression";
-import { buildSlots, minutesToTime, timeToMinutes } from "@/lib/tournaments/self-schedule";
+import { buildSlots, minutesToTime, planningSlotStep, timeToMinutes } from "@/lib/tournaments/self-schedule";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { fetchClubVisitors, promoteVisitors, type ClubVisitor } from "@/lib/tournaments/visitor-promotion";
@@ -480,7 +480,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     (supabase as any).from("clubs").select("booking_slot_minutes, booking_open_time, booking_last_slot_time").eq("id", clubId).maybeSingle()
       .then(({ data }: any) => setSlotCfg({ step: Number(data?.booking_slot_minutes) || 30, open: data?.booking_open_time ?? null, last: data?.booking_last_slot_time ?? null }));
   }, [clubId]);
-  const slotStarts = useMemo(() => buildSlots(slotCfg.step, slotCfg.open, slotCfg.last), [slotCfg]);
+  const slotStarts = useMemo(() => buildSlots(planningSlotStep(slotCfg.step), slotCfg.open, slotCfg.last), [slotCfg]);
   /** Valid end times: every slot start after the first, plus one step past the last slot. */
   const slotEnds = useMemo(() => {
     const ends = slotStarts.slice(1);

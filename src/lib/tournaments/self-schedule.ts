@@ -96,6 +96,16 @@ export function buildSlots(stepMinutes: number, openTime?: string | null, lastSl
 }
 
 /**
+ * Tournament-setup planning pickers (court windows, stage sessions, playoff
+ * start) offer at most 30-minute intervals even when the club's booking grid
+ * uses hourly slots: these are availability windows, not booking starts.
+ */
+export function planningSlotStep(clubSlotMinutes: number | null | undefined): number {
+  const step = Number(clubSlotMinutes) || 30;
+  return Math.min(step, 30);
+}
+
+/**
  * Club Champs has its own slots: games book into the match-length grid
  * (e.g. 35 minutes) inside the evening's reserved "Club Championships" holds,
  * not the club's normal booking slots. Contiguous holds per court merge into

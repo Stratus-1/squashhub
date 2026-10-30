@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
 
     const { data: club } = await admin
       .from("clubs")
-      .select("name,email,phone,subdomain,email_signature_html,email_disclaimer")
+      .select("name,email,phone,subdomain,logo_url,email_signature_html,email_disclaimer")
       .eq("id", campaign.club_id).maybeSingle();
 
     const resolvedAction = resolveAction(campaign.action, club?.subdomain);
@@ -447,7 +447,7 @@ Deno.serve(async (req) => {
               }
               if (lines.length) contactBlock = `<div style="margin:12px 0;font-size:14px"><strong>Opponent contact</strong> <span style="color:#475569;font-size:12px">(shared with their permission, only for arranging this match)</span><ul style="margin:6px 0 0 18px;padding:0">${lines.join("")}</ul></div>`;
             }
-            const html = `${rendered.body}${contactBlock}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}`;
+            const html = brandedEmailShell({ clubName: club?.name, clubLogoUrl: (club as any)?.logo_url, title: rendered.subject, inner: `${rendered.body}${contactBlock}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}` });
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.
@@ -619,3 +619,20 @@ Deno.serve(async (req) => {
     return json({ error: (err as Error)?.message || String(err) }, 500);
   }
 });
+
+
+// Same branded layout as the test emails (club-notification template), so live
+// sends look exactly like tests: white card, club + SquashHub logos, navy heading.
+const SQUASHHUB_LOGO_URL = "https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png";
+function brandedEmailShell(o: { clubName?: string | null; clubLogoUrl?: string | null; title?: string; inner: string }): string {
+  const e = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const clubLogo = o.clubLogoUrl ? `<img src="${e(o.clubLogoUrl)}" alt="${e(o.clubName)}" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px">` : "";
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background-color:#ffffff;font-family:Arial,sans-serif;padding:24px 0">
+<div style="max-width:580px;margin:0 auto;padding:28px;border:1px solid #d9dee5;border-radius:6px;color:#1d2733;font-size:15px;line-height:24px">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 16px"><tr><td align="left">${clubLogo}</td><td align="right"><img src="${SQUASHHUB_LOGO_URL}" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px"></td></tr></table>
+${o.clubName ? `<p style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 8px">${e(o.clubName)}</p>` : ""}
+${o.title ? `<h1 style="color:#1e3a5f;font-size:24px;line-height:1.3;margin:4px 0 18px">${e(o.title)}</h1>` : ""}
+<div style="color:#1d2733;font-size:15px;line-height:24px">${o.inner}</div>
+</div></body></html>`;
+}

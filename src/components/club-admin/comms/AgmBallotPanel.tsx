@@ -63,7 +63,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
     <div className="space-y-3">
       <Card className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold flex items-center gap-1.5"><Vote className="w-4 h-4 text-primary" />AGM voting</p>
+          <p className="text-sm font-semibold flex items-center gap-1.5"><Vote className="w-4 h-4 text-primary" />AGM process</p>
           <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}><Plus className="w-3.5 h-3.5 mr-1" />New ballot</Button>
         </div>
         {!ballots.length && <p className="text-xs text-muted-foreground py-4 text-center">No ballots yet.</p>}

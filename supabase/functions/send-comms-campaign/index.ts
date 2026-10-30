@@ -14,6 +14,7 @@ import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
+import { isActiveCommsMember } from "../_shared/comms-active-members.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,10 +57,11 @@ function normalisePhone(raw?: string | null, cc = "27"): string | null {
 async function expandRecipients(clubId: string, campaign: any) {
   let q = admin
     .from("club_members")
-    .select("id,name,email,phone,club_member_number,id_number,user_id,skills,occupation,volunteer_willing")
+    .select("id,name,email,phone,club_member_number,id_number,user_id,skills,occupation,volunteer_willing,status,suspension_status")
     .eq("club_id", clubId);
 
   const audience = campaign.audience_type as string;
+  if (audience === "all") q = q.eq("status", "active").in("suspension_status", ["active", "warning"]);
   if (audience === "selected") {
     const ids = (campaign.audience_member_ids ?? []) as string[];
     if (!ids.length) return [];
@@ -97,7 +99,7 @@ async function expandRecipients(clubId: string, campaign: any) {
   }
 
   const { data } = await q;
-  let members = data ?? [];
+  let members = audience === "all" ? (data ?? []).filter(isActiveCommsMember) : data ?? [];
 
   if (audience === "skills") {
     const filter = campaign.audience_filter ?? {};
@@ -333,6 +335,21 @@ Deno.serve(async (req) => {
 
     for (const m of recipients) {
       if (Date.now() > deadline && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) { outOfTime = true; break; }
+      // Scheduled sends/retries re-expand the audience; also catch suspensions mid-send.
+      if (campaign.audience_type === "all") {
+        const { data: fresh } = await admin.from("club_members")
+          .select("status,suspension_status").eq("club_id", campaign.club_id).eq("id", m.id).maybeSingle();
+        if (!isActiveCommsMember(fresh)) {
+          for (const ch of channels) {
+            if (alreadySent.has(`${m.id}:${ch}`)) continue;
+            skipped++;
+            await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id,
+              channel: ch, recipient_name: m.name ?? null, target: null, status: "skipped",
+              error_message: "Membership is no longer active or is suspended" });
+          }
+          continue;
+        }
+      }
       const vars = await mergeVarsFor(m, club, campaign.audience_league_id);
       for (const [k, v] of Object.entries(memberVars[m.id] ?? {})) {
         if (/^[a-z_]{1,40}$/.test(k) && (typeof v === "string" || typeof v === "number")) vars[k] = String(v).slice(0, 4000);

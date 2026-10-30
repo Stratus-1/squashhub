@@ -18,6 +18,7 @@ import { renderChannel } from "@/lib/comms/render";
 import { validateCampaign, CHANNEL_LABEL } from "@/lib/comms/validation";
 import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
 import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
+import { isActiveCommsMember } from "../../../../supabase/functions/_shared/comms-active-members";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
 import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
@@ -72,7 +73,7 @@ export function CommsCampaignWizard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id,name,email,phone,user_id,status,club_member_number,skills,volunteer_willing")
+        .select("id,name,email,phone,user_id,status,suspension_status,club_member_number,skills,volunteer_willing")
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;
@@ -123,7 +124,7 @@ export function CommsCampaignWizard({
         return true;
       });
     }
-    return members;
+    return members.filter(isActiveCommsMember);
   }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary]);
 
   const warnings = useMemo(

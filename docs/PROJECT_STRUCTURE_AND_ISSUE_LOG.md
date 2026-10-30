@@ -1,3 +1,6 @@
+## 2026-10-30 — Active-only All members audience
+- Restrict All members preview and campaign dispatch to active memberships, excluding suspended/manual-held memberships and all non-active statuses. Recheck current club membership before dispatch to catch mid-send standing changes; selected/tournament and other audiences remain unchanged. No emails sent or member records changed.
+
 ## 2026-10-30 — Communications email formatting and preview
 - Replace app-themed body-only campaign preview with sandboxed email HTML including the configured club signature and disclaimer. Add an unsaved Preview email toggle in template editing, labelled bullet-list controls and opt-in editable tables. Delivery, audiences and saved campaigns remain unchanged; browser email rendering can differ from individual inbox clients.
 

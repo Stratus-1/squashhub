@@ -33,3 +33,20 @@ describe("timed scheduler play format (no Bells leakage)", () => {
     expect(resolveTimedFormat({ plan: {}, labels, rulesMode: "time_capped_points", matchMinutes: 13 }).bells).toBe(true);
   });
 });
+
+describe("timed scheduler uses the structure page's planned match time", () => {
+  const os = { group_durations: { "1": 10 }, pool_durations: { "1:1": 12, "1:2": 12 }, league_scoring_modes: { "1": "standard" } };
+  it("per-pool slot minutes win over the category time and the 30-min tournament default", () => {
+    const f = resolveTimedFormat({ plan: { scoring: std, scheduling: { singles: "" } }, labels: { "1": "Mixed" }, matchMinutes: 30, structure: os });
+    expect(f.minutes).toBe(12);
+  });
+  it("two pools of 7 (42 games) fit 08:00–16:00 on 2 courts at 12 minutes", () => {
+    const f = resolveTimedFormat({ plan: { scoring: std }, labels: { "1": "Mixed" }, matchMinutes: 30, structure: os });
+    const games: TimedGame[] = [];
+    for (const pool of [0, 1]) for (let a = 0; a < 7; a++) for (let b = a + 1; b < 7; b++)
+      games.push({ id: `p${pool}-${a}-${b}`, round: 1, group: 1, bracket: games.length, people: [`p${pool}${a}`, `p${pool}${b}`], groups: [1] });
+    const r = planTimedSchedule({ days: [{ date: "2026-10-31", from: "08:00", to: "16:00", courtIds: [18, 19] }], minutes: f.minutes, bells: false, waves: false, roundDates: [], scheduledRounds: [], prefs: DEFAULT_SCHEDULING_PREFS, labels: { "1": "Mixed" }, busyOther: [] }, games);
+    expect(r.issues).toEqual([]);
+    expect(r.slots).toHaveLength(42);
+  });
+});

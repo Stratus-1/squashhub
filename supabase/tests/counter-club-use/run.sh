@@ -9,5 +9,6 @@ setpriv --reuid=1000 --regid=1000 --clear-groups pg_ctl -D "$D/data" -o "-p 5442
 P=(psql -X -q -v ON_ERROR_STOP=1 -h "$D" -p 54421 -U lovable -d postgres)
 "${P[@]}" -f "$HERE/stubs.sql"
 "${P[@]}" -f "$ROOT/drizzle/migrations/0241_pin_counter_club_sponsored_stock.sql"
+"${P[@]}" -f "${SPONSORED_SPECIALS_MIGRATION:-$ROOT/drizzle/migrations/0312_club_sponsored_specials.sql}"
 "${P[@]}" -f "$HERE/test.sql"
 echo 'PIN CLUB-SPONSORED STOCK TESTS PASSED'

@@ -3,6 +3,37 @@ CREATE FUNCTION test_use(_token uuid DEFAULT '33333333-3333-3333-3333-3333333333
 DO $$ BEGIN
  BEGIN PERFORM test_use(NULL); RAISE EXCEPTION 'FAIL missing PIN accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Personal counter PIN required' THEN RAISE; END IF; END;
 END $$;
+-- A two-double special consumes four tots plus one mixer, at component cost.
+INSERT INTO bar_items(id,club_id,item_kind,name,division,stock_units,unit_yield,avg_unit_cost,cost_price,stock_parent_id,consume_units) VALUES
+ ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','11111111-1111-1111-1111-111111111111','stock','Brandy bottle','bar',28,28,2,56,NULL,NULL),
+ ('cccccccc-cccc-cccc-cccc-cccccccccccc','11111111-1111-1111-1111-111111111111','option','Double brandy','bar',0,1,NULL,NULL,'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',2),
+ ('dddddddd-dddd-dddd-dddd-dddddddddddd','11111111-1111-1111-1111-111111111111','special','Two doubles and water','bar',0,1,NULL,NULL,NULL,NULL);
+INSERT INTO bar_special_components VALUES
+ ('dddddddd-dddd-dddd-dddd-dddddddddddd','cccccccc-cccc-cccc-cccc-cccccccccccc',2),
+ ('dddddddd-dddd-dddd-dddd-dddddddddddd','55555555-5555-5555-5555-555555555555',1);
+DO $$ DECLARE r jsonb; movements int; debit_before numeric; BEGIN
+ SELECT count(*) INTO movements FROM bar_stock_movements;
+ SELECT coalesce(sum(debit),0) INTO debit_before FROM club_journal_entries WHERE account='club_stock_expense';
+ r:=bar_counter_club_use('33333333-3333-3333-3333-333333333333','[{"item_id":"dddddddd-dddd-dddd-dddd-dddddddddddd","quantity":1}]','Club event','eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee');
+ IF (r->>'cost')::numeric<>13 OR bar_club_use_unit_cost((SELECT i FROM bar_items i WHERE name='Two doubles and water'))<>13 THEN RAISE EXCEPTION 'FAIL component cost'; END IF;
+ IF (SELECT stock_units FROM bar_items WHERE name='Brandy bottle')<>24 OR (SELECT stock_units FROM bar_items WHERE name='Water')<>9 THEN RAISE EXCEPTION 'FAIL four tots and mixer'; END IF;
+ IF (SELECT coalesce(sum(debit),0) FROM club_journal_entries WHERE account='club_stock_expense')-debit_before<>13 THEN RAISE EXCEPTION 'FAIL special expense'; END IF;
+ PERFORM bar_counter_club_use('33333333-3333-3333-3333-333333333333','[{"item_id":"dddddddd-dddd-dddd-dddd-dddddddddddd","quantity":1}]','Club event','eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee');
+ IF (SELECT count(*) FROM bar_stock_movements)<>movements+2 THEN RAISE EXCEPTION 'FAIL special replay'; END IF;
+ BEGIN
+  PERFORM bar_counter_club_use('33333333-3333-3333-3333-333333333333','[{"item_id":"dddddddd-dddd-dddd-dddd-dddddddddddd","quantity":20}]','Club event','ffffffff-ffff-ffff-ffff-ffffffffffff');
+  RAISE EXCEPTION 'FAIL insufficient component stock accepted';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Not enough stock' THEN RAISE; END IF; END;
+ IF (SELECT stock_units FROM bar_items WHERE name='Brandy bottle')<>24 OR (SELECT stock_units FROM bar_items WHERE name='Water')<>9 THEN RAISE EXCEPTION 'FAIL component rollback'; END IF;
+ DELETE FROM bar_special_components WHERE special_item_id='dddddddd-dddd-dddd-dddd-dddddddddddd';
+ INSERT INTO bar_special_components VALUES('dddddddd-dddd-dddd-dddd-dddddddddddd','77777777-7777-7777-7777-777777777777',1);
+ BEGIN
+  PERFORM bar_counter_club_use('33333333-3333-3333-3333-333333333333','[{"item_id":"dddddddd-dddd-dddd-dddd-dddddddddddd","quantity":1}]','Club event','ffffffff-ffff-ffff-ffff-ffffffffffff');
+  RAISE EXCEPTION 'FAIL foreign component accepted';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Special components must be stock products or serving options from this club' THEN RAISE; END IF; END;
+ DELETE FROM bar_stock_movements; DELETE FROM club_journal_entries; DELETE FROM bar_club_use_requests;
+ UPDATE bar_items SET stock_units=10 WHERE name='Water';
+END $$;
 DO $$ BEGIN
  UPDATE bar_counter_sessions SET revoked_at=now();
  BEGIN PERFORM test_use(); RAISE EXCEPTION 'FAIL revoked accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Personal counter PIN required' THEN RAISE; END IF; END;

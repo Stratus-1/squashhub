@@ -2185,6 +2185,13 @@
       "when": 1793345428884,
       "tag": "0311_cash_up_cash_only_tip_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 312,
+      "version": "7",
+      "when": 1793347448780,
+      "tag": "0312_club_sponsored_specials",
+      "breakpoints": true
     }
   ]
 }

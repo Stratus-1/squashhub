@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
 
     // Load club + smtp
     const [{ data: club }, { data: secrets }] = await Promise.all([
-      admin.from("clubs").select("name,email,phone,email_signature_html,email_disclaimer").eq("id", campaign.club_id).maybeSingle(),
+      admin.from("clubs").select("name,email,phone,logo_url,email_signature_html,email_disclaimer").eq("id", campaign.club_id).maybeSingle(),
       admin.from("club_secrets").select("smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email").eq("club_id", campaign.club_id).maybeSingle(),
     ]);
 
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
         const vars = await getMergeVars(m, club, campaign.audience_league_id);
         const subject = renderMerge(campaign.subject, vars);
         const bodyHtml = renderMerge(campaign.body_html, vars);
-        const html = `${bodyHtml}${sigBlock}${disclaimerBlock}`;
+        const html = brandedEmailShell({ clubName: club?.name, clubLogoUrl: (club as any)?.logo_url, title: subject, inner: `${bodyHtml}${sigBlock}${disclaimerBlock}` });
         const text = stripHtml(html);
         await transporter.sendMail({ from: fromHeader, to: m.email, subject, html, text });
         await admin.from("club_email_campaign_recipients").insert({
@@ -222,3 +222,20 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+
+// Same branded layout as the test emails (club-notification template), so live
+// sends look exactly like tests: white card, club + SquashHub logos, navy heading.
+const SQUASHHUB_LOGO_URL = "https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png";
+function brandedEmailShell(o: { clubName?: string | null; clubLogoUrl?: string | null; title?: string; inner: string }): string {
+  const e = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const clubLogo = o.clubLogoUrl ? `<img src="${e(o.clubLogoUrl)}" alt="${e(o.clubName)}" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px">` : "";
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background-color:#ffffff;font-family:Arial,sans-serif;padding:24px 0">
+<div style="max-width:580px;margin:0 auto;padding:28px;border:1px solid #d9dee5;border-radius:6px;color:#1d2733;font-size:15px;line-height:24px">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 16px"><tr><td align="left">${clubLogo}</td><td align="right"><img src="${SQUASHHUB_LOGO_URL}" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px"></td></tr></table>
+${o.clubName ? `<p style="color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 8px">${e(o.clubName)}</p>` : ""}
+${o.title ? `<h1 style="color:#1e3a5f;font-size:24px;line-height:1.3;margin:4px 0 18px">${e(o.title)}</h1>` : ""}
+<div style="color:#1d2733;font-size:15px;line-height:24px">${o.inner}</div>
+</div></body></html>`;
+}

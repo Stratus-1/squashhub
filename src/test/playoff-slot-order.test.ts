@@ -21,15 +21,21 @@ describe("play-off court-slot order", () => {
     expect(slots.slice(0, 2).map((s) => s!.time)).toEqual(["10:00", "10:00"]);
     expect(slots[4]!.time).toBe("11:30");
   });
-  it("same order for QF, SF and Final games (bracket order kept within a draw)", () => {
+  it("same order for QF, SF and Final games (top players last within a draw)", () => {
     const r = playoffSlotOrder(five);
     for (const n of [4, 2, 1]) {
-      const games = five.flatMap((d) => Array.from({ length: n }, (_, i) => ({ group_number: group(d.id), bracket_position: n - i })));
+      const games = five.flatMap((d) => Array.from({ length: n }, (_, i) => ({ group_number: group(d.id), bracket_position: i + 1 })));
       const out = sortGamesForSlots(games, r.order, group);
       expect(out[0].group_number).toBe(5);
       expect(out[out.length - 1].group_number).toBe(1);
-      expect(out.slice(0, n).map((g) => g.bracket_position)).toEqual(Array.from({ length: n }, (_, i) => i + 1));
+      expect(out.slice(0, n).map((g) => g.bracket_position)).toEqual(Array.from({ length: n }, (_, i) => n - i));
     }
+  });
+  it("bottom-half semis and plate final play before top semis and the Final", () => {
+    const sf = [1, 2, 3, 4].map((p) => ({ group_number: 1, bracket_position: p }));
+    expect(sortGamesForSlots(sf, ["menA"], () => 1).map((g) => g.bracket_position)).toEqual([4, 3, 2, 1]);
+    const finals = [{ group_number: 1, bracket_position: 1 }, { group_number: 1, bracket_position: 2 }];
+    expect(sortGamesForSlots(finals, ["menA"], () => 1).map((g) => g.bracket_position)).toEqual([2, 1]);
   });
   it("organiser order overrides the default", () => {
     expect(playoffSlotOrder(five, ["menA", "ladB"]).order).toEqual(["menA", "ladB", "menB", "menC", "ladA"]);

@@ -135,7 +135,8 @@ export async function planStageSlotAssignments(champId: string, matchIds?: strin
       };
     });
     const gamesHere = open.filter((m) => list.some((s) => s.id === m.stage_key));
-    const byBracket = (a: any, b: any) => (Number(a.group_number) || 0) - (Number(b.group_number) || 0) || (Number(a.bracket_position) || 0) - (Number(b.bracket_position) || 0);
+    // Top players last: within a draw the bottom-half / lower brackets (higher bracket_position) play first.
+    const byBracket = (a: any, b: any) => (Number(a.group_number) || 0) - (Number(b.group_number) || 0) || (Number(b.bracket_position) || 0) - (Number(a.bracket_position) || 0);
     const sorted = defs.flatMap((d) => {
       const s = list.find((x) => x.id === d.id);
       const mine = gamesHere.filter((m) => m.stage_key === d.id);

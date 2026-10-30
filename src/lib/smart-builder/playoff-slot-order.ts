@@ -65,12 +65,13 @@ export function playoffSlotOrder(divs: SlotDivision[], override?: string[] | nul
   return { source: "level", tiers, order: tiers.flat(), levels, warnings };
 }
 
-/** Sort a stage's games into slot order: draw order from `order`, then bracket position. */
+/** Sort a stage's games into slot order: draw order from `order`, then top players last
+ *  (bottom-half / lower brackets, i.e. higher bracket_position, play first; SF1/Final last). */
 export function sortGamesForSlots<T extends { group_number?: number | null; bracket_position?: number | null }>(
   games: T[], order: string[], groupOf: (id: string) => number,
 ): T[] {
   const rank = new Map(order.map((id, i) => [groupOf(id), i] as const));
   return games.slice().sort((a, b) =>
     (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) ||
-    (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
+    (b.bracket_position ?? 0) - (a.bracket_position ?? 0));
 }

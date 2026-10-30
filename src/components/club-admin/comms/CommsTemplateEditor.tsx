@@ -10,7 +10,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "@/hooks/use-toast";
-import { COMMS_CHANNELS, type CommsAction, type CommsChannel } from "@/lib/comms/actions";
+import { COMMS_CHANNELS, resolveAction, type CommsAction, type CommsChannel } from "@/lib/comms/actions";
+import { buildMergeVars } from "@/lib/comms/merge-fields";
+import { renderChannel } from "@/lib/comms/render";
+import { Eye, Pencil } from "lucide-react";
+import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
 import { CommsActionPicker } from "./CommsActionPicker";
 import { CommsMergeFieldChips } from "./CommsMergeFieldChips";
 
@@ -34,11 +38,13 @@ export const EMPTY_TEMPLATE: TemplateRecord = {
 export function CommsTemplateEditor({
   clubId,
   clubSubdomain,
+  club,
   template,
   onClose,
 }: {
   clubId: string;
   clubSubdomain?: string | null;
+  club?: ({ name?: string | null; email?: string | null; phone?: string | null } & EmailPreviewClub) | null;
   template: TemplateRecord;
   onClose: () => void;
 }) {
@@ -55,8 +61,13 @@ export function CommsTemplateEditor({
   const smsRef = useRef<HTMLTextAreaElement>(null);
   const inAppRef = useRef<HTMLTextAreaElement>(null);
   const [focusField, setFocusField] = useState<"subject" | "body">("body");
+  const [emailPreview, setEmailPreview] = useState(false);
 
   const current = versions[channel] ?? { subject: "", body: "" };
+  const resolved = resolveAction(action, { clubSubdomain, origin: window.location.origin });
+  const preview = renderChannel("email", versions.email ?? {}, buildMergeVars({
+    member: { name: "Example Member" }, club, actionLabel: resolved.label, actionUrl: resolved.webUrl,
+  }), resolved);
   const setCurrent = (patch: Partial<TemplateVersion>) =>
     setVersions((v) => ({ ...v, [channel]: { subject: "", body: "", ...(v[channel] ?? {}), ...patch } }));
 
@@ -170,14 +181,23 @@ export function CommsTemplateEditor({
                 />
               </div>
               <div>
-                <Label className="text-xs">Email body</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-xs">Email body</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setEmailPreview((v) => !v)}>
+                    {emailPreview ? <Pencil className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
+                    {emailPreview ? "Edit email" : "Preview email"}
+                  </Button>
+                </div>
+                {emailPreview ? <CommsEmailPreview body={preview.body} subject={preview.subject} club={club} /> : (
                 <RichTextEditor
+                  enableTables
                   value={current.body ?? ""}
                   onChange={(html) => setCurrent({ body: html })}
                   onEditorReady={setBodyEditor}
                   onFocus={() => setFocusField("body")}
                   placeholder="Write the email…"
                 />
+                )}
                 <p className="text-[11px] text-muted-foreground mt-1">
                   The action button and your club signature are added automatically.
                 </p>

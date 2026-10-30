@@ -35,7 +35,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
     queryKey: ["comms-club", clubId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("clubs").select("name,email,phone,subdomain").eq("id", clubId).maybeSingle();
+        .from("clubs").select("name,email,phone,subdomain,email_signature_html,email_disclaimer").eq("id", clubId).maybeSingle();
       return data;
     },
     enabled: !!clubId,
@@ -101,6 +101,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
         <CommsTemplateEditor
           clubId={clubId}
           clubSubdomain={club?.subdomain}
+          club={club ?? null}
           template={editing}
           onClose={() => setEditing(null)}
         />

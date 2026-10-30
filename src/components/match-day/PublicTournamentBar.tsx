@@ -68,6 +68,7 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
               <span className="block text-xs text-muted-foreground sm:inline sm:text-[13px]"><span className="hidden sm:inline"> · </span>{isT ? "My Games is available in SquashHub" : "Your games are in SquashHub"}</span>
             </span>
             <Button asChild size="sm" className="shrink-0"><a href={href}><ExternalLink className="mr-1 h-3.5 w-3.5" />Open in SquashHub</a></Button>
+            <button type="button" onClick={closeBar} aria-label="Close" className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
           </div>
         </div>
       </div>

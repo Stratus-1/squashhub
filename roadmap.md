@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Correct Uitsig saved cash-up cash-tip classification and exclude month-end EFT tips from future cash-ups; isolated SQL and reconciliation tests pass, saved summary verified at R0 cash tips/R133 till, payments unchanged. Screen verification blocked after tenant switch.
 - [x] Restore chairman self tournament entry and routine member add/approval through scoped automatic-fee writers; isolated database tests and 24 focused tests pass, shared server fix applied, member-screen changes preview-only.
 - [ ] Genuine chairman member-add/approval and self-entry UI submission: current session is Super Admin, not Chairman; no real member/competition records changed. Needs authorized Chairman session and disposable test setup.
 - [x] Open Tournament link & QR after Finalise entries, before draw generation; preserve existing tournament progress. Six navigation tests pass, build OK; preview only.

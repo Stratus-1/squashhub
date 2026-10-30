@@ -1,3 +1,7 @@
+## 2026-10-30 — Cash-up excludes payroll EFT tips
+- Uitsig 29 October cash-up incorrectly counted R421 payroll tips as cash, with an offsetting R421 cash movement. Restrict the shared summary to cash-method payouts; preserve all-method staff balance deductions so EFT tips cannot be paid twice.
+- Correct only the identified saved Uitsig summary fields with an audit record, preserving R133 counted/expected cash, period, sales and all payment journals. Isolated SQL regression covers R421 EFT exclusion, real cash deduction, club and period isolation.
+
 ## 2026-10-29 — Chairman automatic membership and own-entry fees
 - Confirmed live 0295/0296 guards still blocked category assignment, automatic joining fees and personal tournament confirmation; admin additions could also fail inside legacy paid seeding. Added private target/transaction-bound action contexts, atomic chairman member creation with configured unpaid fees, approval safety net, and wrappers around canonical self-entry/account and approved-family writers. Manual paid/waived, journal, correction and cross-club writes remain denied. No existing financial or tournament records backfilled.
 - Disposable database checks exercise configured R1,200 + R100 unpaid fees, retries, category assignment, unbilled approval, R150 own entry/account charge, and denial/context cleanup. Existing focused suites: 24 pass, 7 environment-gated admin-payment tests skipped. Server rules applied; changed member screens remain preview-only pending publication. Genuine chairman UI submission remains unverified.

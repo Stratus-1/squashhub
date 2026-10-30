@@ -23767,6 +23767,14 @@ export type Database = {
         }
         Returns: Json
       }
+      mobile_resolve_google_club_access: {
+        Args: {
+          p_email: string
+          p_google_subject: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
       mobile_scoreable_tournament_matches: {
         Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
         Returns: Json

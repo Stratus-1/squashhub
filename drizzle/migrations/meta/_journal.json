@@ -2171,6 +2171,13 @@
       "when": 1793286242357,
       "tag": "0309_chairman_routine_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1793343097457,
+      "tag": "0310_mobile_club_switch_authorization",
+      "breakpoints": true
     }
   ]
 }

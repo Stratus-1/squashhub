@@ -9942,7 +9942,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 options={[
                                   { v: "standard", l: "Standard" },
                                   { v: "time_capped_points", l: "🔔 Bells" },
-                                  ...((scoringForLeague(gn) === "first_to_target") || (firstToTargetPilot && !editingChampId && !structureOnly?.initial?._identity_locked ? [{ v: "first_to_target", l: "First to target" }] : [])),
+                                  ...((scoringForLeague(gn) === "first_to_target" || (firstToTargetPilot && !structureOnly?.initial?._identity_locked)) ? [{ v: "first_to_target", l: "First to target" }] : []),
                                 ]}
                                 onChange={(v) => { setLeagueScoring(gn, v as "standard" | "time_capped_points" | "first_to_target"); advanceReveal(key, 3); }}
                               /></div>}

@@ -1108,7 +1108,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, beta_lifecycle, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_doubles_serving_methods, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
+        .select("id, beta_lifecycle, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_doubles_serving_methods, league_play_all_games, league_playoff_match_formats, league_playoff_points_per_game, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -1528,6 +1528,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Per-category play-off game length override: absent key = "Keep same format
   // as pools"; 7/11/15 = that category's QF/SF/Final play to this PAR instead.
   const [leaguePlayoffPointsPerGame, setLeaguePlayoffPointsPerGame] = useState<Record<string, number>>({});
+  const [leaguePlayoffMatchFormats, setLeaguePlayoffMatchFormats] = useState<Record<string, string>>({});
+  const playoffGamesForLeague = (gn: number) => leaguePlayoffMatchFormats[String(gn)] ?? `${playAllForLeague(gn) ? "all" : "bo"}${bestOfForLeague(gn)}`;
   const playoffPointsForLeague = (gn: number): 7 | 11 | 15 | null => {
     const v = Number(leaguePlayoffPointsPerGame[String(gn)]);
     return v === 7 || v === 11 || v === 15 ? (v as 7 | 11 | 15) : null;
@@ -3338,6 +3340,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
       league_playoff_qualifiers:
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
+      league_playoff_match_formats: Object.keys(leaguePlayoffMatchFormats).length > 0 ? leaguePlayoffMatchFormats : null,
       league_playoff_points_per_game:
         Object.keys(leaguePlayoffPointsPerGame).length > 0 ? leaguePlayoffPointsPerGame : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
@@ -8636,6 +8639,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         if (n === 7 || n === 11 || n === 15) ppg[k] = n;
       }
       setLeaguePlayoffPointsPerGame(ppg);
+      setLeaguePlayoffMatchFormats((ex as any).league_playoff_match_formats ?? {});
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
       const sm = String((champ as any).rotation_strength_mode || "");
       setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
@@ -9147,6 +9151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffModes(v.league_playoff_modes ?? {});
     setLeaguePlayoffQualifiers(v.league_playoff_qualifiers ?? {});
     setLeaguePlayoffPointsPerGame(v.league_playoff_points_per_game ?? {});
+    setLeaguePlayoffMatchFormats(v.league_playoff_match_formats ?? {});
     setLeagueSources(Object.fromEntries(Object.entries(v.league_sources ?? {}).map(([key, ids]) => [key, { mode: v.league_source_modes?.[key] ?? "all", leagueIds: ids }])) as any);
     setPartnerMode(v.partner_mode ?? "admin");
     setRotationMaxMatches(v.rotation_max_matches ?? 0);
@@ -9235,6 +9240,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_modes: leaguePlayoffModes,
       league_playoff_qualifiers: leaguePlayoffQualifiers,
       league_playoff_points_per_game: leaguePlayoffPointsPerGame,
+      league_playoff_match_formats: leaguePlayoffMatchFormats,
       league_sources: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.leagueIds])),
       league_source_modes: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.mode])),
       affects_ranking_points: affectsRankingPoints, ranking_scope: rankingScopeOverride, ranking_weight: rankingWeight, ladder_affects: ladderAffects,
@@ -9243,7 +9249,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return true;
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leaguePlayoffPointsPerGame, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leaguePlayoffPointsPerGame, leaguePlayoffMatchFormats, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10593,10 +10599,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       <input
                                         type="checkbox"
                                         className="h-3.5 w-3.5 accent-fuchsia-500"
-                                        checked={playoffPointsForLeague(gn) == null}
+                                        checked={playoffPointsForLeague(gn) == null && !leaguePlayoffMatchFormats[key]}
                                         onChange={(e) => {
                                           if (e.target.checked) {
                                             setLeaguePlayoffPointsPerGame((m) => { const n = { ...m }; delete n[key]; return n; });
+                                            setLeaguePlayoffMatchFormats((m) => { const n = { ...m }; delete n[key]; return n; });
                                           } else {
                                             const cur = pointsForLeague(gn);
                                             setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: cur === 15 ? 15 : cur === 7 ? 7 : 11 }));
@@ -10616,6 +10623,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           { v: "15", l: "Par 15" },
                                         ]}
                                         onChange={(v) => setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11 }))}
+                                      />
+                                    )}
+                                    {(playoffPointsForLeague(gn) != null || leaguePlayoffMatchFormats[key]) && (
+                                      <SegRow
+                                        label="Playoff games"
+                                        value={playoffGamesForLeague(gn)}
+                                        color="pink"
+                                        options={[
+                                          { v: "bo3", l: "Best of 3" },
+                                          { v: "bo5", l: "Best of 5" },
+                                          { v: "all3", l: "Play all 3" },
+                                          { v: "all5", l: "Play all 5" },
+                                        ]}
+                                        onChange={(v) => setLeaguePlayoffMatchFormats((m) => ({ ...m, [key]: v }))}
                                       />
                                     )}
                                     {playoffPointsForLeague(gn) != null && (
@@ -10680,10 +10701,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         <input
                                           type="checkbox"
                                           className="h-3.5 w-3.5 accent-fuchsia-500"
-                                          checked={playoffPointsForLeague(gn) == null}
+                                          checked={playoffPointsForLeague(gn) == null && !leaguePlayoffMatchFormats[key]}
                                           onChange={(e) => {
                                             if (e.target.checked) {
                                               setLeaguePlayoffPointsPerGame((m) => { const n = { ...m }; delete n[key]; return n; });
+                                            setLeaguePlayoffMatchFormats((m) => { const n = { ...m }; delete n[key]; return n; });
                                             } else {
                                               const cur = pointsForLeague(gn);
                                               setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: cur === 15 ? 15 : cur === 7 ? 7 : 11 }));
@@ -10705,7 +10727,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           onChange={(v) => setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11 }))}
                                         />
                                       )}
-                                      {playoffPointsForLeague(gn) != null && (
+                                      {(playoffPointsForLeague(gn) != null || leaguePlayoffMatchFormats[key]) && (
+                                      <SegRow
+                                        label="Playoff games"
+                                        value={playoffGamesForLeague(gn)}
+                                        color="pink"
+                                        options={[
+                                          { v: "bo3", l: "Best of 3" },
+                                          { v: "bo5", l: "Best of 5" },
+                                          { v: "all3", l: "Play all 3" },
+                                          { v: "all5", l: "Play all 5" },
+                                        ]}
+                                        onChange={(v) => setLeaguePlayoffMatchFormats((m) => ({ ...m, [key]: v }))}
+                                      />
+                                    )}
+                                    {playoffPointsForLeague(gn) != null && (
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
                                           This category's playoffs play to Par {playoffPointsForLeague(gn)}; pool games stay Par {pointsForLeague(gn)}.
                                         </p>

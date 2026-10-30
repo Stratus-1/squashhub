@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Diagnose why Vercel is not deploying and attempt the authorized redeployment; report any external access blocker.
 - [ ] Redeploy the completed changes after office-bearer permission checks pass.
 - [ ] Add Vice Chairman and Club Manager office titles with Chairman/Club Captain permission parity; preserve financial restrictions and league captain scope; test server and screen rules.
 - [x] Clearly label each document link inside the email body; real two-file uploads, authorized download links and cleanup verified in template/campaign component flows; 26 focused tests pass, build OK. No templates/campaigns saved or emails sent.

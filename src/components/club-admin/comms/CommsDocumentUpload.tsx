@@ -17,7 +17,7 @@ export function CommsDocumentUpload({ clubId, onInsert }: { clubId: string; onIn
         const path = commsDocumentPath(clubId, file.name, crypto.randomUUID());
         const { error } = await supabase.storage.from(COMMS_DOCUMENT_BUCKET).upload(path, file, { upsert: false });
         if (error) throw error;
-        onInsert(`<p><a href="${escapeHtml(commsDocumentUrl(path, "https://squashhub.co.za"))}">${escapeHtml(file.name)}</a></p>`);
+        onInsert(`<p><strong>Document:</strong> <a href="${escapeHtml(commsDocumentUrl(path, "https://squashhub.co.za"))}" style="text-decoration:underline">Download ${escapeHtml(file.name)}</a></p>`);
       }
       toast({ title: "Documents added", description: "Members sign in to open the download links." });
     } catch (error) {

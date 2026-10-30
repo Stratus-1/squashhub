@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Clearly label each secure document download link inside the email body and verify it appears in preview.
 - [ ] Diagnose unchanged preview shown in image-339 and verify the actual template/campaign screen uses the corrected email preview.
 - [ ] Make template preview available during creation and from the template list; add multiple document uploads to templates and campaign setup as secure download links using existing protected storage.
 - [x] Restrict All members preview and both email dispatch paths to active, non-suspended members with send-time rechecks; 23 focused tests pass, build OK. No emails sent; dispatch changes not deployed, preview changes not published.

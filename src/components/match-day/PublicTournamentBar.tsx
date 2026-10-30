@@ -31,9 +31,13 @@ export function openInAppHref(kind: "tournament" | "league", competitionId?: str
 
 export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament" | "league"; competitionId?: string | null }) {
   const [showNotice, setShowNotice] = useState(() => !seen());
+  const [barHidden, setBarHidden] = useState(() => barDismissed());
   const href = openInAppHref(kind, competitionId);
   const isT = kind === "tournament";
   const dismiss = () => { markSeen(); setShowNotice(false); };
+  const closeBar = () => { markSeen(); markBarDismissed(); setShowNotice(false); setBarHidden(true); };
+
+  if (barHidden) return null;
 
   return (
     <>

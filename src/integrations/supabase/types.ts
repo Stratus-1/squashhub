@@ -21394,6 +21394,10 @@ export type Database = {
             }
             Returns: Json
           }
+      bar_club_use_unit_cost: {
+        Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
+        Returns: number
+      }
       bar_confirm_payroll_run: {
         Args: { _lines: Json; _run_id: string }
         Returns: undefined

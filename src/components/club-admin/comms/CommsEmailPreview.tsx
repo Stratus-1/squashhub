@@ -23,7 +23,7 @@ export function CommsEmailPreview({ body, subject, club }: {
       sandbox=""
       referrerPolicy="no-referrer"
       className="block h-[460px] w-full rounded border border-border sm:h-[560px]"
-      srcDoc={`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title></head><body>${html}</body></html>`}
+      srcDoc={`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title><style>:root{--email-paper:#ffffff;--email-ink:#000000;color-scheme:light}html,body{background:var(--email-paper);color:var(--email-ink)}body{overflow-wrap:anywhere}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`}
     />
   );
 }

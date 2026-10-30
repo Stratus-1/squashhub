@@ -104,7 +104,10 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   const g = 2 ** (planned.length - 1);
   const pairing = first.plan.pairing ?? "later";
   let games: Array<[[number, number], [number, number]]>;
-  const q = opts.qualifiers ?? null;
+  const rawQ = opts.qualifiers ?? null;
+  // Two pools + "Bottom half too": qualifiers per pool cover both halves (e.g. 4 per pool for semis = top 2 + next 2).
+  const twoPoolHalves = !!opts.bottomHalf && main.kind !== "swiss" && (main.kind === "pools" ? main.pools ?? 1 : main.kind === "round_robin" ? main.poolMembers?.length ?? 1 : main.kind === "mapped" ? main.mapping?.pools ?? 1 : 1) === 2;
+  const q = rawQ && twoPoolHalves && rawQ.perPool === 2 * g ? { ...rawQ, perPool: g } : rawQ;
   if (q && q.runnersUp > 0) return { stages: [], reason: `${first.name}: "best runners-up" can't be mapped automatically yet — set the play-off up when the pools finish, or set best runners-up to 0.`, notes };
   if (q?.perPool && pools > 1 && q.perPool * pools !== 2 * g) return { stages: [], reason: `${first.name} needs ${2 * g} qualifiers, but ${q.perPool} from each of ${pools} pools gives ${q.perPool * pools}. Change the qualifiers per pool or the play-off stages.`, notes };
   if (pools > 2) {

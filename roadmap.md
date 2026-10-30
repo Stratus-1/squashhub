@@ -45,3 +45,4 @@
 - [x] Beta builder: Include registered visitors toggle (Who may enter) -> Pick players + Invitations audience; visitor-promotion lib; 37 invite tests pass
 
 - [ ] Add Par 7 game-length option alongside Par 11 and Par 15 (HSC request, 30 Oct).
+- [ ] Playoff format override per category: "Keep same format as pools" tick; when off, choose Par 7/11/15 for that category's playoffs (HSC request, 30 Oct).

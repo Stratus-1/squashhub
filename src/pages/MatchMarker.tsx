@@ -23,7 +23,8 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
+import { effectiveTournamentSettings, playoffPointsPerGame } from "@/lib/tournaments/effective-settings";
+import { isPlayoffGame } from "@/lib/tournaments/round-plan";
 import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
 import { mayAutoLinkChampFixture } from "@/lib/marker/champ-auto-link";
 
@@ -241,7 +242,7 @@ export default function MatchMarker() {
       setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
         .select(`
-          id, champ_id, group_number, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
+          id, champ_id, group_number, stage, stage_label, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
           player_a:player_a_member_id(id, name, club_member_number),

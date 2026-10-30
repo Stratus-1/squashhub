@@ -8231,6 +8231,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffs({});
     setLeaguePlayoffModes({});
     setLeaguePlayoffQualifiers({});
+    setLeaguePlayoffPointsPerGame({});
     setRotationMaxMatches(0);
     setRotationAvoidPairs([]);
     setRotationStrengthMode("mixed");
@@ -9233,6 +9234,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       pool_durations: poolDurations,
       league_playoff_modes: leaguePlayoffModes,
       league_playoff_qualifiers: leaguePlayoffQualifiers,
+      league_playoff_points_per_game: leaguePlayoffPointsPerGame,
       league_sources: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.leagueIds])),
       league_source_modes: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.mode])),
       affects_ranking_points: affectsRankingPoints, ranking_scope: rankingScopeOverride, ranking_weight: rankingWeight, ladder_affects: ladderAffects,

@@ -397,7 +397,7 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
  * stale Bells behaviour. `bells` = EVERY category plays Bells; Standard/mixed never use bell timing
  * for Standard games (they use the Standard estimate / match duration).
  */
-export function resolveTimedFormat(o: { plan: any; labels: Record<string, string>; rulesMode?: string | null; matchMinutes?: number | null }) {
+export function resolveTimedFormat(o: { plan: any; labels: Record<string, string>; rulesMode?: string | null; matchMinutes?: number | null; structure?: any }) {
   const plan = o.plan ?? {};
   const hasPlanScoring = !!plan.scoring || Object.keys(plan.scoringOverrides ?? {}).length > 0;
   const keys = Object.values(o.labels ?? {}).filter(Boolean);
@@ -408,7 +408,7 @@ export function resolveTimedFormat(o: { plan: any; labels: Record<string, string
   const bells = bellsFlags.length > 0 && bellsFlags.every(Boolean);
   const mixed = bellsFlags.some(Boolean) && !bells;
   const sch = plan.scheduling ?? {};
-  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || Number(o.matchMinutes) || 30;
+  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || structureMatchMinutes(o.structure) || Number(o.matchMinutes) || 30;
   const bellMax = Math.max(0, ...bellSlots.map((x) => Number(x) || 0));
   const minutes = bells ? (bellMax || Number(o.matchMinutes) || 30) : mixed ? Math.max(stdEst, bellMax) : stdEst;
   return { bells, mixed, minutes };

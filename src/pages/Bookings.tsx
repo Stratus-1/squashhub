@@ -76,7 +76,7 @@ import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
-import { useHasPermission } from "@/hooks/use-club-permissions";
+import { useHasPermission, useMyPermissionsStatus } from "@/hooks/use-club-permissions";
 import { OpsBookingDialog } from "@/components/OpsBookingDialog";
 import { Wrench } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
@@ -386,7 +386,11 @@ export default function Bookings() {
   const navigate = useNavigate();
   const [bulkLeagueOpen, setBulkLeagueOpen] = useState(false);
   const { user } = useAuth();
-  const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
+  const { activeMember, isAdmin: isRoleAdmin } = useMemberContext();
+  // Chairman / vice chairman / other office bearers with full club admin may
+  // manage court bookings (finance is the only chairman restriction).
+  const { isFullAdmin: isOfficerFullAdmin } = useMyPermissionsStatus();
+  const isMemberAdmin = !!(isRoleAdmin || isOfficerFullAdmin);
   const isSuperAdmin = useIsSuperAdmin();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;

@@ -8415,7 +8415,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     })();
 
 
-    setPointsPerGame((ppgRaw === 15 ? 15 : ppgRaw === 7 ? 7 : ppgRaw === 11 ? 11 : 0));
+    setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 7 ? 7 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setPlayAllGames(!!(champ as any).play_all_games);
     setWinCondition(((champ as any).win_condition as any) === "sudden_death" ? "sudden_death" : "win_by_2");
@@ -8574,7 +8574,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const inheritedFP: ForfeitPointsMap = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedS[String(i)] = (lsm?.[String(i)] as any) ?? ((champ as any).scoring_mode === "time_capped_points" ? "time_capped_points" : "standard");
-      inheritedP[String(i)] = inheritedS[String(i)] === "first_to_target" ? Math.max(1, Number(lppg?.[String(i)]) || 7) : (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : 11));
+      inheritedP[String(i)] = inheritedS[String(i)] === "first_to_target" ? Math.max(1, Number(lppg?.[String(i)]) || 7) : (Number(lppg?.[String(i)]) === 15 ? 15 : Number(lppg?.[String(i)]) === 7 ? 7 : Number(lppg?.[String(i)]) === 11 ? 11 : (Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 7 ? 7 : 11));
       inheritedB[String(i)] = inheritedS[String(i)] === "first_to_target" ? 1 : (Number(lbo?.[String(i)]) === 5 ? 5 : Number(lbo?.[String(i)]) === 3 ? 3 : (Number((champ as any).best_of) === 5 ? 5 : 3));
       inheritedW[String(i)] = (lwc?.[String(i)] === "sudden_death" ? "sudden_death" : (lwc?.[String(i)] === "win_by_2" ? "win_by_2" : ((champ as any).win_condition || "win_by_2")));
       inheritedPA[String(i)] = lpa?.[String(i)] === true;
@@ -8997,7 +8997,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         if (!(numGroups >= 1)) m.push("At least one league");
         if (!scoringMode) m.push("Scoring format");
         if (scoringMode === "standard") {
-          if (!pointsPerGame) m.push("Game length (Par 11 or 15)");
+          if (!pointsPerGame) m.push("Game length (Par 7, 11 or 15)");
           if (!bestOf) m.push("Best of (3 or 5)");
         }
         if (!roundFormat) m.push("Round format");
@@ -9960,11 +9960,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       value={String(pointsForLeague(gn))}
                                       color="red"
                                       options={[
+                                        { v: "7", l: "Par 7" },
                                         { v: "11", l: "Par 11" },
                                         { v: "15", l: "Par 15" },
                                       ]}
                                       onChange={(v) => {
-                                        const n = Number(v) === 15 ? 15 : 11;
+                                        const n = Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11;
                                         setLeaguePointsPerGame((m) => ({ ...m, [key]: n }));
                                         if (gn === 1) setPointsPerGame(n);
                                       }}

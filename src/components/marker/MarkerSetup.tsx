@@ -343,7 +343,7 @@ export function MarkerSetup({ onStart }: Props) {
       const champs = (allChamps || []).filter((c: any) => isCurrentTournament(c, todayISO));
       if (champs.length === 0) return [];
       const { data: tournamentRules = [] } = await fromExt("tournaments")
-        .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+        .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game")
         .in("id", champs.map((c: any) => c.id));
       const rulesMap = new Map((tournamentRules || []).map((c: any) => [c.id, c]));
       const champMap = new Map(champs.map((c: any) => [c.id, { ...c, ...((rulesMap.get(c.id) as any) || {}) }]));
@@ -352,7 +352,7 @@ export function MarkerSetup({ onStart }: Props) {
       const { data, error } = await supabase
         .from("club_champs_matches")
         .select(`
-          id, group_number, round_number, scheduled_date, scheduled_time, status,
+          id, group_number, round_number, scheduled_date, scheduled_time, status, stage, stage_label,
           champ_id, court_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,

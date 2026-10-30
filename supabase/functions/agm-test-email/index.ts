@@ -36,10 +36,10 @@ Deno.serve(async (req) => {
       const msg = String(ballot.nomination_message ?? '').trim();
       if (!msg) return json({ error: 'Save the call for nominations message first' }, 400);
       const filled = msg.replace(/\{\s*member[ _]name\s*\}/gi, member.name).replace(/\{\s*meeting[ _]date\s*\}/gi, meeting).replace(/\{\s*nominations[ _]close\s*\}/gi, closes);
-      const { data: c } = await admin.from('clubs').select('name,logo_url').eq('id', ballot.club_id).maybeSingle();
+      const { data: c } = await admin.from('clubs').select('name,logo_url,email_signature_html,email_disclaimer').eq('id', ballot.club_id).maybeSingle();
       const origin = /^https:\/\/[a-z0-9.-]+$/i.test(req.headers.get('Origin') ?? '') ? req.headers.get('Origin') : 'https://squashhub.co.za';
       const result = await sendTemplateEmail('club-notification', to, {
-        templateData: { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: origin, ctaLabel: 'Make your nominations (test link)' },
+        templateData: { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: origin, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined },
         idempotencyKey: `agm-nom-test-${auth.user.id}-${input.ballot_id}-${input.request_id}`,
       });
       return json(result);

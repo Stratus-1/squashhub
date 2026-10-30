@@ -10587,6 +10587,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     )}
                                   </div>
                                 )}
+                                {playoffsForLeague(gn) && scoringForLeague(gn) === "standard" && (
+                                  <div className="pl-6 pt-1.5 space-y-1.5">
+                                    <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        className="h-3.5 w-3.5 accent-fuchsia-500"
+                                        checked={playoffPointsForLeague(gn) == null}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setLeaguePlayoffPointsPerGame((m) => { const n = { ...m }; delete n[key]; return n; });
+                                          } else {
+                                            const cur = pointsForLeague(gn);
+                                            setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: cur === 15 ? 15 : cur === 7 ? 7 : 11 }));
+                                          }
+                                        }}
+                                      />
+                                      Keep same format as pools
+                                    </label>
+                                    {playoffPointsForLeague(gn) != null && (
+                                      <SegRow
+                                        label="Playoff game length"
+                                        value={String(playoffPointsForLeague(gn))}
+                                        color="red"
+                                        options={[
+                                          { v: "7", l: "Par 7" },
+                                          { v: "11", l: "Par 11" },
+                                          { v: "15", l: "Par 15" },
+                                        ]}
+                                        onChange={(v) => setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11 }))}
+                                      />
+                                    )}
+                                    {playoffPointsForLeague(gn) != null && (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        Quarterfinals, semifinals and the final of this category play to Par {playoffPointsForLeague(gn)}; pool games stay Par {pointsForLeague(gn)}.
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>}
 
                               {structureOnly && <div className="pt-2 space-y-3">

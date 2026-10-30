@@ -21,6 +21,20 @@ function playoffFor(plan: any, key: string) {
   return o[key] ?? o[key.split("::")[0]] ?? plan?.playoff ?? null;
 }
 
+/** "Bottom half too" ticked for this unit on the structure page (next positions play their own bracket). */
+export function bottomHalfFor(plan: any, unitKey: string): boolean {
+  const raw = plan?.originalStructure, keys: string[] = raw?._unit_keys ?? [];
+  const flags = raw?.league_playoff_bottom_half ?? {};
+  const i = keys.indexOf(unitKey), j = keys.indexOf(unitKey.split("::")[0]);
+  return !!(i >= 0 ? flags[String(i + 1)] : j >= 0 ? flags[String(j + 1)] : false);
+}
+
+/** Lower-half first-stage labels: the same pairing rule, shifted to the next positions (A3 v B4, B3 v A4 …). */
+function lowerLabels(g: number, pairing: Pairing, pools: number): string[] {
+  const shift = (t: string) => t.replace(/#(\d+)|Seed (\d+)|Qualifier (\d+)/g, (m, a, b, c) => a ? `#${Number(a) + (pools >= 2 && pairing !== "seeded" ? g : 2 * g)}` : b ? `Seed ${Number(b) + 2 * g}` : `Qualifier ${Number(c) + 2 * g}`);
+  return firstLabels(g, pairing, pools).map(shift);
+}
+
 /** First-stage labels for g games from the configured pairing. */
 function firstLabels(g: number, pairing: Pairing, pools: number): string[] {
   if (pairing === "crossover" && pools >= 2) return crossoverPairs(g).map(([[pa, a], [pb, b]]) => `Pool ${P(pa)} #${a} v Pool ${P(pb)} #${b}`);
@@ -68,6 +82,8 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
     pairings = names.map((_, i) => (i === 0 ? first : "winners"));
   }
   const out: ProvisionalGame[] = [];
+  const bottom = bottomHalfFor(plan, unitKey);
+  let prevLow: string[] = [];
   let prev: string[] = [];
   names.forEach((name, i) => {
     const g = 2 ** (names.length - 1 - i);
@@ -77,6 +93,14 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
       : firstLabels(g, pairings[i], pools);
     const ids = labels.map((_, k) => (g === 1 ? ab : `${ab}${k + 1}`));
     labels.forEach((label, k) => out.push({ key: `${unitKey}|${ab}|${k + 1}`, unitKey, phase: i + 1, stage: name, label: `${ids[k]}: ${label}` }));
+    if (bottom) {
+      const low = i > 0 && pairings[i] === "winners"
+        ? Array.from({ length: g }, (_, k) => `Winner ${prevLow[2 * k] ?? "?"} v Winner ${prevLow[2 * k + 1] ?? "?"}`)
+        : lowerLabels(g, pairings[i], pools);
+      const lowIds = low.map((_, k) => (g === 1 ? `${ab} (bottom half)` : `${ab}${g + k + 1}`));
+      low.forEach((label, k) => out.push({ key: `${unitKey}|${ab}|low|${k + 1}`, unitKey, phase: i + 1, stage: name, label: `${lowIds[k]}: ${label}` }));
+      prevLow = lowIds;
+    }
     prev = ids;
   });
   return out;

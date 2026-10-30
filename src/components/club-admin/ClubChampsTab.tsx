@@ -1498,7 +1498,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Standard its own game length (par 11 / par 15), best-of and win
   // condition (win-by-2 / sudden death). Missing entries fall back to the
   // tournament-level values.
-  const { data: firstToTargetPilot = false } = useClubBetaFeature(clubId, "tournament_beta");
+  const { data: firstToTargetPilot = false } = useClubBetaFeature(clubId, "tournament_first_to_target");
   const [leagueScoringModes, setLeagueScoringModes] = useState<Record<string, "standard" | "time_capped_points" | "first_to_target">>({});
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, number>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 1 | 3 | 5>>({});

@@ -17,6 +17,7 @@ import { Eye, Pencil } from "lucide-react";
 import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
 import { CommsActionPicker } from "./CommsActionPicker";
 import { CommsMergeFieldChips } from "./CommsMergeFieldChips";
+import { CommsDocumentUpload } from "./CommsDocumentUpload";
 
 export type TemplateVersion = { subject: string; body: string };
 export type TemplateRecord = {
@@ -40,12 +41,14 @@ export function CommsTemplateEditor({
   clubSubdomain,
   club,
   template,
+  initialPreview = false,
   onClose,
 }: {
   clubId: string;
   clubSubdomain?: string | null;
   club?: ({ name?: string | null; email?: string | null; phone?: string | null } & EmailPreviewClub) | null;
   template: TemplateRecord;
+  initialPreview?: boolean;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -61,7 +64,7 @@ export function CommsTemplateEditor({
   const smsRef = useRef<HTMLTextAreaElement>(null);
   const inAppRef = useRef<HTMLTextAreaElement>(null);
   const [focusField, setFocusField] = useState<"subject" | "body">("body");
-  const [emailPreview, setEmailPreview] = useState(false);
+  const [emailPreview, setEmailPreview] = useState(initialPreview);
 
   const current = versions[channel] ?? { subject: "", body: "" };
   const resolved = resolveAction(action, { clubSubdomain, origin: window.location.origin });
@@ -183,6 +186,7 @@ export function CommsTemplateEditor({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <Label className="text-xs">Email body</Label>
+                  <CommsDocumentUpload clubId={clubId} onInsert={(html) => setVersions((v) => ({ ...v, email: { subject: v.email?.subject ?? "", body: `${v.email?.body ?? ""}${html}` } }))} />
                   <Button type="button" size="sm" variant="outline" onClick={() => setEmailPreview((v) => !v)}>
                     {emailPreview ? <Pencil className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
                     {emailPreview ? "Edit email" : "Preview email"}

@@ -54,6 +54,7 @@ const PayReturn = lazy(() => import("./pages/PayReturn"));
 const ScanPay = lazy(() => import("./pages/ScanPay"));
 const AgmVote = lazy(() => import("./pages/AgmVote"));
 const AgmInvite = lazy(() => import("./pages/AgmInvite"));
+const ClubDocument = lazy(() => import("./pages/ClubDocument"));
 const AgmNominate = lazy(() => import("./pages/AgmNominate"));
 const MatchDay = lazy(() => import("./pages/MatchDayShell"));
 const BarCounter = lazy(() => import("./pages/BarCounter"));
@@ -563,6 +564,7 @@ function AppRoutes() {
         <Route path="/s/:code/success" element={<BarPaymentSuccess />} />
         <Route path="/vote/:token" element={<AgmVote />} />
         <Route path="/agm/:token" element={<AgmInvite />} />
+        <Route path="/club-document" element={<ProtectedRoute><ClubDocument /></ProtectedRoute>} />
         <Route path="/nominate/:token" element={<AgmNominate />} />
         <Route path="/c/:subdomain/s/:code" element={<ScanPay />} />
         <Route path="/c/:subdomain/s/:code/success" element={<BarPaymentSuccess />} />

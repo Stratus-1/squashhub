@@ -26,6 +26,7 @@ import { AgmBallotPanel } from "./comms/AgmBallotPanel";
 export function CommunicationsTab({ clubId }: { clubId: string }) {
   const [tab, setTab] = useState("templates");
   const [editing, setEditing] = useState<TemplateRecord | null>(null);
+  const [templatePreview, setTemplatePreview] = useState(false);
   const [sending, setSending] = useState<TemplateRecord | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -74,8 +75,9 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
             clubId={clubId}
             templates={templates}
             isLoading={isLoading}
-            onNew={() => setEditing({ ...EMPTY_TEMPLATE })}
-            onEdit={setEditing}
+            onNew={() => { setTemplatePreview(false); setEditing({ ...EMPTY_TEMPLATE }); }}
+            onEdit={(t) => { setTemplatePreview(false); setEditing(t); }}
+            onPreview={(t) => { setTemplatePreview(true); setEditing(t); }}
             onSend={openWizard}
           />
         </TabsContent>
@@ -103,6 +105,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
           clubSubdomain={club?.subdomain}
           club={club ?? null}
           template={editing}
+          initialPreview={templatePreview}
           onClose={() => setEditing(null)}
         />
       )}

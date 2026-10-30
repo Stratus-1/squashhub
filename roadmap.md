@@ -47,3 +47,5 @@
 
 - [x] Add Par 7 game-length option alongside Par 11 and Par 15 (HSC request, 30 Oct).
 - [x] Playoff format override per category: "Keep same format as pools" tick; when off, choose Par 7/11/15 for that category's playoffs (HSC request, 30 Oct). Migration 0315 applied; 22 focused tests pass; verified in HSC edit flow (no save).
+
+- [x] HSC Myburg 7's: scheduler must use the 12-min per-pool slot time, not the 30-min default

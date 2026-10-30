@@ -336,6 +336,7 @@ export type Database = {
           meeting_at: string | null
           meeting_details: string | null
           meeting_venue: string | null
+          nomination_message: string | null
           nominations_close_at: string | null
           nominations_status: string
           opened_at: string | null
@@ -357,6 +358,7 @@ export type Database = {
           meeting_at?: string | null
           meeting_details?: string | null
           meeting_venue?: string | null
+          nomination_message?: string | null
           nominations_close_at?: string | null
           nominations_status?: string
           opened_at?: string | null
@@ -378,6 +380,7 @@ export type Database = {
           meeting_at?: string | null
           meeting_details?: string | null
           meeting_venue?: string | null
+          nomination_message?: string | null
           nominations_close_at?: string | null
           nominations_status?: string
           opened_at?: string | null

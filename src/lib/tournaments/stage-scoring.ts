@@ -29,7 +29,10 @@ export function inheritedScoringForGroup(t: any, groupNumber: number, categoryNa
     return { ok: true, mode: m, pointsPerGame: target, bestOf: 1, text: `First to ${target} · ${at(t?.league_win_conditions, groupNumber) === "win_by_2" ? "win by 2" : "sudden death"}`, ...base };
   }
   const rawB = at(t?.league_best_of, groupNumber) ?? t?.best_of;
-  const p = pts(rawP), b = bo(rawB);
+  // Play-off game length override: when the category unticked "Keep same
+  // format as pools", its QF/SF/Final play to this PAR instead of the pool PAR.
+  const p = pts(at(t?.league_playoff_points_per_game, groupNumber)) ?? pts(rawP);
+  const b = bo(rawB);
   if (p === undefined || b === undefined) return { ok: false, issue: `${categoryName} has an invalid saved scoring value — ${fix}.`, ...base };
   if (p === null || b === null) return { ok: false, issue: `${categoryName} is missing its ${p === null ? "PAR target" : "best-of game count"} — ${fix}.`, ...base };
   return { ok: true, mode: m, pointsPerGame: p, bestOf: b, text: `PAR ${p} · Best of ${b}`, ...base };

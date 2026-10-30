@@ -18,6 +18,31 @@ The agenda, minutes and other meeting documents are attached on the same page.
 
 Voting for the new committee takes place online before the meeting — your personal voting link is in the email you receive.`;
 
+/** Editable default for the call-for-nominations email. Placeholders are filled per member at send time. */
+export function defaultNominationMessage(allowSelf: boolean): string {
+  return `Dear {member name},
+
+Members are hereby notified that the Annual General Meeting will be held on {meeting date}.
+
+Members are now called to make nominations for the committee. You can nominate another member for a position${allowSelf ? ", or make yourself available to serve on the committee and choose the position or function you would like to fulfil" : ""}. Please add your nominations using your personal link in this email.
+
+Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.
+
+Nominations close {nominations close}.
+
+The agenda and relevant documents will be made available in due course.`;
+}
+
+/** Fills nomination placeholders; returns email-safe HTML paragraphs. */
+export function nominationMessageHtml(msg: string, vars: { meeting: string; closes: string }): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc(msg.trim())
+    .replace(/\{\s*member[ _]name\s*\}/gi, "{{name}}")
+    .replace(/\{\s*meeting[ _]date\s*\}/gi, `<strong>${esc(vars.meeting)}</strong>`)
+    .replace(/\{\s*nominations[ _]close\s*\}/gi, `<strong>${esc(vars.closes)}</strong>`)
+    .split(/\n\s*\n/).map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("");
+}
+
 /** "Chairperson: A, B" per line → positions. Blank/duplicate nominees are dropped. */
 export function parseBallotText(text: string, opts: { allowEmpty?: boolean } = {}): BallotPositionDraft[] {
   const out: BallotPositionDraft[] = [];

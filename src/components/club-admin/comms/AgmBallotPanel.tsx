@@ -15,7 +15,7 @@ import { AgmTestEmail } from "./AgmTestEmail";
 import { AgmNominationsCard } from "./AgmNominationsCard";
 import { runoffForPosition } from "@/lib/agm/runoff";
 import {
-  buildInviteLink, buildNominationLink, meetingLine, buildVoteLink, DEFAULT_DECLARATION, DEFAULT_INVITATION_MESSAGE, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
+  buildInviteLink, buildNominationLink, defaultNominationMessage, nominationMessageHtml, meetingLine, buildVoteLink, DEFAULT_DECLARATION, DEFAULT_INVITATION_MESSAGE, formatBallotText, parseBallotText, positionWinners, recountFromReceipts, receiptPicks,
 } from "@/lib/agm/ballot";
 
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as any, args as any);
@@ -123,6 +123,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
   const nomStage: "none" | "open" | "closed" = ballot.nominations_status ?? "none";
   const positionsLocked = nomStage !== "none";
   const [nomClose, setNomClose] = useState(toLocalInput(ballot.nominations_close_at ?? new Date(Date.now() + 7 * 864e5).toISOString()));
+  const [nomMsg, setNomMsg] = useState<string>(ballot.nomination_message ?? defaultNominationMessage(!!ballot.allow_self_actions));
 
   const loadPositions = async () => {
       const { data, error } = await db("agm_ballot_positions")
@@ -165,6 +166,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     const { error } = await db("agm_ballots").update({
       title: title.trim(), declaration: declaration.trim(), deadline: new Date(deadline).toISOString(),
       allow_self_actions: allowSelf, allow_self_vote: allowSelfVote,
+      ...(nomStage === "none" ? { nomination_message: nomMsg, nominations_close_at: new Date(nomClose).toISOString() } : {}),
     }).eq("id", ballot.id);
     if (error) throw error;
     if (positionsLocked) return;
@@ -255,6 +257,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
     mutationFn: async () => {
       const ch = (Object.keys(channels) as ("email" | "whatsapp")[]).filter((k) => channels[k]);
       if (!ch.length) throw new Error("Tick at least one channel");
+      if (!ballot.meeting_at) throw new Error("Add and save the AGM meeting date & time (step 3) first — the call for nominations announces it");
       await save();
       const closeIso = new Date(nomClose).toISOString();
       const { data, error } = await rpc("agm_open_nominations", { p_ballot_id: ballot.id, p_member_ids: [...chosen], p_close_at: closeIso });
@@ -263,13 +266,14 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
       const origin = window.location.origin;
       const vars = Object.fromEntries(rows.map((r) => [r.club_member_id, { nomination_link: buildNominationLink(r.token, origin) }]));
       const closes = fmt(closeIso);
+      const meet = meetingLine(ballot.meeting_at, ballot.meeting_venue) || "the date to be confirmed";
       await sendComms({
         clubId, name: `${title} — call for nominations`, channels: ch, audience: { type: "selected", memberIds: Object.keys(vars) }, memberVars: vars,
         meta: { purpose: "agm_nominations", ballot_id: ballot.id },
         content: {
           email: {
             subject: `${title} — nominations for the committee`,
-            body: `<p>Dear {{name}},</p><p>Nominations are open for next year's committee. You can nominate another member for a position${allowSelf ? ", or make yourself available to serve on the committee and choose the position or function you would like to fulfil" : ""}.</p><p><a href="{{nomination_link}}">Make your nominations</a></p><p>Members nominated by someone else are asked on the same page to accept or decline. Only accepted nominations go onto the ballot.</p><p>Nominations close <strong>${closes}</strong>.</p>`,
+            body: `${nominationMessageHtml(nomMsg.replace(/^\s*dear[^\n]*\n/i, ""), { meeting: meet, closes }).replace(/^/, "<p>Dear {{name}},</p>")}<p><a href="{{nomination_link}}">Make your nominations</a></p>`,
 },
           whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. Nominate another member${allowSelf ? ", or make yourself available for the position you would like to fill" : ""}, and accept nominations you receive: {{nomination_link}}` },
         },
@@ -338,6 +342,13 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
             ))}
           </div>
         </div>
+
+        <label className="text-xs space-y-1 block"><span className="text-muted-foreground">Call for nominations message — saved with the draft. <em>{"{member name}"}</em>, <em>{"{meeting date}"}</em> and <em>{"{nominations close}"}</em> are filled in for each member; the personal nomination link is added below it.</span>
+          <Textarea rows={10} value={nomMsg} readOnly={nomStage !== "none"} onChange={(e) => setNomMsg(e.target.value)} className="text-xs" />
+          {!ballot.meeting_at && nomStage === "none" && <span className="text-[11px] text-destructive block">Set the AGM date & time in step 3 so it appears in this message.</span>}
+          {nomStage === "none" && <Button type="button" variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => setNomMsg(defaultNominationMessage(allowSelf))}>Reset to default wording</Button>}
+        </label>
+        {nomStage === "none" && <AgmTestEmail clubId={clubId} ballotId={ballot.id} kind="nominations" beforeSend={save} />}
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="text-muted-foreground">Send links by:</span>

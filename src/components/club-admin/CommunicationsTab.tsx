@@ -66,7 +66,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>
             <TabsTrigger value="log">Delivery log</TabsTrigger>
-            <TabsTrigger value="agm">AGM voting</TabsTrigger>
+            <TabsTrigger value="agm">AGM process</TabsTrigger>
           </TabsList>
         </div>
 

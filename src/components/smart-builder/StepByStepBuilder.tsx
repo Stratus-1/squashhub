@@ -2825,14 +2825,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const p = playoffFor(u.key);
                 const pools = rowStages(a, u.key)[0]?.pools ?? 1;
                 const q = poolQualification(u.key);
-                const places = 2 ** p.rounds;
+                const places = 2 ** p.rounds * (bottomHalfUnits.includes(u.key) ? 2 : 1);
                 return <section key={u.key} aria-label={`Play-offs for ${u.base}`} className="space-y-3 border-b border-border py-3">
                   <h3 className="text-sm font-semibold">{u.base} · {pools} pool{pools === 1 ? "" : "s"}</h3>
                   <PlayoffFields value={p} onChange={(patch) => setPlayoffOverride(u.key, patch)} format={formatFor(u.key).kind} roundsLocked={!!structurePlayoffs} />
                   {pools > 1 && p.choice === "playoffs" && <div className="space-y-2 text-xs">
                     <label className="flex flex-wrap items-center gap-2"><span>Qualifiers from each pool</span><Input type="number" min={1} className="h-8 w-20" aria-label={`Qualifiers per pool for ${u.base}`} value={q.perPool ?? ""} placeholder="Not set" onChange={(e) => setPoolQualification(u.key, { perPool: e.target.value })} /></label>
-                    <p>{pools} pools · {places} places in {playoffText(p)}{Number(q.perPool) > 0 ? ` · ${pools * Number(q.perPool)} qualifiers selected` : " · qualification not confirmed"}.</p>
-                    {(Number(q.perPool) > 0 ? pools * Number(q.perPool) !== places : places % pools !== 0) && <p className="text-destructive">Equal qualification from {pools} pools does not fill this {places}-place bracket. Review the play-off structure; no pool positions will be chosen automatically.</p>}
+                    <p>{pools} pools · {places} places in {playoffText(p)}{bottomHalfUnits.includes(u.key) ? ` (top and bottom half, e.g. A1 v B2, B1 v A2 and A3 v B4, B3 v A4)` : ""}{Number(q.perPool) > 0 ? ` · ${pools * Number(q.perPool)} qualifiers selected` : " · qualification not confirmed"}.</p>
+                    {(Number(q.perPool) > 0 ? pools * Number(q.perPool) !== places : places % pools !== 0) && <p className="text-destructive">Equal qualification from {pools} pools does not fill this {places}-place bracket. {!bottomHalfUnits.includes(u.key) && Number(q.perPool) === places / pools * 2 ? `To let positions ${places + 1}–${places * 2} play too, tick "Bottom half too" for this category on the structure page.` : "Review the play-off structure; no pool positions will be chosen automatically."}</p>}
                   </div>}
                 </section>;
               })}

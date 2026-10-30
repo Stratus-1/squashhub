@@ -140,7 +140,17 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
   // "Bottom half too": in one ranked list, the next 2g players play their own bracket (9 v 16, 12 v 13 …).
   // Its games follow the top games, so every later round pairs winners top-with-top and bottom-with-bottom.
   if (opts.bottomHalf && pools === 1) games = [...games, ...seededPairs(2 * g).map(([a, b]) => [[0, a + 2 * g], [0, b + 2 * g]] as [[number, number], [number, number]])];
-  else if (opts.bottomHalf) notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list (Swiss or one group).`);
+  else if (opts.bottomHalf && pools === 2) {
+    // Two pools: the next g positions per pool play their own bracket with the same pairing rule
+    // (semis crossover: A1 v B2, B1 v A2, then A3 v B4, B3 v A4).
+    const top = games.map(([a, b]) => [a, b] as [[number, number], [number, number]]);
+    const shift = Math.max(...top.flat().map(([, pos]) => pos));
+    const lower = pairing === "seeded"
+      ? (() => { const order: Array<[number, number]> = []; for (let pos = shift + 1; pos <= 2 * shift; pos++) for (let p = 0; p < 2; p++) order.push([p, pos]); return seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]] as [[number, number], [number, number]]); })()
+      : top.map(([a, b]) => [[a[0], a[1] + shift], [b[0], b[1] + shift]] as [[number, number], [number, number]]);
+    games = [...top, ...lower];
+  }
+  else if (opts.bottomHalf) notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list or two pools.`);
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize) return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
   const stages: PlannedStage[] = [];

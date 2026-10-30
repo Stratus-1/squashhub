@@ -43,3 +43,5 @@
 - [done] Chairman access: tournaments/leagues already open; fee-category editing unlocked for chairman (FeesTab); member editing already passes server-side
 - [x] Bar menu images: Coke Zero can, full Powerade bottle, clearer Black Cat (Highveld) — uploaded and rows updated; URLs verified 200.
 - [x] Beta builder: Include registered visitors toggle (Who may enter) -> Pick players + Invitations audience; visitor-promotion lib; 37 invite tests pass
+
+- [ ] Add Par 7 game-length option alongside Par 11 and Par 15 (HSC request, 30 Oct).

@@ -30,6 +30,10 @@ Deno.serve(async (req) => {
     if (me || !member) return json({ error: 'Select an active member of this club' }, 400);
     const to = testRecipient(input.destination, auth.user.email, member);
     if (input.kind === 'nominations') {
+      const previewToken = Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, '0')).join('');
+      const ph = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(previewToken)));
+      const { error: pte } = await admin.from('agm_preview_tokens').insert({ token_hash: '\\x' + Array.from(ph, (b) => b.toString(16).padStart(2, '0')).join(''), ballot_id: input.ballot_id, club_member_id: member.id });
+      if (pte) return json({ error: 'Could not create preview link' }, 500);
       const full = (iso: string) => new Date(iso).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', dateStyle: 'full', timeStyle: 'short' });
       const meeting = ballot.meeting_at ? `${full(ballot.meeting_at)}${ballot.meeting_venue ? ` at ${ballot.meeting_venue}` : ''}` : 'the date to be confirmed';
       const closes = ballot.nominations_close_at ? format(ballot.nominations_close_at) : 'the closing date';
@@ -39,7 +43,7 @@ Deno.serve(async (req) => {
       const { data: c } = await admin.from('clubs').select('name,logo_url,email_signature_html,email_disclaimer').eq('id', ballot.club_id).maybeSingle();
       const origin = /^https:\/\/[a-z0-9.-]+$/i.test(req.headers.get('Origin') ?? '') ? req.headers.get('Origin') : 'https://squashhub.co.za';
       const result = await sendTemplateEmail('club-notification', to, {
-        templateData: { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: origin, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined },
+        templateData: { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: `${origin}/nominate/${previewToken}`, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined },
         idempotencyKey: `agm-nom-test-${auth.user.id}-${input.ballot_id}-${input.request_id}`,
       });
       return json(result);

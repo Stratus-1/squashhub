@@ -25,4 +25,16 @@ describe("setup scoring → live tournament columns", () => {
   it("no scoring answered leaves columns untouched", () => {
     expect(divisionScoringColumns([{ scoring: null }])).toEqual({});
   });
+  it("play-off game length overrides land on league_playoff_points_per_game", () => {
+    const cols = divisionScoringColumns([
+      { scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, playoffPointsPerGame: 7 } },
+      { scoring: { mode: "standard", pointsPerGame: 15, bestOf: 3 } },
+    ]);
+    expect(cols.league_playoff_points_per_game).toEqual({ 1: 7 });
+    expect(effectiveTournamentSettings(cols, 1).pointsPerGame).toBe(11);
+  });
+  it("invalid play-off overrides are dropped", () => {
+    const cols = divisionScoringColumns([{ scoring: { mode: "standard", pointsPerGame: 11, bestOf: 5, playoffPointsPerGame: 9 } }]);
+    expect(cols.league_playoff_points_per_game).toEqual({});
+  });
 });

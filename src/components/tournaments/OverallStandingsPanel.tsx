@@ -20,7 +20,8 @@ export function OverallStandingsPanel({ title, rows, complete, names, clubId, ca
     if (error) throw error;
     return data?.ladder_update_mode === "final_standings";
   }});
-  if (!rows.length) return null;
+  // Hidden until the category is finished (final played); provisional orders invite premature ladder changes.
+  if (!rows.length || !complete) return null;
 
   const setFinalMode = async (enabled: boolean) => {
     setBusy(true);

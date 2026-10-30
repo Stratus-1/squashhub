@@ -3,6 +3,21 @@ import { parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doub
 export type EffectiveScoringMode = "standard" | "time_capped_points" | "swiss" | "first_to_target";
 export type EffectiveMatchType = "singles" | "doubles" | "mixed";
 export type EffectiveWinCondition = "win_by_2" | "sudden_death";
+export type PlayoffMatchFormat = "bo3" | "bo5" | "all3" | "all5";
+export function parsePlayoffMatchFormat(value: unknown): PlayoffMatchFormat | null {
+  return value === "bo3" || value === "bo5" || value === "all3" || value === "all5" ? value : null;
+}
+export function playoffMatchFormat(tournament: any, groupNumber: number | string | null | undefined): PlayoffMatchFormat | null {
+  return parsePlayoffMatchFormat(mapValue(tournament?.league_playoff_match_formats, groupNumber));
+}
+/** Apply playoff-only overrides without changing the pool settings or the independent PAR choice. */
+export function applyPlayoffSettings(settings: EffectiveTournamentSettings, tournament: any, groupNumber: number | string | null | undefined): EffectiveTournamentSettings {
+  if (settings.scoringMode !== "standard" && settings.scoringMode !== "swiss") return settings;
+  const format = playoffMatchFormat(tournament, groupNumber);
+  return { ...settings, pointsPerGame: playoffPointsPerGame(tournament, groupNumber) ?? settings.pointsPerGame,
+    bestOf: format ? (format.endsWith("5") ? 5 : 3) : settings.bestOf,
+    playAllGames: format ? format.startsWith("all") : settings.playAllGames };
+}
 
 export interface EffectiveTournamentSettings {
   scoringMode: EffectiveScoringMode;

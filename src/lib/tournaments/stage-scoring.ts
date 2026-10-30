@@ -5,6 +5,7 @@
  * a missing or invalid value blocks stage set-up so the admin fixes it in Tournament Setup.
  */
 import { divisionGroup, type TournamentSpec } from "./engine-service";
+import { playoffMatchFormat } from "./effective-settings";
 
 export type InheritedScoring =
   | { ok: true; mode: "standard" | "time_capped_points" | "swiss" | "first_to_target"; pointsPerGame: number | null; bestOf: 1 | 3 | 5 | null; text: string; categoryName: string; groupNumber: number }
@@ -32,10 +33,12 @@ export function inheritedScoringForGroup(t: any, groupNumber: number, categoryNa
   // Play-off game length override: when the category unticked "Keep same
   // format as pools", its QF/SF/Final play to this PAR instead of the pool PAR.
   const p = pts(at(t?.league_playoff_points_per_game, groupNumber)) ?? pts(rawP);
-  const b = bo(rawB);
+  const format = playoffMatchFormat(t, groupNumber);
+  const b = format ? (format.endsWith("5") ? 5 : 3) : bo(rawB);
   if (p === undefined || b === undefined) return { ok: false, issue: `${categoryName} has an invalid saved scoring value — ${fix}.`, ...base };
   if (p === null || b === null) return { ok: false, issue: `${categoryName} is missing its ${p === null ? "PAR target" : "best-of game count"} — ${fix}.`, ...base };
-  return { ok: true, mode: m, pointsPerGame: p, bestOf: b, text: `PAR ${p} · Best of ${b}`, ...base };
+  const playAll = format ? format.startsWith("all") : Boolean(at(t?.league_play_all_games, groupNumber) ?? t?.play_all_games);
+  return { ok: true, mode: m, pointsPerGame: p, bestOf: b, text: `PAR ${p} · ${playAll ? "Play all" : "Best of"} ${b}`, ...base };
 }
 
 /** Scoring every play-off stage of this division inherits. */

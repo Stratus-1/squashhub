@@ -32,6 +32,7 @@ import { AssociationPayablesPanel } from "./AssociationPayablesPanel";
 import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
+import { BalanceSheetTab } from "./BalanceSheetTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
@@ -890,7 +891,17 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         </TabsContent>}
 
         <TabsContent value="income">
-          <IncomeStatementTab clubId={clubId} clubName={club?.name} accounts={CHART_OF_ACCOUNTS as any} />
+          <IncomeStatementTab clubId={clubId} clubName={club?.name} accounts={CHART_OF_ACCOUNTS as any} endMonth={Number((club as any)?.financial_year_end_month || 2)} />
+        </TabsContent>
+
+        <TabsContent value="balance">
+          <BalanceSheetTab
+            clubName={club?.name}
+            endMonth={Number((club as any)?.financial_year_end_month || 2)}
+            lines={(journalEntries || []) as any}
+            accounts={CHART_OF_ACCOUNTS as any}
+            customAccounts={customAccounts as any}
+          />
         </TabsContent>
 
         {/* Journal Tab — all entries, unfiltered */}
@@ -2131,7 +2142,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking" | "billing-settings";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "balance" | "coa" | "debit-orders" | "banking" | "billing-settings";
 
 interface FinanceHubProps {
   readOnly?: boolean;
@@ -2220,6 +2231,7 @@ function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, o
         { key: "journal", label: "All GL Entries", desc: "Every double-entry line, newest first", icon: BookOpen },
         { key: "trial", label: "Trial Balance", desc: "Debits vs credits across all accounts", icon: BarChart3 },
         { key: "income", label: "Income Statement", desc: "Revenue & expenses for the period", icon: BarChart3 },
+        { key: "balance", label: "Balance Sheet", desc: "Assets, liabilities & equity from the trial balance", icon: BarChart3 },
         { key: "coa", label: "Chart of Accounts", desc: "All GL accounts and balances", icon: ListTree },
       ],
     },

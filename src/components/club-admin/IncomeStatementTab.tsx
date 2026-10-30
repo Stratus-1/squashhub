@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "@/lib/finance/division-margin";
 
 import { groupedIncome, DEFAULT_INCOME_STATEMENT_BASIS } from "@/lib/finance/grouped-income";
+import { thisFinancialYear, previousFinancialYear } from "@/lib/finance/financial-year";
 import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
 
 interface AccountMeta {
@@ -27,18 +28,19 @@ interface Props {
   clubId: string;
   clubName?: string;
   accounts: Record<string, AccountMeta>;
+  endMonth?: number;
 }
 
-type Preset = "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom";
+type Preset = "this_fy" | "prev_fy" | "this_month" | "last_month" | "qtd" | "ytd" | "last_12" | "custom";
 
-export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
+export function IncomeStatementTab({ clubId, clubName, accounts, endMonth = 2 }: Props) {
   const { data: customAccounts = [], isLoading: accountsLoading, isError: accountsError } = useClubGLAccounts(clubId);
-  const [preset, setPreset] = useState<Preset>("ytd");
+  const [preset, setPreset] = useState<Preset>("this_fy");
   const [basis, setBasis] = useState<TradingCostBasis>(DEFAULT_INCOME_STATEMENT_BASIS);
   const [expandedSalaries, setExpandedSalaries] = useState(false);
   const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const today = new Date();
-  const [from, setFrom] = useState<string>(format(startOfYear(today), "yyyy-MM-dd"));
+  const [from, setFrom] = useState<string>(thisFinancialYear(endMonth, today).from);
   const [to, setTo] = useState<string>(format(today, "yyyy-MM-dd"));
   const [expandedTips, setExpandedTips] = useState<Set<string>>(new Set());
   const toggleTip = (key: string) => setExpandedTips(prev => {
@@ -51,6 +53,8 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
     setPreset(p);
     const now = new Date();
     switch (p) {
+      case "this_fy": { const r = thisFinancialYear(endMonth, now); setFrom(r.from); setTo(r.to); break; }
+      case "prev_fy": { const r = previousFinancialYear(endMonth, now); setFrom(r.from); setTo(r.to); break; }
       case "this_month":
         setFrom(format(startOfMonth(now), "yyyy-MM-dd"));
         setTo(format(endOfMonth(now), "yyyy-MM-dd"));
@@ -198,8 +202,10 @@ export function IncomeStatementTab({ clubId, clubName, accounts }: Props) {
             </SelectContent>
           </Select>
           <Select value={preset} onValueChange={v => applyPreset(v as Preset)}>
-            <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="this_fy">This Financial Year</SelectItem>
+              <SelectItem value="prev_fy">Previous Financial Year</SelectItem>
               <SelectItem value="this_month">This Month</SelectItem>
               <SelectItem value="last_month">Last Month</SelectItem>
               <SelectItem value="qtd">Quarter to Date</SelectItem>

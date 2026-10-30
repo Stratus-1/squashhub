@@ -15,9 +15,12 @@ import { ExternalLink, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const PUBLIC_NOTICE_KEY = "sh.qr.publicNotice.v1";
+export const PUBLIC_BAR_DISMISSED_KEY = "sh.perm.qrPublicBarDismissed";
 
 const seen = () => { try { return localStorage.getItem(PUBLIC_NOTICE_KEY) === "1"; } catch { return true; } };
 const markSeen = () => { try { localStorage.setItem(PUBLIC_NOTICE_KEY, "1"); } catch { /* private mode: show again next time */ } };
+const barDismissed = () => { try { return localStorage.getItem(PUBLIC_BAR_DISMISSED_KEY) === "1"; } catch { return false; } };
+const markBarDismissed = () => { try { localStorage.setItem(PUBLIC_BAR_DISMISSED_KEY, "1"); } catch { /* private mode: show again next time */ } };
 
 /** Absolute in-app URL for the authenticated view (same host, so club subdomains keep working). */
 export function openInAppHref(kind: "tournament" | "league", competitionId?: string | null): string {
@@ -28,9 +31,13 @@ export function openInAppHref(kind: "tournament" | "league", competitionId?: str
 
 export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament" | "league"; competitionId?: string | null }) {
   const [showNotice, setShowNotice] = useState(() => !seen());
+  const [barHidden, setBarHidden] = useState(() => barDismissed());
   const href = openInAppHref(kind, competitionId);
   const isT = kind === "tournament";
   const dismiss = () => { markSeen(); setShowNotice(false); };
+  const closeBar = () => { markSeen(); markBarDismissed(); setShowNotice(false); setBarHidden(true); };
+
+  if (barHidden) return null;
 
   return (
     <>
@@ -50,7 +57,7 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
                 <button type="button" onClick={dismiss} aria-label="Dismiss" className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
               </div>
               <div className="mt-2 flex flex-wrap justify-end gap-2">
-                <Button type="button" size="sm" variant="ghost" onClick={dismiss}>Continue as visitor</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={closeBar}>Continue as visitor</Button>
                 <Button asChild size="sm"><a href={href} onClick={markSeen}>Open in SquashHub</a></Button>
               </div>
             </div>
@@ -61,6 +68,7 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
               <span className="block text-xs text-muted-foreground sm:inline sm:text-[13px]"><span className="hidden sm:inline"> · </span>{isT ? "My Games is available in SquashHub" : "Your games are in SquashHub"}</span>
             </span>
             <Button asChild size="sm" className="shrink-0"><a href={href}><ExternalLink className="mr-1 h-3.5 w-3.5" />Open in SquashHub</a></Button>
+            <button type="button" onClick={closeBar} aria-label="Close" className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
           </div>
         </div>
       </div>

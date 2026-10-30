@@ -1,6 +1,6 @@
 # Roadmap
 - [ ] Vercel deployment diagnosis blocked by unavailable Vercel access/deployment error; source configuration inspected, no confirmed build-setting fault.
-- [ ] Publish checked frontend changes; both member email dispatch functions redeployed successfully.
+- [x] Lovable publication requested at https://squashhub.lovable.app; completion not confirmed. Both member email dispatch functions redeployed successfully. Vercel is a separate blocked release path.
 - [x] Add Vice Chairman and Club Manager selectors/titles with Chairman/Club Captain permission parity; migration 0313 applied, isolated assignment/parity/cross-club tests and 35 focused tests pass, build OK. No real member appointed; signed-in column read passed, full assignment UI blocked by identity confirmation.
 - [x] Clearly label each document link inside the email body; real two-file uploads, authorized download links and cleanup verified in template/campaign component flows; 26 focused tests pass, build OK. No templates/campaigns saved or emails sent.
 - [x] Image-339 shows the old app-themed preview; current campaign preview browser-verified with white email body, visible bullets and two document links. User's open preview needs reloading; not published.

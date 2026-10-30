@@ -279,7 +279,7 @@ export default function MatchMarker() {
       // resume should be equally direct and server-authoritative.
       const [{ data: tournamentData, error: tournamentError }, { data: rulesData, error: rulesError }] = await Promise.all([
         fromExt("tournaments")
-          .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, doubles_serving_method, league_doubles_serving_methods")
+          .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game, doubles_serving_method, league_doubles_serving_methods")
           .eq("id", row.champ_id)
           .abortSignal(deadline.signal)
           .maybeSingle(),
@@ -300,6 +300,12 @@ export default function MatchMarker() {
       }
       const champ = { ...(rulesData as any), ...(tournamentData as any) };
       const effective = effectiveTournamentSettings(champ, row.group_number);
+      // Play-off game length override: this category's QF/SF/Final may play to a
+      // different PAR than its pool games ("Keep same format as pools" unticked).
+      if (isPlayoffGame(row)) {
+        const po = playoffPointsPerGame(champ, row.group_number);
+        if (po) effective.pointsPerGame = po;
+      }
       if (effective.scoringMode === "time_capped_points") {
         navigate(`/bells-marker/${matchId}`, { replace: true });
         return;

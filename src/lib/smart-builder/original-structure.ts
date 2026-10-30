@@ -45,7 +45,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
   const keys = structureUnits(a).filter((key) => key.trim());
   const saved = a.originalStructure ?? {};
   const out: OriginalStructure = { ...saved, _unit_keys: keys, _pool_groups: structurePoolGroups(a), _identity_locked: !!a.createdTournamentId, num_groups: keys.length };
-  const maps = ["group_labels", "expected_players", "league_formats", "swiss_pools", "swiss_rounds", "swiss_rr_finish", "league_genders", "league_match_types", "league_scoring_modes", "league_points_per_game", "league_best_of", "league_play_all_games", "league_win_conditions", "group_durations", "group_break_minutes", "league_doubles_serving_methods", "league_playoffs", "league_sources", "league_source_modes", "league_pool_names"];
+  const maps = ["group_labels", "expected_players", "league_formats", "swiss_pools", "swiss_rounds", "swiss_rr_finish", "league_genders", "league_match_types", "league_scoring_modes", "league_points_per_game", "league_best_of", "league_play_all_games", "league_win_conditions", "group_durations", "group_break_minutes", "league_doubles_serving_methods", "league_playoffs", "league_playoff_points_per_game", "league_sources", "league_source_modes", "league_pool_names"];
   for (const map of maps) out[map] = { ...(saved[map] ?? {}) };
   keys.forEach((key, i) => {
     const id = String(i + 1), cat = key.split("::")[0];
@@ -66,6 +66,8 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
     out.league_best_of[id] = sc?.bestOf ?? 5;
     out.league_play_all_games[id] = sc?.playAllGames ?? false;
     out.league_win_conditions[id] = sc?.winCondition ?? "win_by_2";
+    if (sc?.playoffPointsPerGame === 7 || sc?.playoffPointsPerGame === 11 || sc?.playoffPointsPerGame === 15) out.league_playoff_points_per_game[id] = sc.playoffPointsPerGame;
+    else delete out.league_playoff_points_per_game[id];
     if (sc?.mode === "time_capped_points") {
       out.group_durations[id] = Number(sc.timeCapPlay || sc.timeCapMinutes) || 0;
       out.group_break_minutes[id] = Number(sc.timeCapBreak) || 0;
@@ -85,7 +87,7 @@ export function originalStructureFromAnswers(a: StepAnswers): OriginalStructure 
 }
 
 /** Settings shared by every pool of one category; legacy numbered pool slots inherit them from the first pool. */
-const SHARED_POOL_MAPS = ["league_formats", "swiss_rounds", "swiss_rr_finish", "monrad_rounds", "league_genders", "league_match_types", "league_scoring_modes", "league_points_per_game", "league_best_of", "league_play_all_games", "league_win_conditions", "group_durations", "group_break_minutes", "league_doubles_serving_methods", "league_seeding_plans", "league_playoffs", "league_bye_handling", "league_forfeit_rules", "league_forfeit_points"];
+const SHARED_POOL_MAPS = ["league_formats", "swiss_rounds", "swiss_rr_finish", "monrad_rounds", "league_genders", "league_match_types", "league_scoring_modes", "league_points_per_game", "league_best_of", "league_play_all_games", "league_win_conditions", "group_durations", "group_break_minutes", "league_doubles_serving_methods", "league_seeding_plans", "league_playoffs", "league_playoff_points_per_game", "league_bye_handling", "league_forfeit_rules", "league_forfeit_points"];
 export function mirrorPoolGroupSettings(raw: OriginalStructure): OriginalStructure {
   const groups: StructurePoolGroup[] = raw._pool_groups ?? [];
   if (!groups.length) return raw;

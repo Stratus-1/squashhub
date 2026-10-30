@@ -34,6 +34,15 @@ describe("self-scheduled draw creation", () => {
   it("fixtures offer the restored 45-minute court timetable", () => {
     expect(buildSlots(45, "18:00", "20:15")).toEqual(["18:00", "18:45", "19:30", "20:15"]);
   });
+  it("tournament setup pickers offer 30-minute intervals for an hourly club", () => {
+    expect(planningSlotStep(60)).toBe(30);
+    expect(buildSlots(planningSlotStep(60), "08:00", "09:00")).toEqual(["08:00", "08:30", "09:00"]);
+  });
+  it("tournament setup pickers keep a finer club slot step", () => {
+    expect(planningSlotStep(15)).toBe(15);
+    expect(planningSlotStep(30)).toBe(30);
+    expect(planningSlotStep(null)).toBe(30);
+  });
   it("a freshly generated match is unscheduled", () => {
     expect(isUnscheduled(drawMatch())).toBe(true);
     expect(unscheduledMatchLabel(drawMatch())).toContain("play by 2026-03-01");

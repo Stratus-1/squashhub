@@ -458,7 +458,7 @@ export function MarkerSetup({ onStart }: Props) {
   async function loadTournamentMatchById(matchId: string) {
     const { data, error } = await fromExt("club_champs_matches")
       .select(`
-        id, group_number, round_number, scheduled_date, scheduled_time, status,
+        id, group_number, round_number, scheduled_date, scheduled_time, status, stage, stage_label,
         champ_id, court_id, handicap_a, handicap_b,
         player_a_member_id, player_b_member_id,
         partner_a_member_id, partner_b_member_id,
@@ -475,7 +475,7 @@ export function MarkerSetup({ onStart }: Props) {
     const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
     if (clubId && champ?.club_id !== clubId) return null;
     const { data: tournamentRules } = await fromExt("tournaments")
-      .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+      .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game")
       .eq("id", champ.id)
       .maybeSingle();
     return normalizeTournamentMatch(row, { ...champ, ...(tournamentRules || {}) });

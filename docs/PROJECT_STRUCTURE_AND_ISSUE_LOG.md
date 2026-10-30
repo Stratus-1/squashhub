@@ -4144,3 +4144,4 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-10-30 — HSC Myburg 7's "not enough court time"
 - The fixed-date timed scheduler ignored the structure page's "Planned match time" / per-pool slot minutes (12 min) and fell back to the tournament's 30-minute default, so 42 pool games could not fit 08:00–16:00 on 2 courts (32 slots). Cancelled bookings were never the cause.
 - `resolveTimedFormat` now uses `structureMatchMinutes(answers.originalStructure)` (per-pool minutes, else category minutes, Standard categories only) before `match_duration_minutes`. Tests in `timed-format-leak.test.ts`.
+- 2026-10-30 Tournament setup time pickers (smart-builder Courts/stages/playoff start) offer 30-minute intervals even when the club booking grid is hourly (planningSlotStep); club booking slots unchanged.

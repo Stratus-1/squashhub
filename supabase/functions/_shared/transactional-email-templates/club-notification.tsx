@@ -15,6 +15,8 @@ interface Props {
   secondaryLabel?: string
   recipientName?: string
   clubLogoUrl?: string
+  signatureHtml?: string
+  disclaimer?: string
 }
 
 const ClubNotification = ({
@@ -27,6 +29,8 @@ const ClubNotification = ({
   secondaryLabel = 'View tournament',
   recipientName,
   clubLogoUrl,
+  signatureHtml,
+  disclaimer,
 }: Props) => {
   const paragraphs = String(messageBody || '')
     .replace(/\r\n|\r/g, '\n')
@@ -74,6 +78,13 @@ const ClubNotification = ({
           {secondaryUrl ? (
             <Button href={secondaryUrl} style={secondaryButton}>{secondaryLabel}</Button>
           ) : null}
+          {signatureHtml ? (
+            <div
+              style={{ marginTop: 24, borderTop: '1px solid #e2e8f0', paddingTop: 14 }}
+              dangerouslySetInnerHTML={{ __html: String(signatureHtml) }}
+            />
+          ) : null}
+          {disclaimer ? <Text style={disclaimerText}>{disclaimer}</Text> : null}
         </Container>
       </Body>
     </Html>
@@ -104,3 +115,4 @@ const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }
 const bodyText = { color: '#1d2733', fontSize: '15px', lineHeight: '24px', margin: '0 0 14px' }
 const button = { backgroundColor: '#1e3a5f', color: '#ffffff', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none' }
 const secondaryButton = { backgroundColor: '#ffffff', color: '#1e3a5f', border: '2px solid #1e3a5f', padding: '10px 16px', borderRadius: '4px', textDecoration: 'none', fontWeight: 700, marginTop: '10px' }
+const disclaimerText = { color: '#94a3b8', fontSize: '11px', lineHeight: '1.4', margin: '14px 0 0' }

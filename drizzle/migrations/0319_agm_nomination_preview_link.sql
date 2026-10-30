@@ -9,7 +9,7 @@ DECLARE n agm_nominators; b agm_ballots; c clubs; me club_members; pv agm_previe
 BEGIN
   n := _agm_nominator(p_token);
   IF n.id IS NULL THEN
-    SELECT * INTO pv FROM agm_preview_tokens WHERE token_hash = digest(coalesce(p_token,''), 'sha256') AND expires_at > now();
+    SELECT * INTO pv FROM agm_preview_tokens WHERE token_hash = extensions.digest(coalesce(p_token,''), 'sha256') AND expires_at > now();
     IF pv.ballot_id IS NULL THEN RETURN jsonb_build_object('state','invalid'); END IF;
     SELECT * INTO b FROM agm_ballots WHERE id = pv.ballot_id;
     SELECT * INTO c FROM clubs WHERE id = b.club_id;

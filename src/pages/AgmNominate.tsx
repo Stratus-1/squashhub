@@ -69,6 +69,7 @@ export default function AgmNominate() {
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-xl mx-auto space-y-4">
+        {(data as any).preview ? <Card className="p-3 text-xs border-primary/40">Test preview — this is what members will see. Nominations made here are not saved.</Card> : null}
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {data.logo_url ? (

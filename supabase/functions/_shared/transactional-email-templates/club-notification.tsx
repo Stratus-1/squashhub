@@ -84,7 +84,7 @@ const ClubNotification = ({
               dangerouslySetInnerHTML={{ __html: String(signatureHtml) }}
             />
           ) : null}
-          {disclaimer ? <Text style={disclaimerText}>{disclaimer}</Text> : null}
+          {disclaimer && !String(signatureHtml ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').includes(String(disclaimer).trim().slice(0, 40)) ? <Text style={disclaimerText}>{disclaimer}</Text> : null}
         </Container>
       </Body>
     </Html>

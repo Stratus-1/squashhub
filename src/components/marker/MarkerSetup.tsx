@@ -17,7 +17,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
 import { isCurrentTournament } from "@/lib/tournaments/lifecycle";
 import { isActionableTournamentMatch, isActionableLeagueFixture } from "@/lib/tournaments/actionable-match";
-import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
+import { effectiveTournamentSettings, playoffPointsPerGame } from "@/lib/tournaments/effective-settings";
+import { isPlayoffGame } from "@/lib/tournaments/round-plan";
 
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
@@ -342,7 +343,7 @@ export function MarkerSetup({ onStart }: Props) {
       const champs = (allChamps || []).filter((c: any) => isCurrentTournament(c, todayISO));
       if (champs.length === 0) return [];
       const { data: tournamentRules = [] } = await fromExt("tournaments")
-        .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+        .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game")
         .in("id", champs.map((c: any) => c.id));
       const rulesMap = new Map((tournamentRules || []).map((c: any) => [c.id, c]));
       const champMap = new Map(champs.map((c: any) => [c.id, { ...c, ...((rulesMap.get(c.id) as any) || {}) }]));
@@ -351,7 +352,7 @@ export function MarkerSetup({ onStart }: Props) {
       const { data, error } = await supabase
         .from("club_champs_matches")
         .select(`
-          id, group_number, round_number, scheduled_date, scheduled_time, status,
+          id, group_number, round_number, scheduled_date, scheduled_time, status, stage, stage_label,
           champ_id, court_id, handicap_a, handicap_b,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
@@ -425,6 +426,12 @@ export function MarkerSetup({ onStart }: Props) {
       const ptA = memberMap?.get(m.partner_a_member_id) || m.partner_a || null;
       const ptB = memberMap?.get(m.partner_b_member_id) || m.partner_b || null;
       const effective = effectiveTournamentSettings(champ, m.group_number);
+      // Play-off game length override: a category's QF/SF/Final may play to a
+      // different PAR than its pool games ("Keep same format as pools" unticked).
+      if (isPlayoffGame(m)) {
+        const po = playoffPointsPerGame(champ, m.group_number);
+        if (po) effective.pointsPerGame = po;
+      }
       return {
         ...m,
         champName: champ?.name || "Tournament",
@@ -451,7 +458,7 @@ export function MarkerSetup({ onStart }: Props) {
   async function loadTournamentMatchById(matchId: string) {
     const { data, error } = await fromExt("club_champs_matches")
       .select(`
-        id, group_number, round_number, scheduled_date, scheduled_time, status,
+        id, group_number, round_number, scheduled_date, scheduled_time, status, stage, stage_label,
         champ_id, court_id, handicap_a, handicap_b,
         player_a_member_id, player_b_member_id,
         partner_a_member_id, partner_b_member_id,
@@ -468,7 +475,7 @@ export function MarkerSetup({ onStart }: Props) {
     const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
     if (clubId && champ?.club_id !== clubId) return null;
     const { data: tournamentRules } = await fromExt("tournaments")
-      .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+      .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game")
       .eq("id", champ.id)
       .maybeSingle();
     return normalizeTournamentMatch(row, { ...champ, ...(tournamentRules || {}) });

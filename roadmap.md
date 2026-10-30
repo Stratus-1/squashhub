@@ -44,4 +44,5 @@
 - [x] Bar menu images: Coke Zero can, full Powerade bottle, clearer Black Cat (Highveld) — uploaded and rows updated; URLs verified 200.
 - [x] Beta builder: Include registered visitors toggle (Who may enter) -> Pick players + Invitations audience; visitor-promotion lib; 37 invite tests pass
 
-- [ ] Add Par 7 game-length option alongside Par 11 and Par 15 (HSC request, 30 Oct).
+- [x] Add Par 7 game-length option alongside Par 11 and Par 15 (HSC request, 30 Oct).
+- [x] Playoff format override per category: "Keep same format as pools" tick; when off, choose Par 7/11/15 for that category's playoffs (HSC request, 30 Oct). Migration 0315 applied; 22 focused tests pass; verified in HSC edit flow (no save).

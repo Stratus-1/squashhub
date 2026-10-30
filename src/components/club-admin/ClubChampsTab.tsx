@@ -1525,6 +1525,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   //   "knockout"                    → top N of each pool in one cross-pool draw.
   const [leaguePlayoffModes, setLeaguePlayoffModes] = useState<Record<string, PlayoffMode>>({});
   const [leaguePlayoffQualifiers, setLeaguePlayoffQualifiers] = useState<Record<string, number>>({});
+  // Per-category play-off game length override: absent key = "Keep same format
+  // as pools"; 7/11/15 = that category's QF/SF/Final play to this PAR instead.
+  const [leaguePlayoffPointsPerGame, setLeaguePlayoffPointsPerGame] = useState<Record<string, number>>({});
+  const playoffPointsForLeague = (gn: number): 7 | 11 | 15 | null => {
+    const v = Number(leaguePlayoffPointsPerGame[String(gn)]);
+    return v === 7 || v === 11 || v === 15 ? (v as 7 | 11 | 15) : null;
+  };
   const playoffModeForLeague = (gn: number): PlayoffMode =>
     isPlayoffMode(leaguePlayoffModes[String(gn)]) ? leaguePlayoffModes[String(gn)] : DEFAULT_PLAYOFF_MODE;
   const playoffQualifiersForLeague = (gn: number): number =>
@@ -3331,6 +3338,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
       league_playoff_qualifiers:
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
+      league_playoff_points_per_game:
+        Object.keys(leaguePlayoffPointsPerGame).length > 0 ? leaguePlayoffPointsPerGame : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
       rotation_strength_mode: rotationStrengthMode,
@@ -8222,6 +8231,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffs({});
     setLeaguePlayoffModes({});
     setLeaguePlayoffQualifiers({});
+    setLeaguePlayoffPointsPerGame({});
     setRotationMaxMatches(0);
     setRotationAvoidPairs([]);
     setRotationStrengthMode("mixed");
@@ -8619,6 +8629,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       }
       setLeaguePlayoffModes(modes);
       setLeaguePlayoffQualifiers(quals);
+      const lpp = ((ex as any).league_playoff_points_per_game as Record<string, unknown> | null) || null;
+      const ppg: Record<string, number> = {};
+      for (const [k, v] of Object.entries(lpp ?? {})) {
+        const n = Number(v);
+        if (n === 7 || n === 11 || n === 15) ppg[k] = n;
+      }
+      setLeaguePlayoffPointsPerGame(ppg);
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
       const sm = String((champ as any).rotation_strength_mode || "");
       setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
@@ -9129,6 +9146,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setPoolDurations(v.pool_durations ?? {});
     setLeaguePlayoffModes(v.league_playoff_modes ?? {});
     setLeaguePlayoffQualifiers(v.league_playoff_qualifiers ?? {});
+    setLeaguePlayoffPointsPerGame(v.league_playoff_points_per_game ?? {});
     setLeagueSources(Object.fromEntries(Object.entries(v.league_sources ?? {}).map(([key, ids]) => [key, { mode: v.league_source_modes?.[key] ?? "all", leagueIds: ids }])) as any);
     setPartnerMode(v.partner_mode ?? "admin");
     setRotationMaxMatches(v.rotation_max_matches ?? 0);
@@ -9216,6 +9234,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       pool_durations: poolDurations,
       league_playoff_modes: leaguePlayoffModes,
       league_playoff_qualifiers: leaguePlayoffQualifiers,
+      league_playoff_points_per_game: leaguePlayoffPointsPerGame,
       league_sources: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.leagueIds])),
       league_source_modes: Object.fromEntries(Object.entries(leagueSources).map(([key, v]) => [key, v.mode])),
       affects_ranking_points: affectsRankingPoints, ranking_scope: rankingScopeOverride, ranking_weight: rankingWeight, ladder_affects: ladderAffects,
@@ -9224,7 +9243,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return true;
   };
 
-  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
+  const originalChangeKey = JSON.stringify({ monradRounds, numGroups, groupLabels, expectedPlayers, leagueFormats, swissPools, swissRounds, swissRrFinish, leagueGenders, leagueMatchTypes, leagueScoringModes, leaguePointsPerGame, leagueBestOf, leaguePlayAll, leagueWinConditions, groupDurations, groupBreakMinutes, leagueServingMethods, leaguePlayoffs, leaguePlannedPlayoffRounds, leaguePlayoffBottomHalf, leaguePlayoffPointsPerGame, leagueFollowUpFormats, leagueSeedingPlans, leaguePoolPlacement, leaguePoolNames, leagueFollowUpSeeding, leagueByeHandling, leagueForfeitRules, leagueForfeitPoints, divisionFollows, divisionSeedSource, divisionPairing, leagueSources, poolDurations, partnerMode, ladderAffects, affectsRankingPoints });
   const originalBaselineRef = useRef<string | null>(null);
   useEffect(() => {
     if (!structureOnly || !originalLoadedRef.current || !showWizard) return;
@@ -10568,6 +10587,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     )}
                                   </div>
                                 )}
+                                {playoffsForLeague(gn) && scoringForLeague(gn) === "standard" && (
+                                  <div className="pl-6 pt-1.5 space-y-1.5">
+                                    <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        className="h-3.5 w-3.5 accent-fuchsia-500"
+                                        checked={playoffPointsForLeague(gn) == null}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setLeaguePlayoffPointsPerGame((m) => { const n = { ...m }; delete n[key]; return n; });
+                                          } else {
+                                            const cur = pointsForLeague(gn);
+                                            setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: cur === 15 ? 15 : cur === 7 ? 7 : 11 }));
+                                          }
+                                        }}
+                                      />
+                                      Keep same format as pools
+                                    </label>
+                                    {playoffPointsForLeague(gn) != null && (
+                                      <SegRow
+                                        label="Playoff game length"
+                                        value={String(playoffPointsForLeague(gn))}
+                                        color="red"
+                                        options={[
+                                          { v: "7", l: "Par 7" },
+                                          { v: "11", l: "Par 11" },
+                                          { v: "15", l: "Par 15" },
+                                        ]}
+                                        onChange={(v) => setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11 }))}
+                                      />
+                                    )}
+                                    {playoffPointsForLeague(gn) != null && (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        Quarterfinals, semifinals and the final of this category play to Par {playoffPointsForLeague(gn)}; pool games stay Par {pointsForLeague(gn)}.
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>}
 
                               {structureOnly && <div className="pt-2 space-y-3">
@@ -10617,6 +10674,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       </label>
                                     );
                                   })()}
+                                  {(leaguePlannedPlayoffRounds[key] ?? []).length > 0 && scoringForLeague(gn) === "standard" && (
+                                    <div className="pt-1 space-y-1.5">
+                                      <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          className="h-3.5 w-3.5 accent-fuchsia-500"
+                                          checked={playoffPointsForLeague(gn) == null}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setLeaguePlayoffPointsPerGame((m) => { const n = { ...m }; delete n[key]; return n; });
+                                            } else {
+                                              const cur = pointsForLeague(gn);
+                                              setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: cur === 15 ? 15 : cur === 7 ? 7 : 11 }));
+                                            }
+                                          }}
+                                        />
+                                        Keep same format as pools
+                                      </label>
+                                      {playoffPointsForLeague(gn) != null && (
+                                        <SegRow
+                                          label="Playoff game length"
+                                          value={String(playoffPointsForLeague(gn))}
+                                          color="red"
+                                          options={[
+                                            { v: "7", l: "Par 7" },
+                                            { v: "11", l: "Par 11" },
+                                            { v: "15", l: "Par 15" },
+                                          ]}
+                                          onChange={(v) => setLeaguePlayoffPointsPerGame((m) => ({ ...m, [key]: Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : 11 }))}
+                                        />
+                                      )}
+                                      {playoffPointsForLeague(gn) != null && (
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          This category's playoffs play to Par {playoffPointsForLeague(gn)}; pool games stay Par {pointsForLeague(gn)}.
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="rounded-md border border-border p-2 space-y-1.5">
                                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

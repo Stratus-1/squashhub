@@ -37,6 +37,16 @@ function points(raw: unknown): 7 | 11 | 15 | null {
   return null;
 }
 
+/**
+ * Per-category play-off game length override. Null/absent = "Keep same format
+ * as pools" — play-offs use the category's own PAR. A value of 7, 11 or 15
+ * makes that category's quarterfinals, semifinals and finals play to it instead.
+ * Values are database-validated; anything unexpected reads as "no override".
+ */
+export function playoffPointsPerGame(tournament: any, groupNumber: number | string | null | undefined): 7 | 11 | 15 | null {
+  return points(mapValue(tournament?.league_playoff_points_per_game, groupNumber));
+}
+
 function bestOf(raw: unknown): 3 | 5 | null {
   const n = Number(raw);
   if (n === 5) return 5;

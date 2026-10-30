@@ -2199,6 +2199,13 @@
       "when": 1793350199994,
       "tag": "0313_vice_chairman_and_club_manager_offices",
       "breakpoints": true
+    },
+    {
+      "idx": 314,
+      "version": "7",
+      "when": 1793359813498,
+      "tag": "0314_allow_first_to_target_beta_feature",
+      "breakpoints": true
     }
   ]
 }

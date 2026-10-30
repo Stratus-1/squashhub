@@ -15,9 +15,12 @@ import { ExternalLink, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const PUBLIC_NOTICE_KEY = "sh.qr.publicNotice.v1";
+export const PUBLIC_BAR_DISMISSED_KEY = "sh.perm.qrPublicBarDismissed";
 
 const seen = () => { try { return localStorage.getItem(PUBLIC_NOTICE_KEY) === "1"; } catch { return true; } };
 const markSeen = () => { try { localStorage.setItem(PUBLIC_NOTICE_KEY, "1"); } catch { /* private mode: show again next time */ } };
+const barDismissed = () => { try { return localStorage.getItem(PUBLIC_BAR_DISMISSED_KEY) === "1"; } catch { return false; } };
+const markBarDismissed = () => { try { localStorage.setItem(PUBLIC_BAR_DISMISSED_KEY, "1"); } catch { /* private mode: show again next time */ } };
 
 /** Absolute in-app URL for the authenticated view (same host, so club subdomains keep working). */
 export function openInAppHref(kind: "tournament" | "league", competitionId?: string | null): string {

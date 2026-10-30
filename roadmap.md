@@ -1,6 +1,6 @@
 # Roadmap
 - [ ] Diagnose unchanged preview shown in image-339 and verify the actual template/campaign screen uses the corrected email preview.
-- [ ] Make template preview available during creation and from the template list; check and restore document inclusion in templates/campaigns through the existing supported delivery path.
+- [ ] Make template preview available during creation and from the template list; add multiple document uploads to templates and campaign setup as secure download links using existing protected storage.
 - [x] Restrict All members preview and both email dispatch paths to active, non-suspended members with send-time rechecks; 23 focused tests pass, build OK. No emails sent; dispatch changes not deployed, preview changes not published.
 - [x] Communications preview isolates standard sent body/action/signature/disclaimer on white; existing bullet markers restored, table insertion/editing enabled. Nine email tests pass, actual controls browser-tested (bullets/footer/6 table cells), build OK. Full signed-in wizard blocked by workspace recovery; no campaigns saved/sent, no publication; inbox-client variations remain.
 - [x] Allow specials in the personal-PIN club-sponsored basket; migration 0312 applied, component-cost/stock/rollback/retry database tests and 37 focused tests pass; simulated browser selection/confirmation verified, build OK. Screen preview-only; no real stock or financial transactions submitted.

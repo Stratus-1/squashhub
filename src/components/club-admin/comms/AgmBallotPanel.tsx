@@ -273,7 +273,7 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         content: {
           email: {
             subject: `${title} — nominations for the committee`,
-            body: `${nominationMessageHtml(nomMsg.replace(/^\s*dear[^\n]*\n/i, ""), { meeting: meet, closes }).replace(/^/, "<p>Dear {{name}},</p>")}<p><a href="{{nomination_link}}">Make your nominations</a></p>`,
+            body: `${nominationMessageHtml(nomMsg, { meeting: meet, closes })}<p><a href="{{nomination_link}}">Make your nominations</a></p>`,
 },
           whatsapp: { body: `Hi {{first_name}}, nominations for the ${title} committee are open until ${closes}. Nominate another member${allowSelf ? ", or make yourself available for the position you would like to fill" : ""}, and accept nominations you receive: {{nomination_link}}` },
         },

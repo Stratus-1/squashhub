@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
 
-export function AgmTestEmail({ clubId, ballotId }: { clubId: string; ballotId: string }) {
+export function AgmTestEmail({ clubId, ballotId, kind = "invite", beforeSend }: { clubId: string; ballotId: string; kind?: "invite" | "nominations"; beforeSend?: () => Promise<void> }) {
   const [memberId, setMemberId] = useState("");
   const [destination, setDestination] = useState<"self" | "member">("self");
   const { data: members = [] } = useQuery({
@@ -21,8 +21,9 @@ export function AgmTestEmail({ clubId, ballotId }: { clubId: string; ballotId: s
   const member = members.find((m) => m.id === memberId);
   const send = useMutation({
     mutationFn: async () => {
+      if (beforeSend) await beforeSend();
       const { data, error } = await supabase.functions.invoke("agm-test-email", {
-        body: { ballot_id: ballotId, member_id: memberId, destination, request_id: crypto.randomUUID() },
+        body: { ballot_id: ballotId, member_id: memberId, destination, request_id: crypto.randomUUID(), kind },
       });
       if (error) {
         let detail = error.message;
@@ -37,7 +38,7 @@ export function AgmTestEmail({ clubId, ballotId }: { clubId: string; ballotId: s
   });
   return (
     <div className="border-t border-border pt-3 space-y-2">
-      <p className="text-xs font-semibold flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />Test AGM email</p>
+      <p className="text-xs font-semibold flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{kind === "nominations" ? "Test call for nominations email" : "Test AGM email"}</p>
       <div className="grid sm:grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label htmlFor={`agm-test-member-${ballotId}`} className="text-xs">Preview for member</Label>
@@ -58,7 +59,7 @@ export function AgmTestEmail({ clubId, ballotId }: { clubId: string; ballotId: s
       <Button size="sm" variant="outline" disabled={!memberId || send.isPending || (destination === "member" && !member?.email)} onClick={() => send.mutate()}>
         <Mail className="w-3.5 h-3.5 mr-1" />{send.isPending ? "Sending…" : "Send test email"}
       </Button>
-      <p className="text-[11px] text-muted-foreground">Saved details only. Test voting and attendance buttons are inactive; the live ballot and replies stay unchanged.</p>
+      <p className="text-[11px] text-muted-foreground">{kind === "nominations" ? "Saves the draft first, then sends exactly this message. The test nomination link is inactive; no nominations open." : <>Saved details only. Test voting and attendance buttons are inactive; the live ballot and replies stay unchanged.</>}</p>
     </div>
   );
 }

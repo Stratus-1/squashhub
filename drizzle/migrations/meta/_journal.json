@@ -2192,6 +2192,13 @@
       "when": 1793347448780,
       "tag": "0312_club_sponsored_specials",
       "breakpoints": true
+    },
+    {
+      "idx": 313,
+      "version": "7",
+      "when": 1793350199994,
+      "tag": "0313_vice_chairman_and_club_manager_offices",
+      "breakpoints": true
     }
   ]
 }

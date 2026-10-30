@@ -1,0 +1,18 @@
+CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('test.uid',true),'')::uuid $$;
+CREATE TYPE app_role AS ENUM('admin','moderator','user');
+CREATE FUNCTION has_role(uuid,app_role) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+CREATE TABLE clubs(id uuid PRIMARY KEY,chairman_member_id uuid,secretary_member_id uuid,club_captain_member_id uuid);
+CREATE TABLE club_members(id uuid PRIMARY KEY,club_id uuid,user_id uuid,role text);
+CREATE TABLE club_permission_roles(id uuid PRIMARY KEY,club_id uuid,role_name text);
+CREATE TABLE club_member_permissions(club_member_id uuid PRIMARY KEY,permission_role_id uuid,is_full_admin boolean DEFAULT false);
+CREATE TABLE club_offices(club_id uuid,club_member_id uuid,office text CONSTRAINT club_offices_office_check CHECK(office IN('chairman','vice_chair','secretary','treasurer','club_captain')),ended_at timestamptz);
+CREATE TABLE member_role_assignments(club_id uuid,club_member_id uuid,role_name text,revoked_at timestamptz);
+CREATE TABLE office_role_defaults(office text,role_name text);
+CREATE FUNCTION assign_role_to_member(_club_id uuid,_member_id uuid,_role_name text) RETURNS void LANGUAGE sql AS $$ INSERT INTO club_member_permissions SELECT _member_id,id,false FROM club_permission_roles WHERE club_id=_club_id AND role_name=_role_name ON CONFLICT(club_member_id) DO UPDATE SET permission_role_id=excluded.permission_role_id $$;
+CREATE FUNCTION is_club_chairman(_user_id uuid,_club_id uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT EXISTS(SELECT 1 FROM club_members cm WHERE cm.user_id=_user_id AND cm.club_id=_club_id AND (cm.id=(SELECT chairman_member_id FROM public.clubs WHERE id=_club_id) OR EXISTS(SELECT 1 FROM club_offices o WHERE o.club_id=_club_id AND o.club_member_id=cm.id AND o.office::text='chairman' AND o.ended_at IS NULL))) $$;
+CREATE FUNCTION is_club_admin(_user_id uuid,_club_id uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT EXISTS(SELECT 1 FROM clubs c JOIN club_members cm ON cm.club_id=c.id WHERE cm.user_id=_user_id AND c.id=_club_id AND cm.id IN (c.chairman_member_id, c.secretary_member_id, c.club_captain_member_id)) $$;
+CREATE FUNCTION new_model_cap(_user_id uuid,_club_id uuid,_capability text) RETURNS boolean LANGUAGE sql AS $$ SELECT EXISTS(SELECT 1 FROM club_offices o JOIN club_members m ON m.id=o.club_member_id JOIN office_role_defaults d ON d.office = o.office WHERE m.user_id=_user_id AND o.club_id=_club_id AND o.ended_at IS NULL AND d.role_name=_capability) $$;
+CREATE FUNCTION guard_chairman_financial_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;
+CREATE FUNCTION chairman_banking_setup_change_allowed(_table text,_op text,_new jsonb,_old jsonb) RETURNS boolean LANGUAGE sql AS $$ SELECT NOT EXISTS(SELECT 1 FROM jsonb_each(_new) e WHERE e.value IS DISTINCT FROM _old->e.key AND e.key='chairman_member_id') $$;

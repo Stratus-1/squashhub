@@ -8595,6 +8595,7 @@ export type Database = {
           challenge_levels_up: number | null
           champ_result_emails: boolean
           club_captain_member_id: string | null
+          club_manager_member_id: string | null
           contact_person_name: string | null
           created_at: string
           created_by: string | null
@@ -8712,6 +8713,7 @@ export type Database = {
           updated_at: string
           uses_gobook: boolean
           variance_threshold_pct: number | null
+          vice_chairman_member_id: string | null
           visitor_booking_fee: number
           visitor_home_clubs_enabled: boolean
           visitor_pass_requires_approval: boolean
@@ -8759,6 +8761,7 @@ export type Database = {
           challenge_levels_up?: number | null
           champ_result_emails?: boolean
           club_captain_member_id?: string | null
+          club_manager_member_id?: string | null
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
@@ -8876,6 +8879,7 @@ export type Database = {
           updated_at?: string
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
+          vice_chairman_member_id?: string | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
           visitor_pass_requires_approval?: boolean
@@ -8923,6 +8927,7 @@ export type Database = {
           challenge_levels_up?: number | null
           champ_result_emails?: boolean
           club_captain_member_id?: string | null
+          club_manager_member_id?: string | null
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
@@ -9040,6 +9045,7 @@ export type Database = {
           updated_at?: string
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
+          vice_chairman_member_id?: string | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
           visitor_pass_requires_approval?: boolean
@@ -9068,6 +9074,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clubs_club_manager_member_id_fkey"
+            columns: ["club_manager_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clubs_secretary_member_id_fkey"
             columns: ["secretary_member_id"]
             isOneToOne: false
@@ -9077,6 +9090,13 @@ export type Database = {
           {
             foreignKeyName: "clubs_treasurer_member_id_fkey"
             columns: ["treasurer_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_vice_chairman_member_id_fkey"
+            columns: ["vice_chairman_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
             referencedColumns: ["id"]

@@ -1,3 +1,6 @@
+## 2026-10-30 — Vice Chairman and Club Manager offices
+- Add member selectors and title displays with club-scoped assignment validation. Vice Chairman reuses Chairman permission and financial restrictions; Club Manager reuses the Club Captain office role, never the league captain enum. Existing offices/assignments are unchanged; no members automatically appointed.
+
 ## 2026-10-30 — Template preview entry and multiple documents
 - Add a direct Templates-list preview entry, retaining unsaved new-template preview. Templates and campaign-only email overrides accept multiple document uploads; email bodies retain persistent authenticated document links. Existing private club document policies enforce access, with short-lived signed download URLs generated only after sign-in. No new bucket, permission changes, email sends or campaign records created.
 

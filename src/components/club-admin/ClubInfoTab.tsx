@@ -33,8 +33,10 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     contact_person_name: (club as any).contact_person_name || "",
     phone: club.phone || "",
     chairman_member_id: club.chairman_member_id || "",
+    vice_chairman_member_id: club.vice_chairman_member_id || "",
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
+    club_manager_member_id: club.club_manager_member_id || "",
     treasurer_member_id: club.treasurer_member_id || "",
     logo_url: club.logo_url || "",
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
@@ -238,12 +240,12 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "bearers" && (
         <SetupSection
           title="Office bearers"
-          description="Chairman, secretary, club captain and treasurer — pulled from your member list."
+          description="Chairman, Vice Chairman, Secretary, Club Captain, Club Manager and Treasurer."
           complete={!!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id}
           editing={isEditing("bearers")}
           onEdit={() => startEdit("bearers")}
           onCancel={() => cancelEdit("bearers")}
-          onSave={() => save("bearers", ["chairman_member_id", "secretary_member_id", "club_captain_member_id", "treasurer_member_id", "show_delegates_on_landing"])}
+          onSave={() => save("bearers", ["chairman_member_id", "vice_chairman_member_id", "secretary_member_id", "club_captain_member_id", "club_manager_member_id", "treasurer_member_id", "show_delegates_on_landing"])}
           saving={updateClub.isPending}
         >
           <div className="space-y-4">
@@ -251,15 +253,19 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
               {isEditing("bearers") ? (
                 <>
                   <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
+                  <SearchableMemberSelect label="Vice Chairman" value={form.vice_chairman_member_id} field="vice_chairman_member_id" />
                   <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
                   <SearchableMemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
+                  <SearchableMemberSelect label="Club Manager" value={form.club_manager_member_id} field="club_manager_member_id" />
                   <SearchableMemberSelect label="Treasurer" value={form.treasurer_member_id} field="treasurer_member_id" />
                 </>
               ) : (
                 <>
                   <SetupField label="Chairman" editing={false} value={memberName(form.chairman_member_id)}><span /></SetupField>
+                  <SetupField label="Vice Chairman" editing={false} value={memberName(form.vice_chairman_member_id)}><span /></SetupField>
                   <SetupField label="Secretary" editing={false} value={memberName(form.secretary_member_id)}><span /></SetupField>
                   <SetupField label="Club Captain" editing={false} value={memberName(form.club_captain_member_id)}><span /></SetupField>
+                  <SetupField label="Club Manager" editing={false} value={memberName(form.club_manager_member_id)}><span /></SetupField>
                   <SetupField label="Treasurer" editing={false} value={memberName(form.treasurer_member_id)}><span /></SetupField>
                 </>
               )}

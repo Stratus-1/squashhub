@@ -702,8 +702,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
     if (!club) return null;
     const titles: string[] = [];
     if ((club as any).chairman_member_id === memberId) titles.push("Chairman");
+    if ((club as any).vice_chairman_member_id === memberId) titles.push("Vice Chairman");
     if ((club as any).secretary_member_id === memberId) titles.push("Secretary");
     if ((club as any).club_captain_member_id === memberId) titles.push("Club Captain");
+    if ((club as any).club_manager_member_id === memberId) titles.push("Club Manager");
     if ((club as any).treasurer_member_id === memberId) titles.push("Treasurer");
     return titles.length > 0 ? titles.join(" / ") : null;
   };

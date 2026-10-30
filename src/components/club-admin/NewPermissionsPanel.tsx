@@ -29,7 +29,7 @@ interface Row { club_member_id: string; name: string; offices: string[]; roles: 
 interface Cap { key: string; area: string; description: string | null }
 
 const OFFICE_LABEL: Record<string, string> = {
-  chairman: "Chairman", vice_chair: "Vice-Chair", secretary: "Secretary", treasurer: "Treasurer", club_captain: "Club Captain",
+  chairman: "Chairman", vice_chair: "Vice Chairman", secretary: "Secretary", treasurer: "Treasurer", club_captain: "Club Captain", club_manager: "Club Manager",
 };
 
 export function NewPermissionsPanel({ clubId }: { clubId: string }) {

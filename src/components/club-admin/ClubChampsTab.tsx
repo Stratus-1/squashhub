@@ -1525,6 +1525,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   //   "knockout"                    → top N of each pool in one cross-pool draw.
   const [leaguePlayoffModes, setLeaguePlayoffModes] = useState<Record<string, PlayoffMode>>({});
   const [leaguePlayoffQualifiers, setLeaguePlayoffQualifiers] = useState<Record<string, number>>({});
+  // Per-category play-off game length override: absent key = "Keep same format
+  // as pools"; 7/11/15 = that category's QF/SF/Final play to this PAR instead.
+  const [leaguePlayoffPointsPerGame, setLeaguePlayoffPointsPerGame] = useState<Record<string, number>>({});
+  const playoffPointsForLeague = (gn: number): 7 | 11 | 15 | null => {
+    const v = Number(leaguePlayoffPointsPerGame[String(gn)]);
+    return v === 7 || v === 11 || v === 15 ? (v as 7 | 11 | 15) : null;
+  };
   const playoffModeForLeague = (gn: number): PlayoffMode =>
     isPlayoffMode(leaguePlayoffModes[String(gn)]) ? leaguePlayoffModes[String(gn)] : DEFAULT_PLAYOFF_MODE;
   const playoffQualifiersForLeague = (gn: number): number =>
@@ -3331,6 +3338,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
       league_playoff_qualifiers:
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
+      league_playoff_points_per_game:
+        Object.keys(leaguePlayoffPointsPerGame).length > 0 ? leaguePlayoffPointsPerGame : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
       rotation_strength_mode: rotationStrengthMode,

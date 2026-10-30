@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add independent playoff Best of 3/5 and Play all 3/5 choices; 47 focused tests and build pass, all four choices verified in HSC edit controls without saving tournament changes; hosted save/reopen not exercised on live data.
 - [ ] Vercel deployment diagnosis blocked by unavailable Vercel access/deployment error; source configuration inspected, no confirmed build-setting fault.
 - [x] Lovable publication requested at https://squashhub.lovable.app; completion not confirmed. Both member email dispatch functions redeployed successfully. Vercel is a separate blocked release path.
 - [x] Add Vice Chairman and Club Manager selectors/titles with Chairman/Club Captain permission parity; migration 0313 applied, isolated assignment/parity/cross-club tests and 35 focused tests pass, build OK. No real member appointed; signed-in column read passed, full assignment UI blocked by identity confirmation.

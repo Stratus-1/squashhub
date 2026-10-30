@@ -17,7 +17,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
 import { isCurrentTournament } from "@/lib/tournaments/lifecycle";
 import { isActionableTournamentMatch, isActionableLeagueFixture } from "@/lib/tournaments/actionable-match";
-import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
+import { effectiveTournamentSettings, playoffPointsPerGame } from "@/lib/tournaments/effective-settings";
+import { isPlayoffGame } from "@/lib/tournaments/round-plan";
 
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
@@ -425,6 +426,12 @@ export function MarkerSetup({ onStart }: Props) {
       const ptA = memberMap?.get(m.partner_a_member_id) || m.partner_a || null;
       const ptB = memberMap?.get(m.partner_b_member_id) || m.partner_b || null;
       const effective = effectiveTournamentSettings(champ, m.group_number);
+      // Play-off game length override: a category's QF/SF/Final may play to a
+      // different PAR than its pool games ("Keep same format as pools" unticked).
+      if (isPlayoffGame(m)) {
+        const po = playoffPointsPerGame(champ, m.group_number);
+        if (po) effective.pointsPerGame = po;
+      }
       return {
         ...m,
         champName: champ?.name || "Tournament",

@@ -443,7 +443,7 @@ export default function MatchMarker() {
     let cancelled = false;
     const syncTournamentScoring = async () => {
       const { data } = await fromExt("club_champs_matches")
-        .select("champ_id, group_number")
+        .select("champ_id, group_number, stage, stage_label")
         .eq("id", config.sourceId)
         .maybeSingle();
 
@@ -451,7 +451,7 @@ export default function MatchMarker() {
       const row = data as any;
       const [{ data: tournamentData }, { data: rulesData }] = await Promise.all([
         fromExt("tournaments")
-          .select("id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, doubles_serving_method, league_doubles_serving_methods")
+          .select("id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoff_points_per_game, doubles_serving_method, league_doubles_serving_methods")
           .eq("id", row.champ_id)
           .maybeSingle(),
         fromExt("tournament_rules")
@@ -461,6 +461,11 @@ export default function MatchMarker() {
       ]);
       if (cancelled || !tournamentData) return;
       const effective = effectiveTournamentSettings({ ...(rulesData as any), ...(tournamentData as any) }, row.group_number);
+      // Play-off game length override (see loadLinkedTournamentMatch).
+      if (isPlayoffGame(row)) {
+        const po = playoffPointsPerGame({ ...(rulesData as any), ...(tournamentData as any) }, row.group_number);
+        if (po) effective.pointsPerGame = po;
+      }
       // Time-capped (Bells) divisions are always marked on the Bells marker.
       if (effective.scoringMode === "time_capped_points") {
         navigate(`/bells-marker/${config.sourceId}`, { replace: true });

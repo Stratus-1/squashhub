@@ -134,7 +134,7 @@ export function divisionScoringColumns(divs: Array<{ scoring?: DivisionScoring |
   const pick = <T,>(f: (s: DivisionScoring) => T | undefined) => Object.fromEntries(divs.flatMap((d, n) => { const v = d.scoring ? f(d.scoring) : undefined; return v === undefined ? [] : [[String(n + 1), v]]; }));
   return {
     league_scoring_modes: pick((s) => s.mode),
-    league_points_per_game: pick((s) => s.mode === "first_to_target" ? Math.max(1, Math.floor(s.pointsPerGame || 7)) : (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 11 ? 11 : undefined)),
+    league_points_per_game: pick((s) => s.mode === "first_to_target" ? Math.max(1, Math.floor(s.pointsPerGame || 7)) : (s.pointsPerGame === 15 ? 15 : s.pointsPerGame === 7 ? 7 : s.pointsPerGame === 11 ? 11 : undefined)),
     league_best_of: pick((s) => s.mode === "first_to_target" ? 1 : (s.bestOf === 3 ? 3 : s.bestOf === 5 ? 5 : undefined)),
     league_play_all_games: pick((s) => s.mode === "first_to_target" ? false : (s.playAllGames != null ? s.playAllGames : undefined)),
     league_win_conditions: pick((s) => s.mode === "first_to_target" ? s.winCondition ?? "sudden_death" : s.winCondition),

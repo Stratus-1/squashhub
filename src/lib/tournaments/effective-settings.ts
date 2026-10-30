@@ -29,9 +29,10 @@ function matchType(raw: unknown): EffectiveMatchType | null {
   return raw === "doubles" || raw === "mixed" || raw === "singles" ? raw : null;
 }
 
-function points(raw: unknown): 11 | 15 | null {
+function points(raw: unknown): 7 | 11 | 15 | null {
   const n = Number(raw);
   if (n === 15) return 15;
+  if (n === 7) return 7;
   if (n === 11) return 11;
   return null;
 }

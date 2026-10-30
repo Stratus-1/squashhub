@@ -81,7 +81,7 @@ export function scoringLabelForGroup(champ: any, groupNumber: number): string | 
   const p = Number(at(champ?.league_points_per_game) ?? champ?.points_per_game);
   const b = Number(at(champ?.league_best_of) ?? champ?.best_of);
   const parts: string[] = [];
-  if (p === 11 || p === 15) parts.push(`PAR ${p}`);
+  if (p === 7 || p === 11 || p === 15) parts.push(`PAR ${p}`);
   if (b === 3 || b === 5) parts.push(`best of ${b}`);
   return parts.length ? parts.join(", ") : null;
 }

@@ -5,8 +5,9 @@
  */
 import type { Scoring, Stage, TournamentDefinition } from "./definition";
 
-export type ScoringChoice = "" | "par11_3" | "par11_5" | "par15_3" | "par15_5" | "bells";
+export type ScoringChoice = "" | "par7_3" | "par7_5" | "par11_3" | "par11_5" | "par15_3" | "par15_5" | "bells";
 export const SCORING_CHOICES: Array<[ScoringChoice, string]> = [
+  ["par7_3", "PAR 7 — best of 3"], ["par7_5", "PAR 7 — best of 5"],
   ["par11_3", "PAR 11 — best of 3"], ["par11_5", "PAR 11 — best of 5"],
   ["par15_3", "PAR 15 — best of 3"], ["par15_5", "PAR 15 — best of 5"],
   ["bells", "Bells — time-capped points"],

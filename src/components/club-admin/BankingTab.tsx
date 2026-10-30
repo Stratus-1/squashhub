@@ -182,8 +182,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const boardMemberNames = useMemo(() => {
     const officials: Array<[string, string | null | undefined]> = [
       ["Chairman", (club as any).chairman_member_id],
+      ["Vice Chairman", (club as any).vice_chairman_member_id],
       ["Secretary", (club as any).secretary_member_id],
       ["Club Captain", (club as any).club_captain_member_id],
+      ["Club Manager", (club as any).club_manager_member_id],
       ["Treasurer", (club as any).treasurer_member_id],
     ];
     const byId = new Map(

@@ -2,7 +2,7 @@
 export const FINANCIAL_PERMISSION_SLUGS = ["finance", "fees"] as const;
 
 export function isChairmanRole(roleName?: string | null): boolean {
-  return roleName?.trim().toLowerCase() === "chairman";
+  return ["chairman", "vice chairman", "vice-chairman", "vice chair"].includes(roleName?.trim().toLowerCase() ?? "");
 }
 
 export function chairmanMayChangeFinance(isChairman: boolean, isPlatformAdmin: boolean): boolean {

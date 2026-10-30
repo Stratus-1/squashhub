@@ -245,11 +245,11 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     queryKey: ["club-delegates-for-perms", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("chairman_member_id, secretary_member_id, club_captain_member_id, treasurer_member_id")
+        .select("chairman_member_id, vice_chairman_member_id, secretary_member_id, club_captain_member_id, club_manager_member_id, treasurer_member_id")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
-      return data as { chairman_member_id: string | null; secretary_member_id: string | null; club_captain_member_id: string | null; treasurer_member_id: string | null } | null;
+      return data as { chairman_member_id: string | null; vice_chairman_member_id: string | null; secretary_member_id: string | null; club_captain_member_id: string | null; club_manager_member_id: string | null; treasurer_member_id: string | null } | null;
     },
   });
 
@@ -276,8 +276,10 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
   const delegateLabel = (memberId: string): string | null => {
     if (!club) return null;
     if (club.chairman_member_id === memberId) return "Chairman";
+    if (club.vice_chairman_member_id === memberId) return "Vice Chairman";
     if (club.secretary_member_id === memberId) return "Secretary";
     if (club.club_captain_member_id === memberId) return "Club Captain";
+    if (club.club_manager_member_id === memberId) return "Club Manager";
     if (club.treasurer_member_id === memberId) return "Treasurer";
     return null;
   };

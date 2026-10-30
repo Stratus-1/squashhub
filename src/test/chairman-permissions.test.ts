@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { chairmanCapabilityAllowed, chairmanMayChangeFinance, chairmanMayEditFeeCategories, isChairmanRole, FINANCIAL_PERMISSION_SLUGS } from "@/lib/chairman-permissions";
 
 describe("Chairman financial view-only rules", () => {
+  it("gives Vice Chairman the same Chairman financial restrictions", () => {
+    for (const role of ["Vice Chairman", "vice-chairman", "Vice Chair"]) {
+      expect(isChairmanRole(role)).toBe(true);
+      expect(chairmanMayChangeFinance(isChairmanRole(role), false)).toBe(false);
+      expect(chairmanMayEditFeeCategories(isChairmanRole(role), false)).toBe(true);
+    }
+    expect(isChairmanRole("Club Manager")).toBe(false);
+  });
   it("recognises the Chairman role regardless of case", () => {
     expect(isChairmanRole(" Chairman ")).toBe(true);
     expect(isChairmanRole("Treasurer")).toBe(false);

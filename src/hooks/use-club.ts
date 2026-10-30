@@ -21,8 +21,10 @@ export interface Club {
   member_fee_due_month?: number;
   fee_reminder_days_before?: number;
   chairman_member_id?: string;
+  vice_chairman_member_id?: string;
   secretary_member_id?: string;
   club_captain_member_id?: string;
+  club_manager_member_id?: string;
   treasurer_member_id?: string;
   member_number_prefix?: string;
   member_number_length?: number;
@@ -304,7 +306,7 @@ export function useIsClubAdmin() {
       const memberIds = (members || []).map((m: any) => m.id);
       if (memberIds.length === 0) return false;
       const club: any = data?.club;
-      return [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id, club?.treasurer_member_id]
+      return [club?.chairman_member_id, club?.vice_chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id, club?.club_manager_member_id, club?.treasurer_member_id]
         .filter(Boolean)
         .some((id: string) => memberIds.includes(id));
     },

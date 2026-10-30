@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add Vice Chairman and Club Manager office titles with Chairman/Club Captain permission parity; preserve financial restrictions and league captain scope; test server and screen rules.
 - [x] Clearly label each document link inside the email body; real two-file uploads, authorized download links and cleanup verified in template/campaign component flows; 26 focused tests pass, build OK. No templates/campaigns saved or emails sent.
 - [x] Image-339 shows the old app-themed preview; current campaign preview browser-verified with white email body, visible bullets and two document links. User's open preview needs reloading; not published.
 - [x] Add direct Templates-list preview and multiple uploads to templates/campaign setup using existing protected storage. Signed-in actual admin screen reached but identity-confirmation blocks full navigation; isolated signed-in controls/upload/readback passed. No permission changes; download page remains preview-only until publication.

@@ -57,7 +57,7 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
                 <button type="button" onClick={dismiss} aria-label="Dismiss" className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
               </div>
               <div className="mt-2 flex flex-wrap justify-end gap-2">
-                <Button type="button" size="sm" variant="ghost" onClick={dismiss}>Continue as visitor</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={closeBar}>Continue as visitor</Button>
                 <Button asChild size="sm"><a href={href} onClick={markSeen}>Open in SquashHub</a></Button>
               </div>
             </div>

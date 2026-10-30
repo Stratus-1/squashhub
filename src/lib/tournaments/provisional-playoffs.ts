@@ -97,7 +97,7 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
       const low = i > 0 && pairings[i] === "winners"
         ? Array.from({ length: g }, (_, k) => `Winner ${prevLow[2 * k] ?? "?"} v Winner ${prevLow[2 * k + 1] ?? "?"}`)
         : lowerLabels(g, pairings[i], pools);
-      const lowIds = low.map((_, k) => (g === 1 ? `${ab} (bottom half)` : `${ab}${g + k + 1}`));
+      const lowIds = low.map((_, k) => (g === 1 ? "Plate" : `${ab}${g + k + 1}`));
       low.forEach((label, k) => out.push({ key: `${unitKey}|${ab}|low|${k + 1}`, unitKey, phase: i + 1, stage: name, label: `${lowIds[k]}: ${label}` }));
       prevLow = lowIds;
     }

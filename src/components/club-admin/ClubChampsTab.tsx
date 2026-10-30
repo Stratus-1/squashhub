@@ -8628,6 +8628,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       }
       setLeaguePlayoffModes(modes);
       setLeaguePlayoffQualifiers(quals);
+      const lpp = ((ex as any).league_playoff_points_per_game as Record<string, unknown> | null) || null;
+      const ppg: Record<string, number> = {};
+      for (const [k, v] of Object.entries(lpp ?? {})) {
+        const n = Number(v);
+        if (n === 7 || n === 11 || n === 15) ppg[k] = n;
+      }
+      setLeaguePlayoffPointsPerGame(ppg);
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
       const sm = String((champ as any).rotation_strength_mode || "");
       setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
@@ -9138,6 +9145,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setPoolDurations(v.pool_durations ?? {});
     setLeaguePlayoffModes(v.league_playoff_modes ?? {});
     setLeaguePlayoffQualifiers(v.league_playoff_qualifiers ?? {});
+    setLeaguePlayoffPointsPerGame(v.league_playoff_points_per_game ?? {});
     setLeagueSources(Object.fromEntries(Object.entries(v.league_sources ?? {}).map(([key, ids]) => [key, { mode: v.league_source_modes?.[key] ?? "all", leagueIds: ids }])) as any);
     setPartnerMode(v.partner_mode ?? "admin");
     setRotationMaxMatches(v.rotation_max_matches ?? 0);

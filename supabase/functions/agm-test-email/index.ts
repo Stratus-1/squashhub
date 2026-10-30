@@ -42,10 +42,22 @@ Deno.serve(async (req) => {
       const filled = msg.replace(/\{\s*member[ _]name\s*\}/gi, member.name).replace(/\{\s*meeting[ _]date\s*\}/gi, meeting).replace(/\{\s*nominations[ _]close\s*\}/gi, closes);
       const { data: c } = await admin.from('clubs').select('name,logo_url,email_signature_html,email_disclaimer').eq('id', ballot.club_id).maybeSingle();
       const origin = /^https:\/\/[a-z0-9.-]+$/i.test(req.headers.get('Origin') ?? '') ? req.headers.get('Origin') : 'https://squashhub.co.za';
-      const result = await sendTemplateEmail('club-notification', to, {
-        templateData: { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: `${origin}/nominate/${previewToken}`, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined },
-        idempotencyKey: `agm-nom-test-${auth.user.id}-${input.ballot_id}-${input.request_id}`,
-      });
+      const nomData = { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: `${origin}/nominate/${previewToken}`, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined };
+      // Same as live club communications: send from the club's own mailbox when configured.
+      const { data: nsmtp } = await admin.from('club_secrets').select('smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email').eq('club_id', ballot.club_id).maybeSingle();
+      if (nsmtp?.smtp_host && nsmtp?.smtp_user && nsmtp?.smtp_pass && nsmtp?.sender_email) {
+        const port = Number(nsmtp.smtp_port) || 587;
+        if (![25, 465, 587, 2525].includes(port)) return json({ error: `Club mail port ${port} not allowed` }, 400);
+        const { template: clubTpl } = await import('../_shared/transactional-email-templates/club-notification.tsx');
+        const el = React.createElement(clubTpl.component, nomData);
+        const subject = typeof clubTpl.subject === 'function' ? clubTpl.subject(nomData) : clubTpl.subject;
+        const nodemailer = await import('npm:nodemailer@6.9.16');
+        const tx = nodemailer.default.createTransport({ host: String(nsmtp.smtp_host).trim(), port, secure: port === 465, requireTLS: port === 587, auth: { user: String(nsmtp.smtp_user).trim(), pass: String(nsmtp.smtp_pass) } });
+        const info: any = await tx.sendMail({ from: `${String(nsmtp.sender_name || c?.name || 'Club').trim()} <${String(nsmtp.sender_email).trim()}>`, to, subject, html: await renderAsync(el), text: await renderAsync(el, { plainText: true }) });
+        if (Array.isArray(info?.rejected) && info.rejected.length) return json({ error: `Club mail server rejected ${to}` }, 502);
+        return json({ sent: true, via: 'club' });
+      }
+      const result = await sendTemplateEmail('club-notification', to, { templateData: nomData, idempotencyKey: `agm-nom-test-${auth.user.id}-${input.ballot_id}-${input.request_id}` });
       return json(result);
     }
     const documents: { name: string; url: string }[] = [];

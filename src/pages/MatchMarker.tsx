@@ -374,8 +374,8 @@ export default function MatchMarker() {
 
       const isDoubles = effective.isDoubles;
       const ppg = Number(effective.pointsPerGame);
-      const scoringFormat: "par11" | "par15" | "english9" =
-        ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
+      const scoringFormat: "par7" | "par11" | "par15" | "english9" =
+        ppg === 15 ? "par15" : ppg === 7 ? "par7" : ppg === 9 ? "english9" : "par11";
       const rawBest = Number(effective.bestOf);
       const bestOf: MarkerConfig["bestOf"] = effective.scoringMode === "first_to_target" ? 1 : rawBest === 5 ? 5 : 3;
       const deuceRule: "win_by_2" | "sudden_death" =
@@ -460,7 +460,7 @@ export default function MatchMarker() {
         return;
       }
       const ppg = Number(effective.pointsPerGame);
-      const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
+      const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 7 ? "par7" : ppg === 9 ? "english9" : "par11";
       const bestOf: MarkerConfig["bestOf"] = effective.scoringMode === "first_to_target" ? 1 : Number(effective.bestOf) === 5 ? 5 : 3;
       const targetPoints = effective.scoringMode === "first_to_target" ? effective.pointsPerGame : undefined;
       const playAllGames = effective.playAllGames;

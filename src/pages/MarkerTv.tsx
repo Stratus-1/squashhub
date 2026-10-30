@@ -54,7 +54,7 @@ function LiveScoreboard({ state, onExit }: { state: MarkerCastState; onExit?: ()
 
       {/* Format */}
       <div className="text-center text-xs lg:text-sm text-muted-foreground mb-2 lg:mb-4 uppercase tracking-wider">
-        {state.scoringFormat === "par11" ? "PAR 11" : state.scoringFormat === "par15" ? "PAR 15" : "English 9"}
+        {state.scoringFormat === "par7" ? "PAR 7" : state.scoringFormat === "par11" ? "PAR 11" : state.scoringFormat === "par15" ? "PAR 15" : "English 9"}
         {" · "}Best of {state.bestOf}
       </div>
 

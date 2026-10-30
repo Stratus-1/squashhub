@@ -95,6 +95,7 @@ interface PointEvent {
 
 function getPointsToWin(format: ScoringFormat): number {
   switch (format) {
+    case "par7": return 7;
     case "par11": return 11;
     case "par15": return 15;
     case "english9": return 9;
@@ -607,7 +608,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
             {cast.casting ? (cast.paired ? "Live on TV" : "Pairing…") : "Cast"}
           </Button>
           <Badge variant="outline" className="text-[10px]">
-            {config.targetPoints ? `First to ${config.targetPoints}` : config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
+            {config.targetPoints ? `First to ${config.targetPoints}` : config.scoringFormat === "par7" ? "PAR 7" : config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
             {" · "}{config.targetPoints ? "One game" : config.playAllGames ? `Play all ${config.bestOf}` : `Best of ${config.bestOf}`}
           </Badge>
         </div>

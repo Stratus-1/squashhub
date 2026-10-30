@@ -3,6 +3,32 @@ import { resolveAction, missingActionParams } from "@/lib/comms/actions";
 import { renderChannel } from "@/lib/comms/render";
 import { validateCampaign } from "@/lib/comms/validation";
 import { buildMergeVars } from "@/lib/comms/merge-fields";
+import { isActiveCommsMember } from "../../supabase/functions/_shared/comms-active-members";
+
+describe("All members audience", () => {
+  it("includes active members", () => {
+    expect(isActiveCommsMember({ status: "active", suspension_status: "active" })).toBe(true);
+  });
+  it.each(["inactive", "suspended", "resigned", "pending"])("excludes %s memberships", (status) => {
+    expect(isActiveCommsMember({ status, suspension_status: "active" })).toBe(false);
+  });
+  it.each(["suspended", "manual_hold"])("excludes active memberships under %s", (suspension_status) => {
+    expect(isActiveCommsMember({ status: "active", suspension_status })).toBe(false);
+  });
+  it("keeps warning-only members who are not suspended", () => {
+    expect(isActiveCommsMember({ status: "active", suspension_status: "warning" })).toBe(true);
+  });
+  it("excludes unknown or missing status", () => {
+    expect(isActiveCommsMember(null)).toBe(false);
+    expect(isActiveCommsMember({ status: "active" })).toBe(false);
+  });
+  it("excludes a member suspended after preview on the send-time recheck", () => {
+    const member = { status: "active", suspension_status: "active" };
+    expect(isActiveCommsMember(member)).toBe(true);
+    member.suspension_status = "suspended";
+    expect(isActiveCommsMember(member)).toBe(false);
+  });
+});
 
 const vars = buildMergeVars({
   member: { name: "Jane Doe", email: "jane@example.com", phone: "0821234567" },

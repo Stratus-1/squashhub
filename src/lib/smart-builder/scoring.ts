@@ -41,7 +41,7 @@ export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scor
   const match = c.match(/par(\d+)_(\d)/);
   if (!match) return undefined;
   const [, p, b] = match;
-  return { mode: "standard", pointsPerGame: Number(p) as 11 | 15, bestOf: Number(b) as 3 | 5 };
+  return { mode: "standard", pointsPerGame: Number(p) as 7 | 11 | 15, bestOf: Number(b) as 3 | 5 };
 }
 
 export function scoringText(sc: Scoring): string {

@@ -21,7 +21,7 @@ import { effectiveTournamentSettings } from "@/lib/tournaments/effective-setting
 
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
-export type ScoringFormat = "par11" | "par15" | "english9";
+export type ScoringFormat = "par7" | "par11" | "par15" | "english9";
 export type BestOf = 1 | 3 | 5;
 export type MatchSource = "manual" | "tournament" | "booking" | "league";
 
@@ -759,7 +759,7 @@ export function MarkerSetup({ onStart }: Props) {
   const tournamentScoringFromMatch = (match: any) => {
     const ppg = Number(match?.pointsPerGame);
     return {
-      scoringFormat: (ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11") as ScoringFormat,
+      scoringFormat: (ppg === 15 ? "par15" : ppg === 7 ? "par7" : ppg === 9 ? "english9" : "par11") as ScoringFormat,
       bestOf: (match?.scoringMode === "first_to_target" ? 1 : Number(match?.bestOf) === 5 ? 5 : 3) as BestOf,
       targetPoints: match?.scoringMode === "first_to_target" ? ppg : undefined,
       playAllGames: !!match?.playAllGames,
@@ -1111,6 +1111,7 @@ export function MarkerSetup({ onStart }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="par7">PAR 7</SelectItem>
                 <SelectItem value="par11">PAR 11</SelectItem>
                 <SelectItem value="par15">PAR 15</SelectItem>
                 <SelectItem value="english9">English 9</SelectItem>

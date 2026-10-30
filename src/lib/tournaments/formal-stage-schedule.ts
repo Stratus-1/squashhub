@@ -361,7 +361,7 @@ export async function loadTimedContext(champId: string): Promise<TimedContext | 
     }
   }
   const rulesMode = ([] as any[]).concat((t as any).rules ?? [])[0]?.scoring_mode;
-  const fmt = resolveTimedFormat({ plan, labels: ((t as any).group_labels ?? {}) as Record<string, string>, rulesMode, matchMinutes: Number((t as any).match_duration_minutes) || null });
+  const fmt = resolveTimedFormat({ plan, labels: ((t as any).group_labels ?? {}) as Record<string, string>, rulesMode, matchMinutes: Number((t as any).match_duration_minutes) || null, structure: (t as any).beta_lifecycle?.answers?.originalStructure });
   const { bells, minutes } = fmt;
   const entryGroup = new Map<string, number>();
   for (const e of (entries ?? []) as any[]) { entryGroup.set(e.club_member_id, Number(e.group_number)); if (e.partner_member_id) entryGroup.set(e.partner_member_id, Number(e.group_number)); }
@@ -412,6 +412,21 @@ export function resolveTimedFormat(o: { plan: any; labels: Record<string, string
   const bellMax = Math.max(0, ...bellSlots.map((x) => Number(x) || 0));
   const minutes = bells ? (bellMax || Number(o.matchMinutes) || 30) : mixed ? Math.max(stdEst, bellMax) : stdEst;
   return { bells, mixed, minutes };
+}
+
+/**
+ * "Planned match time" chosen per category on the Tournament structure page (per-pool slot minutes
+ * win over the category time; the longest Standard category wins). Bells categories use bell timing.
+ */
+export function structureMatchMinutes(os: any): number {
+  if (!os) return 0;
+  const durs = os.group_durations ?? {}, pools = os.pool_durations ?? {}, modes = os.league_scoring_modes ?? {};
+  const ids = new Set<string>([...Object.keys(durs), ...Object.keys(pools).map((k) => k.split(":")[0])]);
+  const vals = [...ids].filter((id) => modes[id] !== "time_capped_points").map((id) => {
+    const poolVals = Object.entries(pools).filter(([k]) => k.split(":")[0] === id).map(([, v]) => Number(v) || 0).filter((n) => n > 0);
+    return poolVals.length ? Math.max(...poolVals) : Number(durs[id]) || 0;
+  }).filter((n) => n > 0);
+  return vals.length ? Math.max(...vals) : 0;
 }
 
 /** Preferences apply to every packed schedule (Bells waves and Standard court packing alike). */

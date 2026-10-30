@@ -2178,6 +2178,13 @@
       "when": 1793343097457,
       "tag": "0310_mobile_club_switch_authorization",
       "breakpoints": true
+    },
+    {
+      "idx": 311,
+      "version": "7",
+      "when": 1793345428884,
+      "tag": "0311_cash_up_cash_only_tip_payouts",
+      "breakpoints": true
     }
   ]
 }

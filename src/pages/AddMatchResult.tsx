@@ -25,7 +25,7 @@ import { enqueueRankingDelta, type MatchSourceType } from "@/lib/ranking-points"
 import { supabase } from "@/integrations/supabase/client";
 
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
-type ScoringFormat = "par11" | "par15" | "english9";
+type ScoringFormat = "par7" | "par11" | "par15" | "english9";
 type BestOf = 3 | 5;
 type DeuceRule = "win_by_2" | "sudden_death";
 
@@ -48,6 +48,7 @@ const MATCH_TYPES: { value: MatchType; label: string; description: string }[] = 
 ];
 
 const SCORING_FORMATS: { value: ScoringFormat; label: string; maxScore: number; description: string }[] = [
+  { value: "par7", label: "PAR 7", maxScore: 7, description: "Point-a-rally to 7" },
   { value: "par11", label: "PAR 11", maxScore: 11, description: "Point-a-rally to 11 (standard)" },
   { value: "par15", label: "PAR 15", maxScore: 15, description: "Point-a-rally to 15" },
   { value: "english9", label: "English 9", maxScore: 9, description: "Hand-in/hand-out to 9" },

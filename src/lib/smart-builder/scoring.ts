@@ -5,8 +5,9 @@
  */
 import type { Scoring, Stage, TournamentDefinition } from "./definition";
 
-export type ScoringChoice = "" | "par11_3" | "par11_5" | "par15_3" | "par15_5" | "bells";
+export type ScoringChoice = "" | "par7_3" | "par7_5" | "par11_3" | "par11_5" | "par15_3" | "par15_5" | "bells";
 export const SCORING_CHOICES: Array<[ScoringChoice, string]> = [
+  ["par7_3", "PAR 7 — best of 3"], ["par7_5", "PAR 7 — best of 5"],
   ["par11_3", "PAR 11 — best of 3"], ["par11_5", "PAR 11 — best of 5"],
   ["par15_3", "PAR 15 — best of 3"], ["par15_5", "PAR 15 — best of 5"],
   ["bells", "Bells — time-capped points"],
@@ -40,7 +41,7 @@ export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scor
   const match = c.match(/par(\d+)_(\d)/);
   if (!match) return undefined;
   const [, p, b] = match;
-  return { mode: "standard", pointsPerGame: Number(p) as 11 | 15, bestOf: Number(b) as 3 | 5 };
+  return { mode: "standard", pointsPerGame: Number(p) as 7 | 11 | 15, bestOf: Number(b) as 3 | 5 };
 }
 
 export function scoringText(sc: Scoring): string {

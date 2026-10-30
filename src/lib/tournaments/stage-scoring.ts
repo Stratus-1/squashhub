@@ -12,7 +12,7 @@ export type InheritedScoring =
 
 const at = (map: unknown, g: number) => (map && typeof map === "object" ? (map as Record<string, unknown>)[String(g)] : undefined);
 const mode = (v: unknown) => (v === "first_to_target" || v === "standard" || v === "time_capped_points" || v === "swiss" ? v : null);
-const pts = (v: unknown) => (v == null || v === "" ? null : Number(v) === 11 ? 11 : Number(v) === 15 ? 15 : undefined);
+const pts = (v: unknown) => (v == null || v === "" ? null : Number(v) === 11 ? 11 : Number(v) === 15 ? 15 : Number(v) === 7 ? 7 : undefined);
 const bo = (v: unknown) => (v == null || v === "" ? null : Number(v) === 3 ? 3 : Number(v) === 5 ? 5 : undefined);
 
 /** Resolve the saved scoring for one category (by group number). Category value wins over the tournament-wide value. */

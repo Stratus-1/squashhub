@@ -43,7 +43,7 @@ export function OpenClubRegistration({ club }: { club: { id: string; name: strin
   }
 
   return <>
-    <Button variant="outline" size="sm" onClick={() => setOpen(true)}>Open club for registration</Button>
+    <Button size="lg" className="w-full sm:w-auto h-auto min-h-11 px-4 py-2.5 whitespace-normal text-center font-semibold bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setOpen(true)}>Open club for registration</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Open {club.name} for registration</DialogTitle></DialogHeader>

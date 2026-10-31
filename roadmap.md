@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Make Open club for registration permanently golden-yellow on registration and landing pages; mobile appearance checked on both, five existing tests pass. Preview-only; no club opened.
 - [ ] Add authorised organiser result correction to completed tournament fixtures using the existing scoring flow; keep HSC live results unchanged during verification.
 - [x] Add explicit member Add to my tab confirmation and quantity correction. Focused tests verify duplicate correction, removing the final item and no write on My Tab navigation. Signed-in Riverside selection/review checked without submission; no real stock or HSC tournaments changed. Live order/payment submission not exercised.
 - [x] Check member controls at 390px phone and desktop widths: plus/minus and full-width confirmation fit without horizontal overflow; preview switched to mobile. Frontend remains preview-only.

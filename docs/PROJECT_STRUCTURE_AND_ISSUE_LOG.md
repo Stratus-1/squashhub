@@ -1,3 +1,6 @@
+## 2026-10-31 — Prominent registration-opening button
+- Shared Open club for registration button now uses permanent golden-yellow with dark text, a taller tap target and mobile wrapping on both landing and registration notices. Registration availability and opening permissions unchanged.
+
 ## 2026-10-31 — Member bar selection confirmation
 - Removed the automatic unpaid-tab write when opening My Tab. Added explicit Add to my tab and product quantity/minus controls so accidental duplicates can be corrected locally. Existing unpaid-tab writer, stocked item rules, payment choices, staffed counter and anonymous QR flows remain unchanged.
 

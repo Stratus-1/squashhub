@@ -768,15 +768,54 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      {/* Edit visitor's home club */}
+      {/* Edit visitor */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit home club</DialogTitle>
+            <DialogTitle>Edit visitor</DialogTitle>
             <DialogDescription>
               {editing ? `${editing.first_name} ${editing.last_name}` : ""}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-first" className="text-xs">First name *</Label>
+                <Input id="ev-first" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} maxLength={50} />
+              </div>
+              <div>
+                <Label htmlFor="ev-last" className="text-xs">Last name *</Label>
+                <Input id="ev-last" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} maxLength={50} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-email" className="text-xs">Email</Label>
+                <Input id="ev-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} maxLength={100} />
+              </div>
+              <div>
+                <Label htmlFor="ev-phone" className="text-xs">Phone</Label>
+                <Input id="ev-phone" type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-category" className="text-xs">Category</Label>
+                <Select value={editCategory} onValueChange={setEditCategory}>
+                  <SelectTrigger id="ev-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Men">Men</SelectItem>
+                    <SelectItem value="Ladies">Ladies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="ev-membernum" className="text-xs">Member # at home club</Label>
+                <Input id="ev-membernum" value={editMemberNumber} onChange={(e) => setEditMemberNumber(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+          </div>
+          {homeClubsEnabled && (
           <div className="space-y-2">
             <Label htmlFor="edit-home-club">Home club name</Label>
             <Select

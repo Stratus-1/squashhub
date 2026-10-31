@@ -47,6 +47,7 @@ import { fetchChampMarkerLock, isLockFresh, useChampMarkerLocks } from "@/hooks/
 import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDialog";
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { CorrectResultDialog } from "@/components/tournaments/CorrectResultDialog";
 import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -112,6 +113,7 @@ export default function Tournaments() {
   // everyone else only their own matches.
   const canManageChamps = useHasPermission("champs") && !md;
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  const [correctionMatch, setCorrectionMatch] = useState<any | null>(null);
   // Game the player is being asked to confirm before scoring (not a participant).
   const [confirmResultMatch, setConfirmResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
@@ -2508,7 +2510,9 @@ export default function Tournaments() {
                         <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/50 px-2 py-1.5 text-xs">
                           <span className="min-w-0"><span className={m.winner_member_id && m.winner_member_id === m.player_a_member_id ? "font-semibold" : ""}>{sideLabel(m.player_a, m.partner_a, m.placeholder_a, dbl, m)}</span> <span className="text-muted-foreground">v</span> <span className={m.winner_member_id && m.winner_member_id === m.player_b_member_id ? "font-semibold" : ""}>{sideLabel(m.player_b, m.partner_b, m.placeholder_b, dbl, m)}</span>
                             <span className="ml-2 text-muted-foreground">{getGroupLabel(pilotChamp, Number(m.group_number ?? 1) || 1)}{m.round_number ? ` · R${m.round_number}` : ""}</span></span>
-                          <span className="flex items-center gap-2 tabular-nums"><Badge variant="secondary" className="text-[10px]">{m.score ?? games ?? "Completed"}</Badge><span className="text-muted-foreground">{m.scheduled_date ?? ""} {m.scheduled_time?.slice(0, 5) ?? ""} {m.court?.name ?? ""}</span></span>
+                          <span className="flex flex-wrap items-center gap-2 tabular-nums"><Badge variant="secondary" className="text-[10px]">{m.score ?? games ?? "Completed"}</Badge><span className="text-muted-foreground">{m.scheduled_date ?? ""} {m.scheduled_time?.slice(0, 5) ?? ""} {m.court?.name ?? ""}</span>
+                            {(canManageChamps || isClubAdmin) && !m.is_bye && !m.forfeit_member_id && <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 text-xs" onClick={() => setCorrectionMatch(m)}><ClipboardCheck className="h-3.5 w-3.5" />Edit result</Button>}
+                          </span>
                         </div>
                       );
                     })}
@@ -2654,6 +2658,14 @@ export default function Tournaments() {
         }}
       />
 
+      <CorrectResultDialog
+        open={!!correctionMatch}
+        onOpenChange={open => { if (!open) setCorrectionMatch(null); }}
+        match={correctionMatch}
+        playerAName={correctionMatch ? sideLabel(correctionMatch.player_a, correctionMatch.partner_a, correctionMatch.placeholder_a, champById.get(correctionMatch.champ_id)?.match_type === "doubles", correctionMatch) : ""}
+        playerBName={correctionMatch ? sideLabel(correctionMatch.player_b, correctionMatch.partner_b, correctionMatch.placeholder_b, champById.get(correctionMatch.champ_id)?.match_type === "doubles", correctionMatch) : ""}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] })}
+      />
       <EnterResultDialog
         open={!!resultMatch}
         onOpenChange={(o) => { if (!o) setResultMatch(null); }}

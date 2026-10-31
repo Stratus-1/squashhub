@@ -1,3 +1,6 @@
+## 2026-10-31 — Completed tournament result correction
+- Add Edit result to completed pilot fixtures and replace the broken Redo score marker link with a saved-score editor. Corrections use an authenticated tournament-manager RPC, category/playoff PAR and game-count rules, review/reason, timestamp guard and existing audited downstream/winner-change blockers. Opening/cancelling performs no result writes; no live HSC results or fixtures changed during development.
+
 ## 2026-10-31 — Prominent registration-opening button
 - Shared Open club for registration button now uses permanent golden-yellow with dark text, a taller tap target and mobile wrapping on both landing and registration notices. Registration availability and opening permissions unchanged.
 

@@ -1,5 +1,6 @@
 # Roadmap
-- [ ] Exclude visitors/inactive/suspended members from AGM nomination selection, issuance and queued dispatch; retain CSIR hourly cap and already-sent history.
+- [ ] Highveld completed tournament: show combined final rankings 1–14, preserve pool tables and final/plate placements; separate tied pairs by game difference then points difference without changing ladders automatically.
+- [x] Exclude visitors/inactive/suspended members from AGM nomination issuance and queued dispatch; pending CSIR audience cleaned (104→102), server guard deployed and migration applied. 34 tests pass, hourly cap and sent history preserved; one visitor email already sent cannot be recalled.
 - [ ] App hang: service healthy, no resource exhaustion; signed-in home opened in 3.1 seconds with no runtime errors/stalled requests. Earlier database pool failure was transient; exact user's hang remains unconfirmed. Await affected screen/device detail; no restart or live score changes.
 - [x] Separate connected plate winner added in preview, resolves only after the saved plate final completes; signed-in bracket checked and 26 focused tests passed, build OK. Not published.
 - [ ] Plate-final placement: Ewald saved in side B and read back in signed-in summary/bracket; SF3 Andre–Gerrit still in_progress with no saved winner at 12:33, so side A awaits the scorer finishing/saving that result.

@@ -14,7 +14,7 @@ import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js@0.1.0
 import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "../_shared/comms-render.ts";
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
-import { isActiveCommsMember } from "../_shared/comms-active-members.ts";
+import { isActiveCommsMember, isEligibleNominationMember } from "../_shared/comms-active-members.ts";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { template as nominationTemplate } from "../_shared/transactional-email-templates/club-notification.tsx";
@@ -62,7 +62,7 @@ function normalisePhone(raw?: string | null, cc = "27"): string | null {
 async function expandRecipients(clubId: string, campaign: any) {
   let q = admin
     .from("club_members")
-    .select("id,name,email,phone,club_member_number,id_number,user_id,skills,occupation,volunteer_willing,status,suspension_status")
+    .select("id,name,email,phone,club_member_number,id_number,user_id,skills,occupation,volunteer_willing,status,suspension_status,role")
     .eq("club_id", clubId);
 
   const audience = campaign.audience_type as string;
@@ -73,7 +73,7 @@ async function expandRecipients(clubId: string, campaign: any) {
     // Tournament messages may reach entrants whose membership is at ANOTHER club,
     // but only those actually entered in THIS club's tournament (never any other member).
     const tId = campaign.audience_filter?.tournament_id;
-    if (tId) {
+    if (tId && campaign.audience_filter?.purpose !== "agm_nominations") {
       const { data: champ } = await admin.from("club_champs").select("club_id").eq("id", tId).maybeSingle();
       if (champ?.club_id === clubId) {
         const { data: regs } = await admin.from("club_champs_registrations")
@@ -105,6 +105,9 @@ async function expandRecipients(clubId: string, campaign: any) {
 
   const { data } = await q;
   let members = audience === "all" ? (data ?? []).filter(isActiveCommsMember) : data ?? [];
+  if (campaign.audience_filter?.purpose === "agm_nominations") {
+    members = members.filter(isEligibleNominationMember);
+  }
 
   if (audience === "skills") {
     const filter = campaign.audience_filter ?? {};
@@ -350,16 +353,18 @@ Deno.serve(async (req) => {
     for (const m of recipients) {
       if (Date.now() > deadline && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) { outOfTime = true; break; }
       // Scheduled sends/retries re-expand the audience; also catch suspensions mid-send.
-      if (campaign.audience_type === "all") {
+      if (campaign.audience_type === "all" || campaign.audience_filter?.purpose === "agm_nominations") {
         const { data: fresh } = await admin.from("club_members")
-          .select("status,suspension_status").eq("club_id", campaign.club_id).eq("id", m.id).maybeSingle();
-        if (!isActiveCommsMember(fresh)) {
+          .select("status,suspension_status,role").eq("club_id", campaign.club_id).eq("id", m.id).maybeSingle();
+        const eligible = campaign.audience_filter?.purpose === "agm_nominations"
+          ? isEligibleNominationMember(fresh) : isActiveCommsMember(fresh);
+        if (!eligible) {
           for (const ch of channels) {
             if (alreadySent.has(`${m.id}:${ch}`)) continue;
             skipped++;
             await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id,
               channel: ch, recipient_name: m.name ?? null, target: null, status: "skipped",
-              error_message: "Membership is no longer active or is suspended" });
+              error_message: "Recipient is a visitor, no longer active or suspended" });
           }
           continue;
         }

@@ -3,7 +3,32 @@ import { resolveAction, missingActionParams } from "@/lib/comms/actions";
 import { renderChannel } from "@/lib/comms/render";
 import { validateCampaign } from "@/lib/comms/validation";
 import { buildMergeVars } from "@/lib/comms/merge-fields";
-import { isActiveCommsMember } from "../../supabase/functions/_shared/comms-active-members";
+import { isActiveCommsMember, isEligibleNominationMember } from "../../supabase/functions/_shared/comms-active-members";
+
+describe("AGM nomination recipients", () => {
+  it("excludes active visitors", () => {
+    expect(isEligibleNominationMember({ role: "visitor", status: "active", suspension_status: "active" })).toBe(false);
+  });
+  it.each(["member", "admin", "captain"])("includes active %s members", (role) => {
+    expect(isEligibleNominationMember({ role, status: "active", suspension_status: "active" })).toBe(true);
+  });
+  it.each(["inactive", "suspended", "resigned", "pending"])("excludes %s members", (status) => {
+    expect(isEligibleNominationMember({ role: "member", status, suspension_status: "active" })).toBe(false);
+  });
+  it.each(["suspended", "manual_hold"])("excludes members under %s", (suspension_status) => {
+    expect(isEligibleNominationMember({ role: "member", status: "active", suspension_status })).toBe(false);
+  });
+  it("rechecks visitor status on queued sends", () => {
+    const member = { role: "member", status: "active", suspension_status: "active" };
+    expect(isEligibleNominationMember(member)).toBe(true);
+    member.role = "visitor";
+    expect(isEligibleNominationMember(member)).toBe(false);
+  });
+  it("fails closed on missing membership", () => {
+    expect(isEligibleNominationMember(null)).toBe(false);
+    expect(isEligibleNominationMember({ status: "active", suspension_status: "active" })).toBe(false);
+  });
+});
 
 describe("All members audience", () => {
   it("includes active members", () => {

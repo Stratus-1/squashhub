@@ -1,3 +1,9 @@
+## 2026-10-31 — Highveld combined final rankings
+- Add a read-only combined final ranking below the existing progression/classic pool views for Myburg 7’s only. Finals fix 1/2 and 5/6; semifinal losers and corresponding lower pool finishers use pool game difference then pool points difference. Exact statistical ties remain joint; incomplete or inconsistent finals do not show a confirmed ranking. No pool, score, fixture or ladder writes.
+
+## 2026-10-31 — Nomination visitor exclusion
+- Nomination eligibility previously checked active status without excluding visitor roles, and selected campaigns skipped the active-members dispatch guard. Enforce non-visitor active/non-suspended membership in selection, token issuance and send-time checks. Pending campaign audiences cleaned without changing sent history, email layout, SMTP or the CSIR hourly cap.
+
 ## 2026-10-31 — Completed tournament result correction
 - Add Edit result to completed pilot fixtures and replace the broken Redo score marker link with a saved-score editor. Corrections use an authenticated tournament-manager RPC, category/playoff PAR and game-count rules, review/reason, timestamp guard and existing audited downstream/winner-change blockers. Opening/cancelling performs no result writes; no live HSC results or fixtures changed during development.
 

@@ -4159,6 +4159,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-10-31 — CSIR nomination email pacing
 - CSIR nomination campaigns reserve at most 30 email attempts in a rolling hour under a club-scoped transaction lock. Remaining recipients are deferred to the existing scheduled-campaign worker; other clubs/channels and tournaments are unchanged.
 - SMTP reservations prevent automatic repeat of uncertain attempts; failures count against the hourly allowance. The approved nomination renderer and club SMTP remain unchanged. No new recurring job is added.
+- Sending the requester's first live copy had opened nominations and hidden the initial send button. The authorised append-only `agm_add_nomination_recipients` action adds only remaining active/non-suspended club members while nominations are open, retaining existing tokens and positions. User approved a real 104-member campaign: 30 sent with zero failures, 74 deferred; existing five-minute scheduled-comms worker resumes due campaigns (no new polling).
 
 ### 2026-10-30 — HSC Myburg 7's "not enough court time"
 - The fixed-date timed scheduler ignored the structure page's "Planned match time" / per-pool slot minutes (12 min) and fell back to the tournament's 30-minute default, so 42 pool games could not fit 08:00–16:00 on 2 courts (32 slots). Cancelled bookings were never the cause.

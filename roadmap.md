@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Ensure Myburg 7’s semifinal winners automatically fill the existing Final and 5th-place final in fixtures and progression, preserving scores and allocations.
 - [x] Myburg 7’s qualifier handover done 31 Oct 12:20: all eight semifinal qualifiers placed via audited admin_replace_champ_player (direct SQL blocked by Match Day guard). SF1 Hein Hoft v Emsley Lloyd, SF2 Henrico Vorster v Carel Potgieter, SF3 Andre V Vollensteen v Gerrit Oosthuizen, SF4 Ewald Hoft v Werner Swart; courts/times/results untouched. Finals stay as Winner-SF placeholders until semis complete. NOTE: auto handover gap remains — saved playoff placeholders do not self-fill; needs a proper progression fix later.
 - [x] Make Open club for registration permanently golden-yellow on registration and landing pages; mobile appearance checked on both, five existing tests pass. Preview-only; no club opened.
 - [ ] Result editor added for existing authorised tournament managers; HSC PAR 7 saved-score review verified on desktop/mobile and cancelled without saving. Selected-organiser server authorization and changed-result end-to-end verification remain outstanding; no live result changes.

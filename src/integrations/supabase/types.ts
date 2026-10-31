@@ -7756,6 +7756,41 @@ export type Database = {
           },
         ]
       }
+      club_registration_openings: {
+        Row: {
+          club_id: string
+          declared_role: string
+          opened_at: string
+          requester_email: string
+          requester_name: string
+          requester_user_id: string | null
+        }
+        Insert: {
+          club_id: string
+          declared_role: string
+          opened_at?: string
+          requester_email: string
+          requester_name: string
+          requester_user_id?: string | null
+        }
+        Update: {
+          club_id?: string
+          declared_role?: string
+          opened_at?: string
+          requester_email?: string
+          requester_name?: string
+          requester_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_registration_openings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string
@@ -24003,6 +24038,16 @@ export type Database = {
             Args: { _code: string; _guest_name: string; _guest_phone?: string }
             Returns: Json
           }
+      open_club_registration: {
+        Args: {
+          _club_id: string
+          _confirmed: boolean
+          _email: string
+          _name: string
+          _role: string
+        }
+        Returns: boolean
+      }
       open_my_bar_tab: {
         Args: { _club_id: string; _club_member_id: string }
         Returns: Json

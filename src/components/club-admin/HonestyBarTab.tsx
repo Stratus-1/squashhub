@@ -24,6 +24,7 @@ import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { StockLevelsTab } from "./bar/StockLevelsTab";
+import { StockMovementReport } from "./bar/StockMovementReport";
 import { CostingTab } from "./bar/CostingTab";
 import { bundleCosts, perContainer } from "@/lib/bar-costing";
 import { OpenTabsTab } from "./bar/OpenTabsTab";
@@ -185,6 +186,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     ...(tipConfig?.enabled ? [{ id: "staff-tips", label: "Staff tips" }] : []),
     { id: "open-tabs", label: "Open tabs" },
     { id: "cash-ups", label: "Cash-ups" },
+    { id: "stock-movements", label: "Stock movements" },
   ];
   const showReport = (id: string) => step === "reports" && report === id;
   const [qrOpen, setQrOpen] = useState(false);
@@ -380,6 +382,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
       {step === "reports" && <div className="flex flex-wrap gap-1" role="group" aria-label="Choose report">{reportOptions.map(r => <Button key={r.id} size="sm" variant={report === r.id ? "default" : "outline"} aria-pressed={report === r.id} onClick={() => setReport(r.id)}>{r.label}</Button>)}</div>}
       {showReport("open-tabs") && <OpenTabsTab clubId={clubId} />}
       {showReport("cash-ups") && <CashUpsReport clubId={clubId} />}
+      {showReport("stock-movements") && <StockMovementReport clubId={clubId} />}
       {showReport("closed-tabs") && <ClosedTabsTab clubId={clubId} />}
       {showReport("staff-tips") && tipConfig?.enabled && <StaffTips clubId={clubId} />}
 

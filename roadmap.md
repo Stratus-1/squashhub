@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add a club-registration opening option: verify existing club administrator/chairman after login; otherwise submit an approval request. Preserve existing SLA/trial gates and all HSC tournament data.
 - [x] Add Bar reports stock movement report with all requested date presets/custom dates, opening stock, signed movement breakdown, period closing/current stock and CSV download. 37 tests pass; signed-in Riverside UI verified every preset/custom dates and downloaded a 237-item CSV with every balance reconciled, no click errors, build OK. Read-only RPC applied; screen preview-only, no publication while HSC is playing; no live stock or tournament records changed.
 - [x] Fix new-tournament playoff match-format carry-over: shared reset clears category game-count overrides; all 14 focused tests pass and preview build OK. No live tournaments changed; full admin UI flow not exercised.
 - [ ] Lamont sees Paul's profile at HSC: saved membership/auth profiles are correct and separate; Lamont is admin and View as selection persists across login. Ask him to Exit Viewing as; actual phone state/screenshot needed to confirm. No account records changed.

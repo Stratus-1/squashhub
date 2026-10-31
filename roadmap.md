@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add AGM Select all and Clear selection controls; 18 focused tests pass including 120-member selection, individual exclusion and clearing. Build OK; preview-only, no emails sent or tournament data changed.
 - [x] Match live AGM nomination emails to the test's exact renderer; deployed send-comms-campaign and agm-test-email, four focused tests pass/build OK. Corrected live email sent to requester only (1 sent/0 failed), reusing existing nomination link; inbox appearance awaits user's confirmation. No nominations/tournaments changed.
 - [x] Hide stock report rows with zero movement columns, regardless of stock held; keep offsetting purchases/sales and match CSV output. All 11 focused tests pass, build OK; preview-only, no stock/tournament records changed.
 - [x] Add registration-only opening for a first person declaring administrator/chairman, with contact details and explicit confirmation; private idempotent record, no roles/SLA/subscription changes. Eight tests pass, Middelburg form checked without submission, build OK; real opening/signup not exercised to avoid changing a club. Preview-only; HSC tournament untouched.

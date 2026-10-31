@@ -2311,6 +2311,13 @@
       "when": 1793453932586,
       "tag": "0329_finance_staff_write_access",
       "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1793453960421,
+      "tag": "0330_finance_writer_excludes_chairman",
+      "breakpoints": true
     }
   ]
 }

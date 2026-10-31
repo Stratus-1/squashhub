@@ -9353,6 +9353,49 @@ export type Database = {
           },
         ]
       }
+      comms_email_attempts: {
+        Row: {
+          attempted_at: string
+          campaign_id: string
+          club_id: string
+          club_member_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          campaign_id: string
+          club_id: string
+          club_member_id: string
+        }
+        Update: {
+          attempted_at?: string
+          campaign_id?: string
+          club_id?: string
+          club_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_email_attempts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "comms_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comms_email_attempts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comms_email_attempts_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comms_template_versions: {
         Row: {
           body: string
@@ -24356,6 +24399,10 @@ export type Database = {
         Returns: string
       }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
+      reserve_nomination_email: {
+        Args: { _campaign_id: string; _member_id: string }
+        Returns: Json
+      }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       reset_event_invites: { Args: { _event_id: string }; Returns: number }
       resolve_host_billing_member: {

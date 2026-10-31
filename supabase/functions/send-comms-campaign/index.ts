@@ -19,6 +19,7 @@ import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { template as nominationTemplate } from "../_shared/transactional-email-templates/club-notification.tsx";
 import { nominationEmailData } from "../_shared/agm-nomination-email.ts";
+import { nominationQuotaApplies } from "../_shared/comms-email-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -323,6 +324,7 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0, skipped = 0;
     const deadline = Date.now() + 100_000; // stay well inside the edge wall-clock limit
     let outOfTime = false;
+    let quotaRetryAt: string | null = null;
 
     // Re-dispatch (retry) never re-sends to a recipient/channel already delivered.
     const { data: prior } = await admin.from("comms_deliveries")
@@ -416,6 +418,26 @@ Deno.serve(async (req) => {
             if (!m.email || !String(m.email).includes("@")) {
               skipped++; await logDelivery({ ...base, target: null, status: "skipped", error_message: "No email address" });
               continue;
+            }
+            if (nominationQuotaApplies(campaign.club_id, campaign.audience_filter?.purpose)) {
+              if (quotaRetryAt) continue;
+              const { data: quota, error: quotaError } = await admin.rpc("reserve_nomination_email", {
+                _campaign_id: campaignId, _member_id: m.id,
+              });
+              if (quotaError || !quota) throw new Error("Could not reserve the email sending allowance");
+              if (quota.already_attempted) {
+                // SMTP has no idempotency key: never repeat an uncertain send after a crash.
+                const { data: delivery } = await admin.from("comms_deliveries").select("status")
+                  .eq("campaign_id", campaignId).eq("club_member_id", m.id).eq("channel", "email").maybeSingle();
+                if (delivery?.status === "sent") sent++;
+                else failed++;
+                continue;
+              }
+              if (!quota.allowed) {
+                quotaRetryAt = quota.retry_at;
+                if (!quotaRetryAt) throw new Error("Email allowance returned no retry time");
+                continue;
+              }
             }
             // Match Day Access: fixture/round emails for a competition with access
             // enabled get an "Open scoring" button + QR (persistent token, deep-linked
@@ -614,6 +636,15 @@ Deno.serve(async (req) => {
           await logDelivery({ ...base, status: "failed", error_message: String((err as Error)?.message || err).slice(0, 500) });
         }
       }
+    }
+
+    if (quotaRetryAt) {
+      await admin.from("comms_campaigns").update({
+        status: "scheduled", scheduled_for: quotaRetryAt,
+        sent_count: sent, failed_count: failed, skipped_count: skipped,
+        last_error: "Waiting for the next allowance: maximum 30 nomination emails per hour",
+      }).eq("id", campaignId);
+      return json({ ok: true, status: "scheduled", scheduled_for: quotaRetryAt, sent, failed, skipped, channels, recipients: recipients.length });
     }
 
     if (outOfTime) {

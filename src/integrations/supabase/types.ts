@@ -22007,6 +22007,10 @@ export type Database = {
         Args: { _club_id: string; _date: string }
         Returns: Json
       }
+      bar_stock_movement_report: {
+        Args: { _club_id: string; _from: string; _to: string }
+        Returns: Json
+      }
       bar_stock_take_finalise: {
         Args: { _adjust?: boolean; _post?: boolean; _take_id: string }
         Returns: Json

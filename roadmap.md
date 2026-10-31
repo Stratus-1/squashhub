@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Investigate Lamont seeing Paul's profile at HSC; compare saved identities and signed-in member selection before changing records.
 - [x] Investigate Paul's HSC login failure: member/login emails match, membership active; email confirmation missing since 15 October. Verification remains required; no account changes or emails sent.
 - [x] Add independent playoff Best of 3/5 and Play all 3/5 choices; 47 focused tests and build pass, all four choices verified in HSC edit controls without saving tournament changes; hosted save/reopen not exercised on live data.
 - [ ] Vercel deployment diagnosis blocked by unavailable Vercel access/deployment error; source configuration inspected, no confirmed build-setting fault.

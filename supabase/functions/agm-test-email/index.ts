@@ -7,6 +7,7 @@ import { testRecipient } from './policy.ts';
 import * as React from 'npm:react@18.3.1';
 import { renderAsync } from 'npm:@react-email/components@0.0.22';
 import { template as agmTemplate } from '../_shared/transactional-email-templates/agm-invite-test.tsx';
+import { nominationEmailData } from '../_shared/agm-nomination-email.ts';
 
 const schema = z.object({ ballot_id: z.string().uuid(), member_id: z.string().uuid(), destination: z.enum(['self', 'member']), request_id: z.string().uuid(), kind: z.enum(['invite', 'nominations']).optional() }).strict();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -39,10 +40,9 @@ Deno.serve(async (req) => {
       const closes = ballot.nominations_close_at ? format(ballot.nominations_close_at) : 'the closing date';
       const msg = String(ballot.nomination_message ?? '').trim();
       if (!msg) return json({ error: 'Save the call for nominations message first' }, 400);
-      const filled = msg.replace(/\{\s*member[ _]name\s*\}/gi, member.name).replace(/\{\s*meeting[ _]date\s*\}/gi, meeting).replace(/\{\s*nominations[ _]close\s*\}/gi, closes);
       const { data: c } = await admin.from('clubs').select('name,logo_url,email_signature_html,email_disclaimer').eq('id', ballot.club_id).maybeSingle();
       const origin = /^https:\/\/[a-z0-9.-]+$/i.test(req.headers.get('Origin') ?? '') ? req.headers.get('Origin') : 'https://squashhub.co.za';
-      const nomData = { clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, title: `[TEST] ${ballot.title} — nominations for the committee`, messageBody: filled, url: `${origin}/nominate/${previewToken}`, ctaLabel: 'Make your nominations (test link)', signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined };
+      const nomData = nominationEmailData({ title: ballot.title, message: msg, memberName: member.name, meeting, closes, test: true, url: `${origin}/nominate/${previewToken}`, clubName: c?.name ?? undefined, clubLogoUrl: c?.logo_url ?? undefined, signatureHtml: c?.email_signature_html ?? undefined, disclaimer: c?.email_disclaimer ?? undefined });
       // Same as live club communications: send from the club's own mailbox when configured.
       const { data: nsmtp } = await admin.from('club_secrets').select('smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email').eq('club_id', ballot.club_id).maybeSingle();
       if (nsmtp?.smtp_host && nsmtp?.smtp_user && nsmtp?.smtp_pass && nsmtp?.sender_email) {

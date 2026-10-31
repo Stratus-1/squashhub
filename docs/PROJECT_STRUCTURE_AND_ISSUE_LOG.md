@@ -1,3 +1,6 @@
+## 2026-10-31 — Member bar selection confirmation
+- Removed the automatic unpaid-tab write when opening My Tab. Added explicit Add to my tab and product quantity/minus controls so accidental duplicates can be corrected locally. Existing unpaid-tab writer, stocked item rules, payment choices, staffed counter and anonymous QR flows remain unchanged.
+
 ## 2026-10-31 — Live/test nomination layout parity
 - Live nominations used a max-width div shell (ignored by Outlook) and a plain body link, while tests used React Email's table container and Button. Live nominations now use the exact test renderer and shared content mapper, retaining club SMTP, signature/disclaimer handling and existing personal links. No tournament changes.
 

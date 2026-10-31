@@ -31,22 +31,32 @@ beforeEach(() => {
   mocks.handoff.mockResolvedValue("/s/menu");
 });
 afterEach(cleanup);
-it("keeps selection local and opens payment checkout directly on My Tab", async () => {
+it("opening My Tab does not save selections; explicit confirmation saves once", async () => {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Routes><Route path="/" element={<HonestyBar />} /><Route path="/s/menu" element={<div>Payment checkout</div>} /></Routes></MemoryRouter></QueryClientProvider>);
   fireEvent.click(await screen.findByText("Test beer"));
   expect(mocks.handoff).not.toHaveBeenCalled();
   fireEvent.mouseDown(screen.getByRole("tab", { name: "My Tab, 1 item open" }), { button: 0, ctrlKey: false });
+  expect(mocks.handoff).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole("button", { name: /Add to my tab/ }));
   await screen.findByText("Payment checkout");
   await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String)));
 });
-it("confirms each tap and leaves no tile marked as selected", async () => {
+it("removes the last selected item without saving anything", async () => {
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><HonestyBar /></MemoryRouter></QueryClientProvider>);
+  fireEvent.click(await screen.findByText("Test beer"));
+  fireEvent.click(screen.getByRole("button", { name: "One less Test beer" }));
+  expect(mocks.handoff).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: /Add to my tab/ })).toBeNull();
+});
+it("lets a member subtract an accidental duplicate before confirming", async () => {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Routes><Route path="/" element={<HonestyBar />} /><Route path="/s/menu" element={<div>Payment checkout</div>} /></Routes></MemoryRouter></QueryClientProvider>);
   const tile = await screen.findByText("Test beer");
   fireEvent.click(tile);
   fireEvent.click(tile);
-  expect(mocks.added).toHaveBeenCalledTimes(2);
-  expect(screen.queryByLabelText("Remove one")).toBeNull();
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "My Tab, 2 items open" }), { button: 0, ctrlKey: false });
+  fireEvent.click(screen.getByRole("button", { name: "One less Test beer" }));
+  expect(mocks.handoff).not.toHaveBeenCalled();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "My Tab, 1 item open" }), { button: 0, ctrlKey: false });
+  fireEvent.click(await screen.findByRole("button", { name: /Add to my tab/ }));
   await screen.findByText("Payment checkout");
-  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 2 }, expect.any(String)));
+  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String)));
 });

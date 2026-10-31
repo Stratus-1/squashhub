@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add read-only Bar reports stock movement report: selected start date, opening stock, movement breakdown, current stock and CSV downloads; preserve all live stock and tournaments.
 - [x] Fix new-tournament playoff match-format carry-over: shared reset clears category game-count overrides; all 14 focused tests pass and preview build OK. No live tournaments changed; full admin UI flow not exercised.
 - [ ] Lamont sees Paul's profile at HSC: saved membership/auth profiles are correct and separate; Lamont is admin and View as selection persists across login. Ask him to Exit Viewing as; actual phone state/screenshot needed to confirm. No account records changed.
 - [x] Investigate Paul's HSC login failure: member/login emails match, membership active; email confirmation missing since 15 October. Verification remains required; no account changes or emails sent.

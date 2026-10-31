@@ -52,6 +52,12 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editMode, setEditMode] = useState<"picker" | "other">("picker");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCategory, setEditCategory] = useState("Men");
+  const [editMemberNumber, setEditMemberNumber] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Visitor policy state (persisted on clubs row)
@@ -310,6 +316,15 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
 
   const openEdit = (v: Visitor) => {
     setEditing(v);
+    setEditFirstName(v.first_name || "");
+    setEditLastName(v.last_name || "");
+    setEditEmail(v.email || "");
+    setEditPhone(v.phone || "");
+    setEditCategory(v.category === "Ladies" ? "Ladies" : "Men");
+    // Shadow member rows store their origin as `visitor:<uuid>` — that key is
+    // not a real member number and must not be edited or shown as one.
+    const num = v.member_number || "";
+    setEditMemberNumber(num.startsWith("visitor:") ? "" : num);
     const current = v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "";
     setEditValue(current);
     // If current value matches a known option (or blank / No club), use picker; else "other"
@@ -318,28 +333,70 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     setEditMode(known ? "picker" : "other");
   };
 
-
   const saveEdit = async () => {
     if (!editing) return;
+    const first = editFirstName.trim();
+    const last = editLastName.trim();
+    if (!first || !last) {
+      toast.error("First and last name are required");
+      return;
+    }
     const value = editValue.trim();
+    const email = editEmail.trim() || null;
+    const phone = editPhone.trim() || null;
+    const memberNumber = editMemberNumber.trim() || null;
     setSaving(true);
     try {
       if (editing.source === "member_record") {
+        const update: Record<string, unknown> = {
+          name: `${first} ${last}`.trim(),
+          email,
+          phone,
+          gender: editCategory,
+          home_club_name: value || null,
+        };
+        // Never overwrite the `visitor:<uuid>` shadow key that links this
+        // member record back to its visitor registration.
+        const existingNum = String(editing.member_number || "");
+        if (!existingNum.startsWith("visitor:")) {
+          update.club_member_number = memberNumber;
+        }
         const { error } = await fromExt("club_members")
-          .update({ home_club_name: value || null })
+          .update(update)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await fromExt("club_visitors")
-          .update({ home_club_name: value || "Visitor" })
+          .update({
+            first_name: first,
+            last_name: last,
+            email,
+            phone,
+            category: editCategory,
+            member_number: memberNumber,
+            home_club_name: value || "Visitor",
+          })
           .eq("id", editing.id);
         if (error) throw error;
+        // Keep the linked shadow member record (created so this visitor can
+        // appear in tournament invitations and results) in sync.
+        await fromExt("club_members")
+          .update({
+            name: `${first} ${last}`.trim(),
+            email,
+            phone,
+            gender: editCategory,
+            home_club_name: value || null,
+          })
+          .eq("club_id", clubId)
+          .eq("club_member_number", `visitor:${editing.id}`);
       }
-      toast.success("Home club updated");
+      toast.success("Visitor updated");
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
     } catch (e: any) {
-      toast.error(e.message || "Failed to update home club");
+      toast.error(e.message || "Failed to update visitor");
     } finally {
       setSaving(false);
     }
@@ -665,17 +722,15 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   </p>
                 )}
               </div>
-              {homeClubsEnabled && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => openEdit(v)}
-                  title="Edit home club"
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => openEdit(v)}
+                title="Edit visitor"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
               {v.source === "member_record" && (
                 <Button
                   variant="ghost"
@@ -713,15 +768,54 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      {/* Edit visitor's home club */}
+      {/* Edit visitor */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit home club</DialogTitle>
+            <DialogTitle>Edit visitor</DialogTitle>
             <DialogDescription>
               {editing ? `${editing.first_name} ${editing.last_name}` : ""}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-first" className="text-xs">First name *</Label>
+                <Input id="ev-first" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} maxLength={50} />
+              </div>
+              <div>
+                <Label htmlFor="ev-last" className="text-xs">Last name *</Label>
+                <Input id="ev-last" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} maxLength={50} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-email" className="text-xs">Email</Label>
+                <Input id="ev-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} maxLength={100} />
+              </div>
+              <div>
+                <Label htmlFor="ev-phone" className="text-xs">Phone</Label>
+                <Input id="ev-phone" type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="ev-category" className="text-xs">Category</Label>
+                <Select value={editCategory} onValueChange={setEditCategory}>
+                  <SelectTrigger id="ev-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Men">Men</SelectItem>
+                    <SelectItem value="Ladies">Ladies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="ev-membernum" className="text-xs">Member # at home club</Label>
+                <Input id="ev-membernum" value={editMemberNumber} onChange={(e) => setEditMemberNumber(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+          </div>
+          {homeClubsEnabled && (
           <div className="space-y-2">
             <Label htmlFor="edit-home-club">Home club name</Label>
             <Select
@@ -762,6 +856,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               Manage the dropdown list via the <span className="font-medium">Home Clubs</span> button. Clear to remove.
             </p>
           </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
             <Button onClick={saveEdit} disabled={saving}>

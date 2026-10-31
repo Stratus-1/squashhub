@@ -41,6 +41,13 @@ it("opening My Tab does not save selections; explicit confirmation saves once", 
   await screen.findByText("Payment checkout");
   await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String)));
 });
+it("removes the last selected item without saving anything", async () => {
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><HonestyBar /></MemoryRouter></QueryClientProvider>);
+  fireEvent.click(await screen.findByText("Test beer"));
+  fireEvent.click(screen.getByRole("button", { name: "One less Test beer" }));
+  expect(mocks.handoff).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: /Add to my tab/ })).toBeNull();
+});
 it("lets a member subtract an accidental duplicate before confirming", async () => {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Routes><Route path="/" element={<HonestyBar />} /><Route path="/s/menu" element={<div>Payment checkout</div>} /></Routes></MemoryRouter></QueryClientProvider>);
   const tile = await screen.findByText("Test beer");

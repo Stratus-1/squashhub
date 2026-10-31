@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Require explicit member Add to my tab confirmation with adjustable quantities; verify focused tests and signed-in preview without changing live stock or HSC tournaments.
-- [ ] Check member selection controls and confirmation placement on mobile, including no overflow and accessible quantity buttons.
+- [x] Add explicit member Add to my tab confirmation and quantity correction. Focused tests verify duplicate correction, removing the final item and no write on My Tab navigation. Signed-in Riverside selection/review checked without submission; no real stock or HSC tournaments changed. Live order/payment submission not exercised.
+- [x] Check member controls at 390px phone and desktop widths: plus/minus and full-width confirmation fit without horizontal overflow; preview switched to mobile. Frontend remains preview-only.
 - [x] Missing CSIR send button was hidden after requester's single live copy opened nominations. User approved sending remaining active members; added permission-checked append-only nomination recipient writer without resetting positions or existing tokens.
 - [x] CSIR nomination email quota deployed: atomic maximum 30 attempts per rolling hour; 104 remaining active recipients queued, first 30 sent/0 failed, 74 waiting from 12:40 Johannesburg via existing scheduled-comms worker. Approved layout/club SMTP retained; no tournaments or frontend publication changed.
 - [x] Add AGM Select all and Clear selection controls; 18 focused tests pass including 120-member selection, individual exclusion and clearing. Build OK; preview-only, no emails sent or tournament data changed.

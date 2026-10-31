@@ -1,10 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { plannedPlayoffBracket } from "@/lib/tournaments/planned-playoff-bracket";
+import { plannedPlayoffBracket, overlayRealPlayoffWinners } from "@/lib/tournaments/planned-playoff-bracket";
 const plan = { stages: [
   { name: "Semifinal", unit: "Mens A", phase: "playoff", mode: "play_by", deadline: "2026-11-14", pairing: "crossover" },
   { name: "Final", unit: "Mens A", phase: "playoff", mode: "scheduled", date: "2026-11-15", from: "11:00", to: "17:00", pairing: "winners" },
 ] };
 describe("planned play-off bracket", () => {
+  it("uses the saved fifth-place final player despite its non-Final label", () => {
+    const side = { label: "Winner SF3", name: null, pool: null, rank: null };
+    const rows = [
+      { key: "final", stage: "Final", id: "Final", text: "", when: null, sides: [side, side] as [typeof side, typeof side] },
+      { key: "plate", stage: "Final", id: "Plate", text: "", when: null, sides: [side, { ...side, label: "Winner SF4" }] as [typeof side, typeof side] },
+    ];
+    const result = overlayRealPlayoffWinners(rows, [
+      { stage: "playoff_final", stage_label: "Final", bracket_position: 1 },
+      { stage: "playoff_final", stage_label: "5th place final", bracket_position: 2, player_b_member_id: "ewald", player_b: { name: "Ewald Hoft" } },
+    ]);
+    expect(result[1].sides[1].name).toBe("Ewald Hoft");
+    expect(result[0].sides[1].name).toBeNull();
+  });
   const placementPlan = {
     playoffOverrides: { Open: { choice: "playoffs", style: "placement", pairing: "seeded" } },
     playoffPoolQualifiers: { Open: { perPool: 4 } },

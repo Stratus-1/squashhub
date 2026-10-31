@@ -69,7 +69,8 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
 export function overlayRealPlayoffWinners(rows: PlannedPlayoffRow[], real: any[]): PlannedPlayoffRow[] {
   if (!real?.length) return rows;
   const nameOf = (m: any, id: string | null) => !id ? null : id === m.player_a_member_id ? m.player_a?.name ?? null : id === m.player_b_member_id ? m.player_b?.name ?? null : null;
-  const byStage = (stage: string) => real.filter((m) => String(m.stage_label ?? "").toLowerCase().startsWith(stage.toLowerCase()))
+  const byStage = (stage: string) => real.filter((m) => String(m.stage_label ?? "").toLowerCase().startsWith(stage.toLowerCase())
+    || m.stage === ({ Quarterfinal: "playoff_qf", Semifinal: "playoff_sf", Final: "playoff_final" } as Record<string, string>)[stage])
     .sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0) || String(a.stage_label).localeCompare(String(b.stage_label)));
   const winners: Record<string, string> = {};
   const out = rows.map((r) => {

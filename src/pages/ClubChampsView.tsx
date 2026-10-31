@@ -1337,7 +1337,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           })()}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
-            const ko = (matches as any[]).filter((m: any) => m.group_number === gn && m.stage === "ko");
+            const ko = (matches as any[]).filter((m: any) => m.group_number === gn && (m.stage === "ko" || String(m.stage ?? "").startsWith("playoff_")));
             const playoffMade = (matches as any[]).some((m: any) => m.group_number === gn && (m.stage || "group") !== "group");
             // The approved pool-to-play-off bracket stays the view even once real play-off games exist
             // (display only); the generic knockout draw is only a fallback when no planned play-offs exist.

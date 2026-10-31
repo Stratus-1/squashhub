@@ -21048,6 +21048,13 @@ export type Database = {
         Returns: Json
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      agm_add_nomination_recipients: {
+        Args: { p_ballot_id: string; p_member_ids: string[] }
+        Returns: {
+          club_member_id: string
+          token: string
+        }[]
+      }
       agm_appoint_proxy: {
         Args: { p_proxy_member_id: string; p_token: string }
         Returns: undefined

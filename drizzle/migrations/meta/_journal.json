@@ -2276,6 +2276,13 @@
       "when": 1793450000007,
       "tag": "0324_csir_nomination_email_quota",
       "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1793450000008,
+      "tag": "0325_agm_add_remaining_nomination_recipients",
+      "breakpoints": true
     }
   ]
 }

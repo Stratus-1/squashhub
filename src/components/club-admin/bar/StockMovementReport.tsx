@@ -5,13 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { downloadStockCsv, hasStockMovement, stockColumns, stockDateRange, stockMovementCsv, stockToday, type StockMovementReport as Report, type StockPeriod } from "@/lib/bar/stock-movement-report";
+import { downloadStockCsv, visibleStockRows, stockColumns, stockDateRange, stockMovementCsv, stockToday, type StockMovementReport as Report, type StockPeriod } from "@/lib/bar/stock-movement-report";
 
 export function StockMovementReport({ clubId }: { clubId: string }) {
   const [period, setPeriod] = useState<StockPeriod>("month");
   const [range, setRange] = useState(() => stockDateRange("month"));
   const [search, setSearch] = useState("");
+  const [showZeroMovements, setShowZeroMovements] = useState(false);
   const valid = !!range.from && !!range.to && range.from <= range.to && range.to <= stockToday();
   const { data, isFetching, error, refetch } = useQuery({
     queryKey: ["bar-stock-movement-report", clubId, range.from, range.to],
@@ -22,7 +24,7 @@ export function StockMovementReport({ clubId }: { clubId: string }) {
       return data as unknown as Report;
     },
   });
-  const rows = useMemo(() => (data?.rows ?? []).filter(row => hasStockMovement(row) && row.name.toLowerCase().includes(search.toLowerCase())), [data, search]);
+  const rows = useMemo(() => visibleStockRows(data?.rows ?? [], showZeroMovements).filter(row => row.name.toLowerCase().includes(search.toLowerCase())), [data, search, showZeroMovements]);
   const changePeriod = (value: string) => {
     const next = value as StockPeriod;
     setPeriod(next);
@@ -36,10 +38,11 @@ export function StockMovementReport({ clubId }: { clubId: string }) {
       <div className="space-y-1"><Label htmlFor="stock-report-from">From</Label><Input id="stock-report-from" type="date" value={range.from} max={range.to || stockToday()} onChange={e => { setPeriod("custom"); setRange({ ...range, from: e.target.value }); }} /></div>
       <div className="space-y-1"><Label htmlFor="stock-report-to">To</Label><Input id="stock-report-to" type="date" value={range.to} min={range.from} max={stockToday()} onChange={e => { setPeriod("custom"); setRange({ ...range, to: e.target.value }); }} /></div>
       <Button variant="outline" size="icon" aria-label="Refresh stock report" title="Refresh stock report" disabled={!valid || isFetching} onClick={() => refetch()}><RefreshCw className="h-4 w-4" /></Button>
-      <Button variant="outline" disabled={!valid || isFetching || !!error || !rows.length} onClick={() => data && downloadStockCsv(stockMovementCsv(rows, range.from, range.to, data.generated_at), `stock-movements-${range.from}-to-${range.to}.csv`)}><Download className="mr-2 h-4 w-4" />CSV / Excel</Button>
+      <Button variant="outline" disabled={!valid || isFetching || !!error || !rows.length} onClick={() => data && downloadStockCsv(stockMovementCsv(rows, range.from, range.to, data.generated_at, showZeroMovements), `stock-movements-${range.from}-to-${range.to}.csv`)}><Download className="mr-2 h-4 w-4" />CSV / Excel</Button>
     </div>
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="font-semibold">Stock movement report</h3>
+      <div className="flex items-center gap-2"><Switch id="stock-show-zero-movements" checked={showZeroMovements} onCheckedChange={setShowZeroMovements} /><Label htmlFor="stock-show-zero-movements">Show items with no movements</Label></div>
       <div className="relative"><Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Search stock report" placeholder="Search items" className="pl-8" value={search} onChange={e => setSearch(e.target.value)} /></div>
     </div>
     {!valid ? <p className="text-destructive" role="alert">Choose valid dates up to today.</p> : error ? <p className="text-destructive" role="alert">Could not load stock movements. Please try again.</p> : isFetching ? <p role="status" className="text-muted-foreground">Loading stock movements…</p> : <>
@@ -51,7 +54,7 @@ export function StockMovementReport({ clubId }: { clubId: string }) {
           <tbody>{rows.map(row => <tr key={row.id} className="border-b"><td className="p-2 font-medium">{row.name}</td><td className="p-2 capitalize">{row.division}</td><td className="p-2">{row.unit_label}</td>{stockColumns.map(([key]) => <td key={key} className="p-2 text-right tabular-nums">{row[key] == null ? "—" : row[key].toLocaleString("en-ZA")}</td>)}</tr>)}</tbody>
         </table>
       </div>
-      {!rows.length && <p className="py-4 text-muted-foreground">No stock movements found for this period.</p>}
+      {!rows.length && <p className="py-4 text-muted-foreground">{showZeroMovements ? "No stock items found." : "No stock movements found for this period."}</p>}
     </>}
   </section>;
 }

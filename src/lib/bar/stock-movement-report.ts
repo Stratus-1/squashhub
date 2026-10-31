@@ -35,6 +35,10 @@ export function hasStockMovement(row: StockMovementRow) {
   return [row.receipts, row.sales, row.specials, row.club_use, row.adjustments, row.net].some(value => value !== 0);
 }
 
+export function visibleStockRows(rows: StockMovementRow[], showZeroMovements = false) {
+  return showZeroMovements ? rows : rows.filter(hasStockMovement);
+}
+
 export const stockColumns = [
   ["opening", "Opening stock"], ["receipts", "Purchases"], ["sales", "Sales"],
   ["specials", "Specials"], ["club_use", "Club sponsored"], ["adjustments", "Adjustments"],
@@ -48,9 +52,9 @@ export function stockCsvCell(value: unknown) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-export function stockMovementCsv(rows: StockMovementRow[], from: string, to: string, generatedAt: string) {
+export function stockMovementCsv(rows: StockMovementRow[], from: string, to: string, generatedAt: string, showZeroMovements = false) {
   const header = ["From", "To", "Stock as at", "Item", "Division", "Stock unit", ...stockColumns.map(([, label]) => label)];
-  return "\uFEFF" + [header, ...rows.filter(hasStockMovement).map(row => [from, to, generatedAt, row.name, row.division, row.unit_label,
+  return "\uFEFF" + [header, ...visibleStockRows(rows, showZeroMovements).map(row => [from, to, generatedAt, row.name, row.division, row.unit_label,
     ...stockColumns.map(([key]) => row[key] ?? "Unavailable")])]
     .map(row => row.map(stockCsvCell).join(",")).join("\r\n");
 }

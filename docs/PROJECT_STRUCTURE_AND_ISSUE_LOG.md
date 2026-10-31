@@ -1,3 +1,6 @@
+## 2026-10-31 — Live/test nomination layout parity
+- Live nominations used a max-width div shell (ignored by Outlook) and a plain body link, while tests used React Email's table container and Button. Live nominations now use the exact test renderer and shared content mapper, retaining club SMTP, signature/disclaimer handling and existing personal links. No tournament changes.
+
 ## 2026-10-31 — Bar stock movement report
 - Added Bar & POS → Reports → Stock movements with last day/today, last seven days, this month, last month and custom date filters, opening stock, signed purchases/sales/specials/club-sponsored/adjustment movements, period closing and current stock. Download includes the exact filtered quantities and snapshot date as spreadsheet-compatible CSV. A club/bar-authorized read-only RPC uses one statement snapshot and smallest stock units, preserving archived items with activity and explicitly marking pre-ledger opening balances unavailable. No stock, finance or tournament records changed.
 

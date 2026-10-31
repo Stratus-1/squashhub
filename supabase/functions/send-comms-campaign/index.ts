@@ -15,6 +15,10 @@ import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "..
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
 import { isActiveCommsMember } from "../_shared/comms-active-members.ts";
+import * as React from "npm:react@18.3.1";
+import { renderAsync } from "npm:@react-email/components@0.0.22";
+import { template as nominationTemplate } from "../_shared/transactional-email-templates/club-notification.tsx";
+import { nominationEmailData } from "../_shared/agm-nomination-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -251,6 +255,14 @@ Deno.serve(async (req) => {
       .eq("id", campaign.club_id).maybeSingle();
 
     const resolvedAction = resolveAction(campaign.action, club?.subdomain);
+    let nominationBallot: any = null;
+    if (channels.includes("email") && campaign.audience_filter?.purpose === "agm_nominations") {
+      const { data, error } = await admin.from("agm_ballots")
+        .select("title,nomination_message,meeting_at,meeting_venue,nominations_close_at")
+        .eq("id", campaign.audience_filter.ballot_id).eq("club_id", campaign.club_id).single();
+      if (error || !data?.nomination_message) return json({ error: "Nomination message not found for this club" }, 400);
+      nominationBallot = data;
+    }
     const tournamentId = campaign.action?.params?.tournament_id;
     // Resolve once per send. Never mint a token or change scoring authority.
     const tournamentLinks = resolvedAction.key === "tournament_view" && tournamentId
@@ -447,7 +459,17 @@ Deno.serve(async (req) => {
               }
               if (lines.length) contactBlock = `<div style="margin:12px 0;font-size:14px"><strong>Opponent contact</strong> <span style="color:#475569;font-size:12px">(shared with their permission, only for arranging this match)</span><ul style="margin:6px 0 0 18px;padding:0">${lines.join("")}</ul></div>`;
             }
-            const html = brandedEmailShell({ clubName: club?.name, clubLogoUrl: (club as any)?.logo_url, title: rendered.subject, inner: `${rendered.body}${contactBlock}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}` });
+            let html = brandedEmailShell({ clubName: club?.name, clubLogoUrl: (club as any)?.logo_url, title: rendered.subject, inner: `${rendered.body}${contactBlock}${mdBlock}${loginBlock}${sigBlock}${disclaimerBlock}` });
+            if (nominationBallot) {
+              const url = String(memberVars[m.id]?.nomination_link ?? "");
+              if (!/^https:\/\/[a-z0-9.-]+\/nominate\/[a-z0-9]+$/i.test(url)) throw new Error("Personal nomination link is missing");
+              const fmt = (iso: string, dateStyle: "full" | "medium") => new Date(iso).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle, timeStyle: "short" });
+              const meeting = nominationBallot.meeting_at ? `${fmt(nominationBallot.meeting_at, "full")}${nominationBallot.meeting_venue ? ` at ${nominationBallot.meeting_venue}` : ""}` : "the date to be confirmed";
+              const props = nominationEmailData({ title: nominationBallot.title, message: nominationBallot.nomination_message, memberName: m.name ?? "", meeting,
+                closes: nominationBallot.nominations_close_at ? fmt(nominationBallot.nominations_close_at, "medium") : "the closing date", url,
+                clubName: club?.name, clubLogoUrl: club?.logo_url, signatureHtml: club?.email_signature_html, disclaimer: club?.email_disclaimer });
+              html = await renderAsync(React.createElement(nominationTemplate.component, props));
+            }
             if (useManagedEmail) {
               // Main SquashHub domain (managed sending): suppression and rate
               // limits are enforced server-side; a suppressed recipient is skipped.

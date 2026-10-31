@@ -119,6 +119,7 @@ import type { RRPoolView } from "@/lib/tournaments/round-robin-view";
 import { KnockoutBracketView } from "@/components/tournaments/KnockoutBracketView";
 import { OverallStandingsPanel } from "@/components/tournaments/OverallStandingsPanel";
 import { overallStandings } from "@/lib/tournaments/overall-standings";
+import { twoPoolFinalRanking } from "@/lib/tournaments/two-pool-final-ranking";
 import { TournamentInteractiveViewer } from "@/components/tournaments/viewer/TournamentInteractiveViewer";
 import { rrSeedOrder, buildRoundRobinView } from "@/lib/tournaments/round-robin-view";
 import { plannedPlayoffBracket, overlayRealPlayoffWinners } from "@/lib/tournaments/planned-playoff-bracket";
@@ -4208,6 +4209,14 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const seedOrder = categoryRows.map((r) => r.club_member_id).filter(Boolean);
       const koOrder = overallStandings(seedOrder, knockout.map((m) => ({ bracket: 1, round: m.round_number ?? 1, a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id })));
       const hybridFinal = rrFinishOn(swissStageFor(gn)?.rrFinish) && pilotSwissModels[gn] ? rrFinalRanking(pilotSwissModels[gn]) : null;
+      // Display-only rollout for the completed Highveld event; preserve its pool tables and all ladder authority.
+      const highveldFinal = champ.id === "3612d8cf-5e0e-496a-b6ab-b177c9127710" && gn === 1 && fixturesComplete(categoryGames)
+        ? twoPoolFinalRanking([1, 2].map(pn => (getGroupStandings(gn, pn) as any[]).map(r => ({
+            id: r.club_member_id, gameDiff: r.gameDiff, pointsDiff: r.pointsDiff,
+          }))), categoryGames.map(m => ({ stage: m.stage, label: m.stage_label, status: m.status,
+            a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id }))) : null;
+      const highveldFinalPanel = highveldFinal
+        ? <OverallStandingsPanel title="Final rankings" rows={highveldFinal} complete names={Object.fromEntries(categoryRows.map(r => [r.club_member_id, r.name]))} clubId={champ.club_id} canManage={false} tournamentId={champ.id} groupNumber={gn} /> : null;
       const finalRows = hybridFinal ? hybridFinal.map((r) => ({ id: r.id, place: r.place, how: r.group ? `Round-robin group ${r.group}` : "Swiss finish" }))
         : placements ? placements.map((p) => ({ id: p.player_member_id, place: p.position, how: placementSlotLabel(p.decidedBySlot) }))
         : knockout.length ? koOrder.rows : categoryRows.map((r, i) => ({ id: r.club_member_id, place: i + 1, how: "Rounds finish" }));
@@ -4308,6 +4317,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                 </Tabs>
               ) : (<>{standingsTable}{renderRoundRobinPilot(gn)}</>)}
               {ladderPanel}
+              {highveldFinalPanel}
             </div>
           ),
           upcoming: (() => {

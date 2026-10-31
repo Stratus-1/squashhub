@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { downloadStockCsv, stockColumns, stockDateRange, stockMovementCsv, stockToday, type StockMovementReport as Report, type StockPeriod } from "@/lib/bar/stock-movement-report";
+import { downloadStockCsv, hasStockMovement, stockColumns, stockDateRange, stockMovementCsv, stockToday, type StockMovementReport as Report, type StockPeriod } from "@/lib/bar/stock-movement-report";
 
 export function StockMovementReport({ clubId }: { clubId: string }) {
   const [period, setPeriod] = useState<StockPeriod>("month");
@@ -22,7 +22,7 @@ export function StockMovementReport({ clubId }: { clubId: string }) {
       return data as unknown as Report;
     },
   });
-  const rows = useMemo(() => (data?.rows ?? []).filter(row => row.name.toLowerCase().includes(search.toLowerCase())), [data, search]);
+  const rows = useMemo(() => (data?.rows ?? []).filter(row => hasStockMovement(row) && row.name.toLowerCase().includes(search.toLowerCase())), [data, search]);
   const changePeriod = (value: string) => {
     const next = value as StockPeriod;
     setPeriod(next);
@@ -51,7 +51,7 @@ export function StockMovementReport({ clubId }: { clubId: string }) {
           <tbody>{rows.map(row => <tr key={row.id} className="border-b"><td className="p-2 font-medium">{row.name}</td><td className="p-2 capitalize">{row.division}</td><td className="p-2">{row.unit_label}</td>{stockColumns.map(([key]) => <td key={key} className="p-2 text-right tabular-nums">{row[key] == null ? "—" : row[key].toLocaleString("en-ZA")}</td>)}</tr>)}</tbody>
         </table>
       </div>
-      {!rows.length && <p className="py-4 text-muted-foreground">No stock items found.</p>}
+      {!rows.length && <p className="py-4 text-muted-foreground">No stock movements found for this period.</p>}
     </>}
   </section>;
 }

@@ -31,6 +31,10 @@ export interface StockMovementReport {
   generated_at: string; history_complete: boolean; rows: StockMovementRow[];
 }
 
+export function hasStockMovement(row: StockMovementRow) {
+  return [row.receipts, row.sales, row.specials, row.club_use, row.adjustments, row.net].some(value => value !== 0);
+}
+
 export const stockColumns = [
   ["opening", "Opening stock"], ["receipts", "Purchases"], ["sales", "Sales"],
   ["specials", "Specials"], ["club_use", "Club sponsored"], ["adjustments", "Adjustments"],
@@ -46,7 +50,7 @@ export function stockCsvCell(value: unknown) {
 
 export function stockMovementCsv(rows: StockMovementRow[], from: string, to: string, generatedAt: string) {
   const header = ["From", "To", "Stock as at", "Item", "Division", "Stock unit", ...stockColumns.map(([, label]) => label)];
-  return "\uFEFF" + [header, ...rows.map(row => [from, to, generatedAt, row.name, row.division, row.unit_label,
+  return "\uFEFF" + [header, ...rows.filter(hasStockMovement).map(row => [from, to, generatedAt, row.name, row.division, row.unit_label,
     ...stockColumns.map(([key]) => row[key] ?? "Unavailable")])]
     .map(row => row.map(stockCsvCell).join(",")).join("\r\n");
 }

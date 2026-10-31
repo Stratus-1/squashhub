@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Exclude visitors/inactive/suspended members from AGM nomination selection, issuance and queued dispatch; retain CSIR hourly cap and already-sent history.
 - [ ] App hang: service healthy, no resource exhaustion; signed-in home opened in 3.1 seconds with no runtime errors/stalled requests. Earlier database pool failure was transient; exact user's hang remains unconfirmed. Await affected screen/device detail; no restart or live score changes.
 - [x] Separate connected plate winner added in preview, resolves only after the saved plate final completes; signed-in bracket checked and 26 focused tests passed, build OK. Not published.
 - [ ] Plate-final placement: Ewald saved in side B and read back in signed-in summary/bracket; SF3 Andre–Gerrit still in_progress with no saved winner at 12:33, so side A awaits the scorer finishing/saving that result.

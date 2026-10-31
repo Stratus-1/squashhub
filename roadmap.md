@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Investigate Paul's HSC login failure; identify the matching account and confirmation/email problem without bypassing verification.
 - [x] Add independent playoff Best of 3/5 and Play all 3/5 choices; 47 focused tests and build pass, all four choices verified in HSC edit controls without saving tournament changes; hosted save/reopen not exercised on live data.
 - [ ] Vercel deployment diagnosis blocked by unavailable Vercel access/deployment error; source configuration inspected, no confirmed build-setting fault.
 - [x] Lovable publication requested at https://squashhub.lovable.app; completion not confirmed. Both member email dispatch functions redeployed successfully. Vercel is a separate blocked release path.

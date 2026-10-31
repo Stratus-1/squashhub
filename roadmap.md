@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Require explicit member Add to my tab confirmation with adjustable quantities; verify focused tests and signed-in preview without changing live stock or HSC tournaments.
 - [x] Missing CSIR send button was hidden after requester's single live copy opened nominations. User approved sending remaining active members; added permission-checked append-only nomination recipient writer without resetting positions or existing tokens.
 - [x] CSIR nomination email quota deployed: atomic maximum 30 attempts per rolling hour; 104 remaining active recipients queued, first 30 sent/0 failed, 74 waiting from 12:40 Johannesburg via existing scheduled-comms worker. Approved layout/club SMTP retained; no tournaments or frontend publication changed.
 - [x] Add AGM Select all and Clear selection controls; 18 focused tests pass including 120-member selection, individual exclusion and clearing. Build OK; preview-only, no emails sent or tournament data changed.

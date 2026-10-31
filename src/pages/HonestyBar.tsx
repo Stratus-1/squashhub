@@ -197,16 +197,10 @@ export default function HonestyBar() {
     cartLines.map(({ item, qty }) => ({ division: (item as any).division, total: item.price * qty })));
   const updateCart = (itemId: string, delta: number) => setCart(prev => addToTab(prev, itemId, delta));
 
-  // Tapping a tile adds one and confirms with a toast; no tile stays visually selected.
+  // Product taps only change the local selection; saving requires explicit confirmation.
   const addLineToTab = (itemId: string) => {
-    const item = items.find(i => i.id === itemId);
+    if (submitting) return;
     updateCart(itemId, 1);
-    if (!item) return;
-    const count = (cart[itemId] || 0) + 1;
-    toast.success(count > 1 ? `${count}× ${item.name} on your tab` : `${item.name} added to your tab`, {
-      id: `bar-tab-${itemId}`,
-      duration: 2200,
-    });
   };
 
   // Mixer ("buddy") choices for spirit + mixer orders: in-stock soft-drink
@@ -424,10 +418,7 @@ export default function HonestyBar() {
         {canSeeVisitors && <CounterModeCard clubId={clubId} />}
 
 
-        <Tabs value={activeTab} onValueChange={(value) => {
-          setActiveTab(value);
-          if (value === "my-tab" && cartCount > 0 && orderProcess === false) void submitCart();
-        }} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid sticky top-0 z-20" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">
               <ShoppingCart className="w-3.5 h-3.5" />
@@ -533,12 +524,24 @@ export default function HonestyBar() {
                                      <span className="truncate">{o.label}</span>
                                      <span className="shrink-0">{money(o.item.price)}</span>
                                   </Button>
-
+                                  {(cart[o.item.id] || 0) > 0 && (
+                                    <>
+                                      <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" disabled={submitting} aria-label={`One less ${o.item.name} ${o.label}`} onClick={() => updateCart(o.item.id, -1)}><Minus className="h-3.5 w-3.5" /></Button>
+                                      <span className="w-5 shrink-0 self-center text-center text-xs tabular-nums">{cart[o.item.id]}</span>
+                                    </>
+                                  )}
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>
+                            <>
+                              <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>
+                              <div className="flex items-center justify-center gap-1 w-full" onClick={event => event.stopPropagation()}>
+                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`One less ${entry.title}`} disabled={submitting || !cart[first.id]} onClick={() => updateCart(first.id, -1)}><Minus className="h-3.5 w-3.5" /></Button>
+                                <span className="w-6 text-center text-xs font-semibold tabular-nums">{cart[first.id] || 0}</span>
+                                <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`One more ${entry.title}`} disabled={submitting} onClick={() => addLineToTab(first.id)}><Plus className="h-3.5 w-3.5" /></Button>
+                              </div>
+                            </>
                           )}
                         </Card>
                       );
@@ -548,9 +551,9 @@ export default function HonestyBar() {
               );
             })}
 
-            {cartCount > 0 && orderProcess === true && (
+            {cartCount > 0 && (
               <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
-                <ShoppingCart className="w-4 h-4" /> {orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
+              <ShoppingCart className="w-4 h-4" /> {submitting ? "Adding…" : orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
               </Button>
             )}
           </TabsContent>
@@ -558,7 +561,7 @@ export default function HonestyBar() {
           <TabsContent value="my-tab" className="space-y-3 mt-4">
             <Card className={`p-3 space-y-2 ${cartCount > 0 ? "border-accent ring-1 ring-accent" : ""}`}>
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Open tab{cartCount > 0 ? ` (${cartCount})` : ""}</h3>
+                <h3 className="text-sm font-semibold">Selected items{cartCount > 0 ? ` (${cartCount})` : ""}</h3>
                 <span className="text-base font-semibold tabular-nums">{money(cartTotal)}</span>
               </div>
               {cartLines.length === 0 ? (
@@ -585,25 +588,25 @@ export default function HonestyBar() {
                           <p className="text-sm font-medium truncate">{item.name}</p>
                           <p className="text-[11px] text-muted-foreground">{money(item.price)} each</p>
                         </div>
-                        <Button size="icon" variant="outline" className="h-8 w-8" aria-label={`One less ${item.name}`} onClick={() => updateCart(item.id, -1)}>
+                        <Button size="icon" variant="outline" className="h-8 w-8" disabled={submitting} aria-label={`One less ${item.name}`} onClick={() => updateCart(item.id, -1)}>
                           <Minus className="w-3.5 h-3.5" />
                         </Button>
                         <span className="w-6 text-center text-sm font-semibold tabular-nums">{qty}</span>
-                        <Button size="icon" variant="outline" className="h-8 w-8" aria-label={`One more ${item.name}`} onClick={() => updateCart(item.id, 1)}>
+                        <Button size="icon" variant="outline" className="h-8 w-8" disabled={submitting} aria-label={`One more ${item.name}`} onClick={() => updateCart(item.id, 1)}>
                           <Plus className="w-3.5 h-3.5" />
                         </Button>
                         <span className="w-16 text-right text-sm tabular-nums">{money(item.price * qty)}</span>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`Remove ${item.name}`} onClick={() => updateCart(item.id, -qty)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" disabled={submitting} aria-label={`Remove ${item.name}`} onClick={() => updateCart(item.id, -qty)}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     ))}
                   </div>
                     <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
-                      <ShoppingCart className="w-4 h-4" /> {submitting ? "Loading my tab…" : orderProcess ? "Place order" : "View payment options"} · {money(cartTotal)}
+                      <ShoppingCart className="w-4 h-4" /> {submitting ? "Adding…" : orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
-                    Clear tab
+                    Clear selection
                   </Button>
                 </>
               )}

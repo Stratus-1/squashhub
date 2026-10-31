@@ -856,6 +856,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
               Manage the dropdown list via the <span className="font-medium">Home Clubs</span> button. Clear to remove.
             </p>
           </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
             <Button onClick={saveEdit} disabled={saving}>

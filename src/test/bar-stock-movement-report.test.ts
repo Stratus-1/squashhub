@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { hasStockMovement, stockDateRange, stockToday, stockMovementCsv, type StockMovementRow } from "@/lib/bar/stock-movement-report";
+import { hasStockMovement, visibleStockRows, stockDateRange, stockToday, stockMovementCsv, type StockMovementRow } from "@/lib/bar/stock-movement-report";
 
 const now = new Date("2026-10-31T07:08:00Z");
 const unmoved: StockMovementRow = { id: "still", name: "Unmoved stock", division: "bar", unit_label: "unit", opening: 28, receipts: 0, sales: 0, specials: 0, club_use: 0, adjustments: 0, net: 0, closing: 28, current: 28 };
 describe("Stock movement visibility", () => {
+  it("hides zero movements by default and restores them when selected", () => {
+    expect(visibleStockRows([unmoved])).toEqual([]);
+    expect(visibleStockRows([unmoved], true)).toEqual([unmoved]);
+  });
+  it("includes zero movements in the download when selected", () => {
+    expect(stockMovementCsv([unmoved], "2026-10-01", "2026-10-31", "2026-10-31T08:00Z", true)).toContain("Unmoved stock");
+  });
   it("hides zero movements even with 28 stock units", () => expect(hasStockMovement(unmoved)).toBe(false));
   it("keeps offsetting purchases and sales with zero net", () => expect(hasStockMovement({ ...unmoved, receipts: 10, sales: -10 })).toBe(true));
   it("keeps adjustment-only movement", () => expect(hasStockMovement({ ...unmoved, adjustments: -4, net: -4 })).toBe(true));

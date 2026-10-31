@@ -316,6 +316,15 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
 
   const openEdit = (v: Visitor) => {
     setEditing(v);
+    setEditFirstName(v.first_name || "");
+    setEditLastName(v.last_name || "");
+    setEditEmail(v.email || "");
+    setEditPhone(v.phone || "");
+    setEditCategory(v.category === "Ladies" ? "Ladies" : "Men");
+    // Shadow member rows store their origin as `visitor:<uuid>` — that key is
+    // not a real member number and must not be edited or shown as one.
+    const num = v.member_number || "";
+    setEditMemberNumber(num.startsWith("visitor:") ? "" : num);
     const current = v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "";
     setEditValue(current);
     // If current value matches a known option (or blank / No club), use picker; else "other"
@@ -324,28 +333,70 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     setEditMode(known ? "picker" : "other");
   };
 
-
   const saveEdit = async () => {
     if (!editing) return;
+    const first = editFirstName.trim();
+    const last = editLastName.trim();
+    if (!first || !last) {
+      toast.error("First and last name are required");
+      return;
+    }
     const value = editValue.trim();
+    const email = editEmail.trim() || null;
+    const phone = editPhone.trim() || null;
+    const memberNumber = editMemberNumber.trim() || null;
     setSaving(true);
     try {
       if (editing.source === "member_record") {
+        const update: Record<string, unknown> = {
+          name: `${first} ${last}`.trim(),
+          email,
+          phone,
+          gender: editCategory,
+          home_club_name: value || null,
+        };
+        // Never overwrite the `visitor:<uuid>` shadow key that links this
+        // member record back to its visitor registration.
+        const existingNum = String(editing.member_number || "");
+        if (!existingNum.startsWith("visitor:")) {
+          update.club_member_number = memberNumber;
+        }
         const { error } = await fromExt("club_members")
-          .update({ home_club_name: value || null })
+          .update(update)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await fromExt("club_visitors")
-          .update({ home_club_name: value || "Visitor" })
+          .update({
+            first_name: first,
+            last_name: last,
+            email,
+            phone,
+            category: editCategory,
+            member_number: memberNumber,
+            home_club_name: value || "Visitor",
+          })
           .eq("id", editing.id);
         if (error) throw error;
+        // Keep the linked shadow member record (created so this visitor can
+        // appear in tournament invitations and results) in sync.
+        await fromExt("club_members")
+          .update({
+            name: `${first} ${last}`.trim(),
+            email,
+            phone,
+            gender: editCategory,
+            home_club_name: value || null,
+          })
+          .eq("club_id", clubId)
+          .eq("club_member_number", `visitor:${editing.id}`);
       }
-      toast.success("Home club updated");
+      toast.success("Visitor updated");
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
     } catch (e: any) {
-      toast.error(e.message || "Failed to update home club");
+      toast.error(e.message || "Failed to update visitor");
     } finally {
       setSaving(false);
     }

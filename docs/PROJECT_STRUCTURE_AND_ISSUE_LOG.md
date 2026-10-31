@@ -1,3 +1,6 @@
+## 2026-10-31 — Bar stock movement report
+- Added Bar & POS → Reports → Stock movements with last day/today, last seven days, this month, last month and custom date filters, opening stock, signed purchases/sales/specials/club-sponsored/adjustment movements, period closing and current stock. Download includes the exact filtered quantities and snapshot date as spreadsheet-compatible CSV. A club/bar-authorized read-only RPC uses one statement snapshot and smallest stock units, preserving archived items with activity and explicitly marking pre-ledger opening balances unavailable. No stock, finance or tournament records changed.
+
 ## 2026-10-31 — New tournament playoff format reset
 - Clear per-category playoff match-format overrides in the shared wizard reset, alongside playoff PAR overrides; editing an existing tournament no longer leaves its game count selected for a new tournament. Regression exercises the actual reset callback for Best of 3/5 and Play all 3/5 and confirms new playoffs inherit pool scoring. No saved tournaments changed.
 

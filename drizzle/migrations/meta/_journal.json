@@ -2283,6 +2283,13 @@
       "when": 1793450000008,
       "tag": "0325_agm_add_remaining_nomination_recipients",
       "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1793450000009,
+      "tag": "0326_tournament_result_correction",
+      "breakpoints": true
     }
   ]
 }

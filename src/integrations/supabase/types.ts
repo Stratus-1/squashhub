@@ -22682,6 +22682,16 @@ export type Database = {
         Args: { p_season_id: string }
         Returns: number
       }
+      correct_tournament_result: {
+        Args: {
+          p_expected_updated_at: string
+          p_games: Json
+          p_match_id: string
+          p_preview?: boolean
+          p_reason?: string
+        }
+        Returns: Json
+      }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number

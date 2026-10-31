@@ -7,7 +7,7 @@
 import { provisionalPlayoffs } from "./provisional-playoffs";
 
 export type PlannedSide = { label: string; name: string | null; pool: string | null; rank: number | null };
-export type PlannedPlayoffRow = { key: string; stage: string; id: string; text: string; when: string | null; sides: [PlannedSide, PlannedSide] };
+export type PlannedPlayoffRow = { key: string; stage: string; id: string; text: string; when: string | null; sides: [PlannedSide, PlannedSide]; winner?: string | null };
 
 const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
 
@@ -79,10 +79,10 @@ export function overlayRealPlayoffWinners(rows: PlannedPlayoffRow[], real: any[]
     const m = list[idx];
     if (!m) return r;
     const w = nameOf(m, m.winner_member_id ?? null);
-    if (w) winners[r.id] = w;
+    if (w && m.status === "completed") winners[r.id] = w;
     const a = nameOf(m, m.player_a_member_id ?? null), b = nameOf(m, m.player_b_member_id ?? null);
     const when = m.scheduled_date ? `${m.scheduled_date}${m.scheduled_time ? ` ${String(m.scheduled_time).slice(0, 5)}` : ""}` : m.play_by ? `play by ${m.play_by}` : r.when;
-    return { ...r, when, sides: [{ ...r.sides[0], name: a ?? r.sides[0].name }, { ...r.sides[1], name: b ?? r.sides[1].name }] as [PlannedSide, PlannedSide] };
+    return { ...r, when, winner: m.status === "completed" ? w : null, sides: [{ ...r.sides[0], name: a ?? r.sides[0].name }, { ...r.sides[1], name: b ?? r.sides[1].name }] as [PlannedSide, PlannedSide] };
   });
   return out.map((r) => ({ ...r, sides: r.sides.map((s) => { const k = s.label.match(/^Winner (\w+)$/)?.[1]; return k && winners[k] && !s.name ? { ...s, name: winners[k] } : s; }) as [PlannedSide, PlannedSide] }));
 }

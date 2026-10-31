@@ -48,14 +48,15 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
       const curve = (x1: number, y1: number, x2: number, y2: number) => { const m = (x1 + x2) / 2; return `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`; };
       const out: Line[] = [];
       el.querySelectorAll<HTMLElement>("[data-side]").forEach((side) => {
-        const slot = side.dataset.side!;
+        const slot = side.dataset.side;
+        if (!slot) return;
         const src = el.querySelector(`[data-pool-slot="${slot}"]`);
         if (!src) return;
         const a = box(src), b = box(side);
         out.push({ d: curve(a.r, a.y, b.l, b.y), color: toneOf(slot[0])?.line ?? "hsl(var(--border))", dashed: !confirmed });
       });
       el.querySelectorAll<HTMLElement>("[data-feeds]").forEach((game) => {
-        game.dataset.feeds!.split(",").forEach((id) => {
+        game.dataset.feeds?.split(",").forEach((id) => {
           const src = el.querySelector(`[data-game="${id}"]`);
           if (!src) return;
           const a = box(src), b = box(game);
@@ -127,11 +128,14 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
         {cols.length > 0 && (
           <div className="flex w-52 flex-col">
             <div className="mb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Winner</div>
-            <div className="flex flex-1 flex-col justify-around">
-              <div data-feeds={cols[cols.length - 1][0]?.id} data-testid="playoff-champion"
-                className={cn("rounded-lg border-2 px-3 py-2 text-center text-sm", champion ? "border-warning bg-warning/15 font-bold text-warning" : "border-dashed border-border text-muted-foreground")}>
-                🏆 {champion ?? `Winner ${cols[cols.length - 1][0]?.id ?? "Final"}`}
-              </div>
+            <div className="flex flex-1 flex-col justify-around gap-2">
+              {cols[cols.length - 1].map((game, index) => {
+                const winner = game.winner ?? (index === 0 ? champion : null);
+                return <div key={game.key} data-feeds={game.id} data-testid={index === 0 ? "playoff-champion" : "playoff-plate-winner"}
+                  className={cn("rounded-lg border-2 px-3 py-2 text-center text-sm", winner ? "border-warning bg-warning/15 font-bold text-warning" : "border-dashed border-border text-muted-foreground")}>
+                  🏆 {winner ? <><span className="block text-[10px]">Winner {game.id}</span>{winner}</> : `Winner ${game.id}`}
+                </div>;
+              })}
             </div>
           </div>
         )}

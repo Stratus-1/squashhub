@@ -18,6 +18,15 @@ describe("planned play-off bracket", () => {
     expect(result[1].sides[1].name).toBe("Ewald Hoft");
     expect(result[0].sides[1].name).toBeNull();
   });
+  it("resolves a separate plate winner only after the saved plate final completes", () => {
+    const side = { label: "Winner SF3", name: null, pool: null, rank: null };
+    const rows = [{ key: "final", stage: "Final", id: "Final", text: "", when: null, sides: [side, side] as [typeof side, typeof side] }, { key: "plate", stage: "Final", id: "Plate", text: "", when: null, sides: [side, side] as [typeof side, typeof side] }];
+    const real = [{ stage: "playoff_final", stage_label: "Final", bracket_position: 1 }, { stage: "playoff_final", stage_label: "5th place final", bracket_position: 2, status: "in_progress", winner_member_id: "ewald", player_b_member_id: "ewald", player_b: { name: "Ewald Hoft" } }];
+    expect(overlayRealPlayoffWinners(rows, real)[1].winner).toBeNull();
+    real[1].status = "completed";
+    expect(overlayRealPlayoffWinners(rows, real)[1].winner).toBe("Ewald Hoft");
+    expect(overlayRealPlayoffWinners(rows, real)[0].winner).toBeNull();
+  });
   const placementPlan = {
     playoffOverrides: { Open: { choice: "playoffs", style: "placement", pairing: "seeded" } },
     playoffPoolQualifiers: { Open: { perPool: 4 } },

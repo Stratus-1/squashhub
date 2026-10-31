@@ -324,7 +324,15 @@ function DraftEditor({ clubId, ballot }: { clubId: string; ballot: any }) {
         </label>
 
         <div>
-          <p className="text-xs font-semibold mb-1">Eligible members ({chosen.size} of {voters.length} active members ticked)</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <p className="text-xs font-semibold">Eligible members ({chosen.size} of {voters.length} active members ticked)</p>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="outline" size="sm" disabled={!voters.length}
+                onClick={() => setSelected(new Set(voters.map((v) => v.club_member_id)))}>Select all</Button>
+              <Button type="button" variant="ghost" size="sm" disabled={!chosen.size}
+                onClick={() => setSelected(new Set())}>Clear selection</Button>
+            </div>
+          </div>
           <p className="text-[11px] text-muted-foreground mb-2">
             Pre-ticked: aged 18+ (from SA ID) with this year's membership fee paid.
             {noFeeRecords && " This club has no membership fee records in SquashHub, so please untick anyone who is not paid up."}

@@ -1,3 +1,6 @@
+## 2026-10-31 — New tournament playoff format reset
+- Clear per-category playoff match-format overrides in the shared wizard reset, alongside playoff PAR overrides; editing an existing tournament no longer leaves its game count selected for a new tournament. Regression exercises the actual reset callback for Best of 3/5 and Play all 3/5 and confirms new playoffs inherit pool scoring. No saved tournaments changed.
+
 - 2026-10-30: Added category playoff game-count selection (Best of 3/5, Play all 3/5), independently of playoff PAR, using nullable `league_playoff_match_formats`, setup round-trip adapters and shared playoff-only marker resolution. Existing tournament data is unchanged.
 ## 2026-10-30 — Vice Chairman and Club Manager offices
 - Add member selectors and title displays with club-scoped assignment validation. Vice Chairman reuses Chairman permission and financial restrictions; Club Manager reuses the Club Captain office role, never the league captain enum. Existing offices/assignments are unchanged; no members automatically appointed.

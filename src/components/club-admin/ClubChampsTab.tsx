@@ -8235,6 +8235,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffModes({});
     setLeaguePlayoffQualifiers({});
     setLeaguePlayoffPointsPerGame({});
+    setLeaguePlayoffMatchFormats({});
     setRotationMaxMatches(0);
     setRotationAvoidPairs([]);
     setRotationStrengthMode("mixed");

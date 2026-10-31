@@ -70,3 +70,6 @@
 - [x] Playoff format override per category: "Keep same format as pools" tick; when off, choose Par 7/11/15 for that category's playoffs (HSC request, 30 Oct). Migration 0315 applied; 22 focused tests pass; verified in HSC edit flow (no save).
 
 - [x] HSC Myburg 7's: scheduler must use the 12-min per-pool slot time, not the 30-min default
+
+- [x] Appointed Deon Groenewald as Uitsig treasurer (club_offices + clubs.treasurer_member_id).
+- [x] Fixed GL account permission block: club_gl_accounts only allowed full club admins; added finance-staff policy matching other finance tables. Deon passes finance permission check; migration 0328 applied.

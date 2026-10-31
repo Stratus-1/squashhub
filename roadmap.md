@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Verify and fix new-tournament playoff match-format carry-over; add focused reset regression without changing live tournaments.
+- [x] Fix new-tournament playoff match-format carry-over: shared reset clears category game-count overrides; all 14 focused tests pass and preview build OK. No live tournaments changed; full admin UI flow not exercised.
 - [ ] Lamont sees Paul's profile at HSC: saved membership/auth profiles are correct and separate; Lamont is admin and View as selection persists across login. Ask him to Exit Viewing as; actual phone state/screenshot needed to confirm. No account records changed.
 - [x] Investigate Paul's HSC login failure: member/login emails match, membership active; email confirmation missing since 15 October. Verification remains required; no account changes or emails sent.
 - [x] Add independent playoff Best of 3/5 and Play all 3/5 choices; 47 focused tests and build pass, all four choices verified in HSC edit controls without saving tournament changes; hosted save/reopen not exercised on live data.

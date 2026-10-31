@@ -1,3 +1,6 @@
+## 2026-10-31 — Nomination visitor exclusion
+- Nomination eligibility previously checked active status without excluding visitor roles, and selected campaigns skipped the active-members dispatch guard. Enforce non-visitor active/non-suspended membership in selection, token issuance and send-time checks. Pending campaign audiences cleaned without changing sent history, email layout, SMTP or the CSIR hourly cap.
+
 ## 2026-10-31 — Completed tournament result correction
 - Add Edit result to completed pilot fixtures and replace the broken Redo score marker link with a saved-score editor. Corrections use an authenticated tournament-manager RPC, category/playoff PAR and game-count rules, review/reason, timestamp guard and existing audited downstream/winner-change blockers. Opening/cancelling performs no result writes; no live HSC results or fixtures changed during development.
 

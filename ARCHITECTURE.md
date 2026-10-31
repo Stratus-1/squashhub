@@ -4,6 +4,8 @@ Last verified against the repository on 2026-08-25.
 
 ## System purpose
 
+Registration-only opening is an explicit public action recorded privately in `club_registration_openings`. The availability RPC reads its existence alongside existing SLA/trial gates; it does not create memberships, assign roles, sign agreements or change subscriptions. First-person registration then follows normal email verification and club approval.
+
 Vice Chairman and Club Manager are club-owned office assignments, mapped through the existing role writer to Chairman and Club Captain respectively. Vice Chairman detection includes the office field, active office and role assignments so existing financial write restrictions remain shared. Team/league captain roles remain independent.
 
 Chairman member creation/approval raises configured unpaid joining fees through club-authorized server actions. Owned tournament acceptance/account charging and approved family activation wrap the existing canonical writers with private backend/transaction/target-bound contexts; clients cannot create contexts or call the copied private writers. Manual financial writes remain denied. No existing member balances or competition records are backfilled.

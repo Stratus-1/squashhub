@@ -1,5 +1,7 @@
+import { OpenClubRegistration } from "./OpenClubRegistration";
+
 export function MembershipUnavailableNotice({ club, pending = false, failed = false }: {
-  club?: { name: string; email?: string | null; phone?: string | null } | null;
+  club?: { id?: string; name: string; subdomain?: string | null; email?: string | null; phone?: string | null } | null;
   pending?: boolean;
   failed?: boolean;
 }) {
@@ -18,6 +20,7 @@ export function MembershipUnavailableNotice({ club, pending = false, failed = fa
           {club.email && club.phone && " · "}
           {club.phone && <a className="text-primary underline" href={`tel:${club.phone}`}>{club.phone}</a>}
         </p>}
+        {!failed && club?.id && <OpenClubRegistration club={{ ...club, id: club.id }} />}
       </>}
     </div>
   );

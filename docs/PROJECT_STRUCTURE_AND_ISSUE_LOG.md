@@ -4156,6 +4156,10 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Added Select all and Clear selection beside the eligible-member count, using only the existing club-scoped candidate list. Individual exclusions and explicit send confirmation remain unchanged; no emails sent or live records changed.
 - Regression tests exercise one-click selection of 120 members, individual exclusion and clearing the selection.
 
+### 2026-10-31 — CSIR nomination email pacing
+- CSIR nomination campaigns reserve at most 30 email attempts in a rolling hour under a club-scoped transaction lock. Remaining recipients are deferred to the existing scheduled-campaign worker; other clubs/channels and tournaments are unchanged.
+- SMTP reservations prevent automatic repeat of uncertain attempts; failures count against the hourly allowance. The approved nomination renderer and club SMTP remain unchanged. No new recurring job is added.
+
 ### 2026-10-30 — HSC Myburg 7's "not enough court time"
 - The fixed-date timed scheduler ignored the structure page's "Planned match time" / per-pool slot minutes (12 min) and fell back to the tournament's 30-minute default, so 42 pool games could not fit 08:00–16:00 on 2 courts (32 slots). Cancelled bookings were never the cause.
 - `resolveTimedFormat` now uses `structureMatchMinutes(answers.originalStructure)` (per-pool minutes, else category minutes, Standard categories only) before `match_duration_minutes`. Tests in `timed-format-leak.test.ts`.

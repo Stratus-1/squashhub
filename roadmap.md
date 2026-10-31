@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Investigate app hangs reported 31 Oct 12:34; prioritize read-only service health and request failures, preserve live scores and placements.
 - [x] Separate connected plate winner added in preview, resolves only after the saved plate final completes; signed-in bracket checked and 26 focused tests passed, build OK. Not published.
 - [ ] Plate-final placement: Ewald saved in side B and read back in signed-in summary/bracket; SF3 Andre–Gerrit still in_progress with no saved winner at 12:33, so side A awaits the scorer finishing/saving that result.
 - [x] Myburg result-triggered semifinal handover deployed, exact six-fixture scope; manager replay placed Ewald and repeat returned zero writes. SF1/SF2 feed Final, SF3/SF4 feed fifth-place final, allocations/scores unchanged. Later automatic handover awaits a newly completed semifinal; existing winners only are placed. Progression display fix remains preview-only.

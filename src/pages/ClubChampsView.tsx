@@ -58,6 +58,7 @@ import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, p
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
+import { CorrectResultDialog } from "@/components/tournaments/CorrectResultDialog";
 import { EnterResultConfirmDialog } from "@/components/tournaments/EnterResultConfirmDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { isParticipant } from "@/lib/tournaments/self-schedule";
@@ -3268,8 +3269,16 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         }}
       />
 
+      <CorrectResultDialog
+        open={!!resultMatch && resultMatch.status === "completed"}
+        onOpenChange={open => { if (!open) setResultMatch(null); }}
+        match={resultMatch}
+        playerAName={resultMatch ? getMatchTeamA(resultMatch) : ""}
+        playerBName={resultMatch ? getMatchTeamB(resultMatch) : ""}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
+      />
       <EnterResultDialog
-        open={!!resultMatch}
+        open={!!resultMatch && resultMatch.status !== "completed"}
         onOpenChange={(o) => { if (!o) setResultMatch(null); }}
         clubId={(champ as any)?.club_id}
         match={resultMatch}
@@ -3708,14 +3717,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => {
-              const fmt = getTournamentFormat((champ as any)?.scoring_mode);
-              navigate(fmt.markerRoute(m.id));
-            }}
-            title="Admin: reopen and correct this final score"
+            onClick={() => setResultMatch(m)}
+            title="Edit the saved result without reopening live scoring"
           >
             <RotateCcw className="h-3 w-3 mr-1" />
-            Redo score
+            Edit result
           </Button>
         )}
         </>)}

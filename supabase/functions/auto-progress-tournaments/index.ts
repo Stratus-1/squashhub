@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } });
     const { data: identity } = await userClient.auth.getUser();
     if (!identity.user) return json({ error: "Sign in required" }, 401);
-    const { data: allowed, error } = await userClient.rpc("can_manage_tournament", { p_tid: body.tid });
+    const { data: allowed, error } = await userClient.rpc("can_manage_tournament", { _tournament_id: body.tid });
     if (error || !allowed) return json({ error: "Not allowed" }, 403);
     try { return json({ placed: await handover(body.tid) }); }
     catch (e) { return json({ error: (e as Error).message }, 500); }

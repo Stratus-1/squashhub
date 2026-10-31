@@ -722,17 +722,15 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   </p>
                 )}
               </div>
-              {homeClubsEnabled && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => openEdit(v)}
-                  title="Edit home club"
-                >
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => openEdit(v)}
+                title="Edit visitor"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
               {v.source === "member_record" && (
                 <Button
                   variant="ghost"

@@ -1,7 +1,7 @@
 # Roadmap
-- [ ] Verify Myburg 7’s automatic playoff qualifier placement in fixtures and progression without changing live results.
+- [ ] Myburg 7’s imminent playoff handover: read-only check found semifinals/final remain deferred with incomplete plans; automatic progression cannot fill the six existing placeholder rows. Needs organiser approval for a targeted handover repair preserving all results and slots.
 - [x] Make Open club for registration permanently golden-yellow on registration and landing pages; mobile appearance checked on both, five existing tests pass. Preview-only; no club opened.
-- [ ] Add authorised organiser result correction to completed tournament fixtures using the existing scoring flow; keep HSC live results unchanged during verification.
+- [ ] Result editor added for existing authorised tournament managers; HSC PAR 7 saved-score review verified on desktop/mobile and cancelled without saving. Selected-organiser server authorization and changed-result end-to-end verification remain outstanding; no live result changes.
 - [x] Add explicit member Add to my tab confirmation and quantity correction. Focused tests verify duplicate correction, removing the final item and no write on My Tab navigation. Signed-in Riverside selection/review checked without submission; no real stock or HSC tournaments changed. Live order/payment submission not exercised.
 - [x] Check member controls at 390px phone and desktop widths: plus/minus and full-width confirmation fit without horizontal overflow; preview switched to mobile. Frontend remains preview-only.
 - [x] Missing CSIR send button was hidden after requester's single live copy opened nominations. User approved sending remaining active members; added permission-checked append-only nomination recipient writer without resetting positions or existing tokens.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applyPlayoffSettings, effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 
 // Exercise the actual reset callback without mounting the entire admin workspace.
-const source = readFileSync(new URL("../components/club-admin/ClubChampsTab.tsx", import.meta.url), "utf8");
+const source = readFileSync("src/components/club-admin/ClubChampsTab.tsx", "utf8");
 const body = source.match(/const resetWizard = \(\) => \{([\s\S]*?)\n  \};/)?.[1];
 
 describe("new tournament playoff reset", () => {

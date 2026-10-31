@@ -2269,6 +2269,13 @@
       "when": 1793450000006,
       "tag": "0323_registration_opening_private_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 324,
+      "version": "7",
+      "when": 1793450000007,
+      "tag": "0324_csir_nomination_email_quota",
+      "breakpoints": true
     }
   ]
 }

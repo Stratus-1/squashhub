@@ -84,6 +84,9 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
   const fresh = useMemo(() => isLockFresh(lock), [lock, tick]);
   const heldByMe = !!lock && !!userId && lock.user_id === userId;
   const heldByOther = fresh && !!lock && !heldByMe;
+  // The match is being scored offline on another device: still live, but the
+  // score only updates when that phone reaches the server again.
+  const offline = fresh && !!lock && lock.scoring_mode === "offline";
 
   const claim = useCallback(async () => {
     if (!matchId || !userId) return;
@@ -92,6 +95,7 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
       user_id: userId,
       user_name: userName || "Marker",
       heartbeat_at: new Date().toISOString(),
+      scoring_mode: "live",
       takeover_requested_by: null,
       takeover_requested_name: null,
       takeover_requested_at: null,

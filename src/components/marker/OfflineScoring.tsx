@@ -8,18 +8,18 @@ export function ScoreModeChoice({
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <p className="text-sm font-semibold">How do you want to score this match?</p>
-      <Button className="w-full justify-start gap-2 h-auto py-3" onClick={onLive} disabled={busy}>
-        <Wifi className="h-4 w-4" />
-        <span className="text-left">
+      <Button className="w-full justify-start items-start gap-2 h-auto py-3 whitespace-normal" onClick={onLive} disabled={busy}>
+        <Wifi className="h-4 w-4 mt-0.5 shrink-0" />
+        <span className="text-left min-w-0 flex-1">
           <span className="block font-semibold">Score live</span>
           <span className="block text-xs opacity-80">
             Use when the internet connection is good. Every point is synced automatically as you score.
           </span>
         </span>
       </Button>
-      <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3" onClick={onOffline} disabled={busy}>
-        <WifiOff className="h-4 w-4" />
-        <span className="text-left">
+      <Button variant="outline" className="w-full justify-start items-start gap-2 h-auto py-3 whitespace-normal" onClick={onOffline} disabled={busy}>
+        <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />
+        <span className="text-left min-w-0 flex-1">
           <span className="block font-semibold">{busy ? "Reserving…" : "Score offline"}</span>
           <span className="block text-xs text-muted-foreground">
             Use when the internet connection is not stable. Only this phone scores the match; it auto-syncs
@@ -46,7 +46,7 @@ export function OfflineScoringBanner({
   }
   const waiting = status === "waiting";
   return (
-    <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs flex items-center gap-1.5">
+    <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs flex flex-wrap items-center gap-1.5">
       {waiting ? <WifiOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
       <span className="font-semibold">Score offline</span>
       <span className="text-muted-foreground">

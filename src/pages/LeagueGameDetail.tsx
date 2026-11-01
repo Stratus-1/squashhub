@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMatchDayDevice, useLeagueGamesHome } from "@/contexts/MatchDayDevice";
 import { useIsClubAdmin } from "@/hooks/use-club";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import { parseServingMethod } from "@/lib/marker/doubles-serving";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
@@ -338,6 +340,7 @@ export default function LeagueGameDetail() {
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdminRaw = useIsClubAdmin();
+  const hasLeaguePermission = useHasPermission("leagues");
   const isClubAdmin = md ? false : isClubAdminRaw;
   // Admin manual adjustment to original-player count (e.g. unrecorded sub).
   // Stored as a signed delta applied on top of the computed count.
@@ -2821,7 +2824,13 @@ export default function LeagueGameDetail() {
   const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
   // Match Day device links are scoring/viewing only — player replacement
   // requires a signed-in captain or admin.
-  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain);
+  const hasFixtureSetupPermission = canManageLeagueFixtureSetup({
+    isDevice: !!md,
+    hasLeaguePermission,
+    memberClubId: activeMember?.club_id,
+    fixtureClubIds: [homeClubId, awayClubId],
+  });
+  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
    *  - Not yet played → captain/admin may keep replacing players; latest save wins.
@@ -2834,7 +2843,7 @@ export default function LeagueGameDetail() {
     return rubberEditRights({
       hasPlay: rubberHasPlay(pos),
       isClubAdmin,
-      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain,
+      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission,
       isViewMode,
     });
   };

@@ -58,6 +58,7 @@ Spectators see only successfully synced scores. Standings and play-off advanceme
 - Serialize sync per session. Use stable operation/result identifiers, monotonically ordered revisions, ownership validation and expected server versions.
 - Keep separate adapters for tournament and league writes; reuse shared domain rules and authoritative result writers, with atomic acceptance and idempotent side effects.
 - Inspect current marker persistence, Match Day device access and lock handling before implementation; existing browser storage is not assumed to provide an offline queue or exclusive ownership.
+- Tournament integration starts in `src/pages/MatchMarker.tsx`, `src/lib/marker-storage.ts` and `src/hooks/use-champ-marker-lock.ts`. Replace the current single browser-wide draft only for opted-in device sessions; the existing 60-second stale-heartbeat takeover must not invalidate an offline reservation automatically. Trace the league scorecard writer separately before phase 2.
 - Review migrations, permissions, generated types and replay behaviour together. Record architectural changes in the relevant project notes during implementation.
 
 ## Checks required before sign-off

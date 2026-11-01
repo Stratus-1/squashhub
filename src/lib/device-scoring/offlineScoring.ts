@@ -159,6 +159,15 @@ export function useOfflineScoring(onAccepted: (r: OfflineResult) => void) {
     };
   }, [flush]);
 
+  // Once offline scoring has started, warn before refresh/close: a reload
+  // without internet cannot load the app again on this phone.
+  useEffect(() => {
+    if (!session) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; return ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [session]);
+
   /** Start (or resume) scoring this match offline. Throws when refused. */
   const start = useCallback(async (matchId: string, ownerLabel: string) => {
     const existing = loadOfflineSession(matchId);

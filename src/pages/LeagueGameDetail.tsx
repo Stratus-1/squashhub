@@ -2475,9 +2475,12 @@ export default function LeagueGameDetail() {
   // page becomes a pure live-follow scorecard via the realtime channel.
   const isViewMode = (searchParams.get("mode") || "") === "view";
   const isSubmitted = isSubmittedReal || isViewMode;
+  // ?mode=mark — any club member may score rubbers, but only setup holders
+  // (captains, admins, lineup players, league permission) choose the lineup.
+  const isMarkOnly = (searchParams.get("mode") || "") === "mark";
   // For NSA fixtures the tap-to-pick wizard is the ONLY setup surface — the
   // intermediate grid/format/complete-setup page is redundant and hidden.
-  const nsaPreSetup = nsaLive && !setupDone && !isSubmitted;
+  const nsaPreSetup = nsaLive && !setupDone && !isSubmitted && !isMarkOnly;
 
   // Auto-open the lineup wizard ONLY on genuinely fresh fixtures.
   //
@@ -2490,7 +2493,7 @@ export default function LeagueGameDetail() {
     && existingMatches.some((m: any) => m?.home_player_code || m?.home_player_name || m?.away_player_code || m?.away_player_name);
   const hasLiveOrSavedPlay = positions.some((p) => !!p.currentGame || p.completed || (p.scores?.length ?? 0) > 0);
   useEffect(() => {
-    if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
+    if (!nsaLive || setupDone || isSubmitted || isMarkOnly || autoOpenWizardRef.current) return;
     // Wait until both saved-state queries have resolved.
     if (!existingMatchesFetched || !existingResultFetched) return;
     if (hasSavedLineupRows || hasLiveOrSavedPlay || markerLocksFresh.size > 0) {
@@ -2832,7 +2835,7 @@ export default function LeagueGameDetail() {
     memberClubId: activeMember ? memberClub?.id : null,
     fixtureClubIds: [homeClubId, awayClubId],
   });
-  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
+  const canEditLineup = !isSubmitted && !md && !isMarkOnly && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
    *  - Not yet played → captain/admin may keep replacing players; latest save wins.
@@ -2845,7 +2848,7 @@ export default function LeagueGameDetail() {
     return rubberEditRights({
       hasPlay: rubberHasPlay(pos),
       isClubAdmin,
-      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission,
+      isCaptain: !isMarkOnly && (isCaptain || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission),
       isViewMode,
     });
   };
@@ -3012,7 +3015,7 @@ export default function LeagueGameDetail() {
         )}
 
         {/* Match format selection — only during setup */}
-        {!setupDone && !isSubmitted && !nsaPreSetup && (() => {
+        {!setupDone && !isSubmitted && !nsaPreSetup && !isMarkOnly && (() => {
           const ruleScoring: "par11" | "par15" | null =
             leagueRules?.points_per_game === 15 ? "par15"
             : leagueRules?.points_per_game === 11 ? "par11"
@@ -3087,7 +3090,7 @@ export default function LeagueGameDetail() {
         })()}
 
         {/* Live NSA roster banner */}
-        {nsaLive && !setupDone && !isSubmitted && (
+        {nsaLive && !setupDone && !isSubmitted && !isMarkOnly && (
           <div className="flex items-center gap-2 text-[11px] bg-card border border-border text-card-foreground rounded px-2 py-1">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="font-semibold">Live NSA roster</span>
@@ -3100,7 +3103,7 @@ export default function LeagueGameDetail() {
             the squad pool and parked in the "Removed for this game" strip
             below, so they can't be accidentally re-selected (which would
             count as a substitution). */}
-        {nsaLive && !setupDone && !isSubmitted && (
+        {nsaLive && !setupDone && !isSubmitted && !isMarkOnly && (
           <Button
             className="w-full h-12 font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg"
             onClick={() => {
@@ -3890,8 +3893,14 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
+        {isMarkOnly && !setupDone && !isSubmitted && (
+          <div className="rounded-md border p-3 text-xs text-muted-foreground text-center">
+            This game hasn't been set up yet. A captain, admin or one of the lineup players must tap <b>Set up</b> first — then you can mark it here.
+          </div>
+        )}
+
         {/* Setup / scoring buttons */}
-        {!setupDone && !isSubmitted && !nsaPreSetup && (
+        {!setupDone && !isSubmitted && !nsaPreSetup && !isMarkOnly && (
           <div className="space-y-2">
             <Button
               size="sm"

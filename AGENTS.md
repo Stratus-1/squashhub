@@ -1,7 +1,7 @@
 # SquashHub AI Development Guide
 
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
-- Scoped rules: `src/lib/AGENTS.md` (competition, bar/cash-up/staff/counter, identity domain rules), `supabase/functions/AGENTS.md` (device age gate, arrears plans), `supabase/AGENTS.md` (Help Center feed).
+- Scoped rules: `src/components/league-games/AGENTS.md` (league fixture entry/marking), `src/lib/AGENTS.md` (competition, bar/cash-up/staff/counter, identity domain rules), `supabase/functions/AGENTS.md` (device age gate, arrears plans), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta, tournament admin UI and Swiss round-count rules: see `src/components/smart-builder/AGENTS.md`.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`; review native sync.
@@ -31,7 +31,6 @@
 - Completed scores use stale-checked audited correction, not marker reopening; why: protect later draws and awards.
 - Counter menu shortcut visibility uses the club membership or named local PIN-session hint; serving authority remains the existing server-validated personal PIN, with direct PIN entry preserved. Why: hide staff navigation from guests without granting account-based serving bypasses.
 - Signed-in self-service bar selections remain adjustable and device-local until explicit Add to my tab confirmation; My Tab navigation never writes, the shared unpaid-tab writer and payment switches stay unchanged. Why: mistaken taps must be reversible before commitment without changing stock or settlement authority.
-- League fixture entry distinguishes partial saved scores from final submitted scorecards; only past/final results use correction mode, because ongoing court scoring must stay accessible after each rubber finishes.
 - GoBook balances are read-only external snapshots resolved server-side from an authorized active club member's saved client link; shared account/booking display never changes credits, bookings or member links, because GoBook is the balance authority.
 - Courts capacity is a read-only aggregate projection of canonical stage plans, player/pair counts and unioned saved court windows; unresolved qualification stays provisional and fit never implies timetable feasibility, because viewing setup must not generate or reschedule games.
 - Picked-player pool previews reuse reciprocal-pair validation, combined ranking-point seeding and the shared snake allocator; previews are read-only and unpaired doubles block placement rather than inventing partners, because category lists are not pool membership.

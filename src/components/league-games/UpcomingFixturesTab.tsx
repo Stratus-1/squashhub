@@ -60,8 +60,8 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const { activeMember: memberCtxActive } = useMemberContext();
   const activeMember = md ? null : memberCtxActive;
   const navigate = useNavigate();
-  const gamePath = (id: string, view = false) =>
-    `${md ? `${md.base}/game` : "/league-games"}/${id}${view ? "?mode=view" : ""}`;
+  const gamePath = (id: string, view: boolean | "mark" = false) =>
+    `${md ? `${md.base}/game` : "/league-games"}/${id}${view === "mark" ? "?mode=mark" : view ? "?mode=view" : ""}`;
   const qc = useQueryClient();
 
   type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "past-due" | "custom";
@@ -628,7 +628,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           fixtureClubIds: [clubId],
                         });
                         const canSetupAndMark = mine || inLineup || isCaptain || canEnter || leagueSetupAllowed || (!!md && md.scoringOpen && !f.isTournament);
-                        const viewOnly = !canSetupAndMark && !f.isTournament;
+                        // Marking is open to any signed-in club member (or an open Court QR
+                        // device); choosing the lineup stays with setup holders above.
+                        const canMarkOnly = !f.isTournament && !needsAdminMode && !submitted && !isPast
+                          && (!!activeMember || (!!md && md.scoringOpen));
+                        const splitButtons = canMarkOnly && !(f._isLive && !f._hasSnapshot);
+                        const viewOnly = !canSetupAndMark && !f.isTournament && !splitButtons;
                         const label = f.isTournament
                           ? "Tournament"
                           : needsAdminMode
@@ -637,7 +642,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               ? "View Game"
                               : (isPast || submitted)
                                 ? ((submitted || hasSavedScore) ? "Edit result" : "Enter result")
-                                : "Set up and mark game";
+                                : "Set up";
                         const isLive = !f.isTournament && liveFixtureIds.has(f.id);
                         return (
                           <>
@@ -653,6 +658,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                                 LIVE · View
                               </Button>
                             )}
+                            {splitButtons && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
+                                title="Anyone at the club can mark this game once it is set up"
+                                onClick={() => navigate(gamePath(f.id, "mark"))}
+                              >
+                                <Radio className="w-3 h-3 mr-1 shrink-0" />
+                                Mark game
+                              </Button>
+                            )}
+                            {(!splitButtons || canSetupAndMark) && (
                             <Button
                               size="sm"
                               variant={viewOnly ? "outline" : (inLineup || mine ? "default" : "outline")}
@@ -680,6 +698,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               {viewOnly ? <Eye className="w-3 h-3 mr-1 shrink-0" /> : <Pencil className="w-3 h-3 mr-1 shrink-0" />}
                               {label}
                             </Button>
+                            )}
 
                             {!isLive && !submitted && !f.isTournament && !isPast && canSetupAndMark && (
                               <div className="flex items-start gap-1 text-[10px] leading-tight text-muted-foreground mt-0.5">

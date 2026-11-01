@@ -2346,6 +2346,13 @@
       "when": 1793532349517,
       "tag": "0334_exclude_ops_from_player_double_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 335,
+      "version": "7",
+      "when": 1793532601970,
+      "tag": "0335_device_scoring_match_only_guard_foundation",
+      "breakpoints": true
     }
   ]
 }

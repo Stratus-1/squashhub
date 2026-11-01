@@ -303,7 +303,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
 
   // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
-  const { freshMatchIds } = useChampMarkerLocks(
+  const { freshMatchIds, offlineMatchIds } = useChampMarkerLocks(
     (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
   );
 

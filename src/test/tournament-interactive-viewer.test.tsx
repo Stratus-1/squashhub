@@ -41,6 +41,9 @@ describe("club beta feature lookup fails closed", () => {
   it("no row → off", async () => { expect(await fetchClubBetaFeature("c", "tournament_viewer_shell", stub({ data: null, error: null }))).toBe(false); });
   it("error → off", async () => { expect(await fetchClubBetaFeature("c", "tournament_viewer_shell", stub({ data: null, error: { message: "denied" } }))).toBe(false); });
   it("throw → off", async () => { expect(await fetchClubBetaFeature("c", "tournament_viewer_shell", stub(null, true))).toBe(false); });
+  it("device scoring is on for every club without a row", async () => {
+    expect(await fetchClubBetaFeature("any-club", "tournament_device_scoring", stub({ data: null, error: null }))).toBe(true);
+  });
 });
 
 import { nextWheelScale } from "@/components/tournaments/viewer/TournamentInteractiveViewer";

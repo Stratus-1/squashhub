@@ -18,6 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const CHAMP_LOCK_FRESH_MS = 60_000;
 export const CHAMP_TAKEOVER_WAIT_MS = 60_000;
 const HEARTBEAT_MS = 20_000;
+// A match reserved for "Score offline" cannot send heartbeats while the phone
+// has no internet. Its lock stays fresh for this long after the last contact
+// with the server, so viewers see "LIVE · offline" instead of "Paused".
+export const CHAMP_OFFLINE_FRESH_MS = 6 * 60 * 60_000;
 
 export type ChampMarkerLock = {
   match_id: string;

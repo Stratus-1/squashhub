@@ -27,6 +27,9 @@ import { effectiveTournamentSettings, applyPlayoffSettings } from "@/lib/tournam
 import { isPlayoffGame } from "@/lib/tournaments/round-plan";
 import { startMarkerLoadDeadline } from "@/lib/marker/load-deadline";
 import { mayAutoLinkChampFixture } from "@/lib/marker/champ-auto-link";
+import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
+import { loadOfflineSession, storageWritable, useOfflineScoring } from "@/lib/device-scoring/offlineScoring";
+import { ScoreModeChoice, OfflineScoringBanner } from "@/components/marker/OfflineScoring";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -118,6 +121,62 @@ export default function MatchMarker() {
     claim: claimChampLock,
   } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
   const [handoverOpen, setHandoverOpen] = useState(false);
+
+  // ---- Optional "Score offline" (per-club switch; Live stays the default) ----
+  const offline = useOfflineScoring((r) => {
+    try {
+      localStorage.removeItem(MARKER_CONFIG_KEY);
+      localStorage.removeItem(MARKER_STATE_KEY);
+    } catch {}
+    toast.success(r.forfeit ? "Results posted" : "Results posted from this phone");
+    queryClient.invalidateQueries({ queryKey: ["club-champ-matches"] });
+    queryClient.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    queryClient.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
+    const id = offlineMatchRef.current;
+    if (id) supabase.functions.invoke("reflow-freed-court", { body: { tournament_match_id: id } }).catch(() => {});
+    setTimeout(() => navigate("/tournaments"), 900);
+  });
+  const offlineMatchRef = useRef<string | null>(null);
+  const { data: offlineFlag, isLoading: offlineFlagLoading } = useClubBetaFeature(
+    tournamentMatchId ? config?.clubId : undefined,
+    "tournament_device_scoring",
+  );
+  const offlineEligible = !!tournamentMatchId && !md && (offlineFlag === true || offlineFlagLoading) && storageWritable();
+  const [scoreMode, setScoreMode] = useState<"live" | "offline" | null>(null);
+  const [offlineStarting, setOfflineStarting] = useState(false);
+  const [offlineChoiceError, setOfflineChoiceError] = useState<string | null>(null);
+  const scoreModeRef = useRef(scoreMode);
+  scoreModeRef.current = scoreMode;
+  const offlinePushRef = useRef(offline.pushState);
+  offlinePushRef.current = offline.pushState;
+
+  // New match → choose again; an unsent offline session on this phone resumes.
+  useEffect(() => {
+    offlineMatchRef.current = tournamentMatchId;
+    setOfflineChoiceError(null);
+    if (tournamentMatchId && loadOfflineSession(tournamentMatchId)) {
+      setScoreMode("offline");
+      offline.start(tournamentMatchId, markerName).catch(() => {});
+    } else {
+      setScoreMode(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentMatchId]);
+
+  const startOffline = async () => {
+    if (!tournamentMatchId) return;
+    setOfflineStarting(true);
+    setOfflineChoiceError(null);
+    try {
+      await offline.start(tournamentMatchId, markerName);
+      setScoreMode("offline");
+    } catch (e: any) {
+      const who = e?.details ? ` (${e.details})` : "";
+      setOfflineChoiceError((e?.message || "Could not reserve this match.") + who);
+    } finally {
+      setOfflineStarting(false);
+    }
+  };
   const [tournamentLoadState, setTournamentLoadState] = useState<"idle" | "loading" | "error">("idle");
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -543,6 +602,7 @@ export default function MatchMarker() {
   const handleLiveScore = useCallback(
     (_games: GameScore[], current: { a: number; b: number }) => {
       if (config?.source !== "tournament" || !config.sourceId) return;
+      if (scoreModeRef.current === "offline") { offlinePushRef.current(_games, current); return; }
       lastLiveRef.current = current;
       if (liveThrottleRef.current) return;
       liveThrottleRef.current = setTimeout(async () => {
@@ -570,6 +630,7 @@ export default function MatchMarker() {
   const handleTournamentProgress = useCallback(
     async (games: GameScore[]) => {
       if (config?.source !== "tournament" || !config.sourceId) return;
+      if (scoreModeRef.current === "offline") { offlinePushRef.current(games, { a: 0, b: 0 }); return; }
       try {
         await fromExt("club_champs_matches")
           .update({
@@ -592,6 +653,7 @@ export default function MatchMarker() {
   }, []);
 
   const handleScratch = async () => {
+    if (offline.active) await offline.release();
     // If this was a tournament match, roll the club_champs_matches row back
     // to a pending/scheduled state and clear any recorded score so it appears
     // in the "to be marked" list and standings recompute correctly.
@@ -637,6 +699,22 @@ export default function MatchMarker() {
 
   const handleMatchComplete = async (result: MatchResult) => {
     if (!config || savingRef.current) return;
+
+    // Score offline: queue the result on this phone; the server saves it once.
+    if (scoreMode === "offline" && offline.active) {
+      offline.complete({
+        result_id: offline.session?.result?.result_id ?? crypto.randomUUID(),
+        winner: result.winnerId,
+        games: result.forfeit ? [] : result.games.map((g) => ({ a: g.a, b: g.b })),
+        duration_s: Math.round(result.durationSeconds || 0),
+        forfeit: result.forfeit ? result.forfeit.absentSide : "",
+        scoring_format: config.scoringFormat,
+        best_of: Number(config.bestOf) || 3,
+        is_doubles: !!config.isDoubles,
+      });
+      toast.info("Result saved on this phone — it sends as soon as there is internet.");
+      return;
+    }
 
     const playerAMemberId = config.playerA.clubMemberId;
     const playerBMemberId = config.playerB.clubMemberId;
@@ -950,7 +1028,22 @@ export default function MatchMarker() {
           <div className="py-12 text-center text-sm text-muted-foreground">Loading saved tournament score…</div>
         ) : !config ? (
           <MarkerSetup onStart={startConfig} />
+        ) : offlineEligible && scoreMode === null ? (
+          offlineFlagLoading ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
+          ) : (
+            <ScoreModeChoice
+              onLive={() => setScoreMode("live")}
+              onOffline={startOffline}
+              busy={offlineStarting}
+              error={offlineChoiceError}
+            />
+          )
         ) : (
+          <>
+          {scoreMode === "offline" && (
+            <OfflineScoringBanner status={offline.status} attention={offline.attention} onRetry={offline.retry} />
+          )}
           <MarkerScoreboard
             key={config.source && config.sourceId ? `${config.source}:${config.sourceId}` : "manual-marker"}
             config={config}
@@ -969,6 +1062,7 @@ export default function MatchMarker() {
             onProgress={handleTournamentProgress}
             onLiveScore={handleLiveScore}
           />
+          </>
         )}
       </div>
 
@@ -1004,7 +1098,7 @@ export default function MatchMarker() {
 
       {/* Someone else claimed this game while we were still marking it.
           We never leave the scoreboard on our own — the marker chooses. */}
-      <AlertDialog open={!!stolenBy} onOpenChange={(o) => { if (!o) setStolenBy(null); }}>
+      <AlertDialog open={!!stolenBy && scoreMode !== "offline"} onOpenChange={(o) => { if (!o) setStolenBy(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{stolenBy} has started marking this game</AlertDialogTitle>

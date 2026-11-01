@@ -33,8 +33,8 @@ export function ScoreModeChoice({
 }
 
 export function OfflineScoringBanner({
-  status, attention, onRetry,
-}: { status: OfflineStatus; attention: string | null; onRetry: () => void }) {
+  status, attention, onRetry, onHandOver,
+}: { status: OfflineStatus; attention: string | null; onRetry: () => void; onHandOver?: () => void }) {
   if (status === "attention") {
     return (
       <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
@@ -52,6 +52,12 @@ export function OfflineScoringBanner({
       <span className="text-muted-foreground">
         {waiting ? "· saved on this phone — auto-syncs when the internet is back" : "· all scores sent"}
       </span>
+      {onHandOver && (
+        <Button size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs" disabled={waiting} onClick={onHandOver}
+          title={waiting ? "Available once all scores are sent" : "Let another phone carry on marking"}>
+          Hand over
+        </Button>
+      )}
     </div>
   );
 }

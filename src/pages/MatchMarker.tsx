@@ -1042,7 +1042,14 @@ export default function MatchMarker() {
         ) : (
           <>
           {scoreMode === "offline" && (
-            <OfflineScoringBanner status={offline.status} attention={offline.attention} onRetry={offline.retry} />
+            <OfflineScoringBanner status={offline.status} attention={offline.attention} onRetry={offline.retry}
+              onHandOver={async () => {
+                if (!window.confirm("Hand over this match? All scores are sent and kept. Another phone can then open the match and carry on marking.")) return;
+                const id = offline.session?.matchId;
+                await offline.release();
+                toast({ title: "Match handed over", description: "Another phone can now open this match and carry on." });
+                if (id) navigate(`/tournament-live/${id}`, { replace: true });
+              }} />
           )}
           <MarkerScoreboard
             key={config.source && config.sourceId ? `${config.source}:${config.sourceId}` : "manual-marker"}

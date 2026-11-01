@@ -1,3 +1,6 @@
+## 2026-11-01 — Public tournament bar hidden behind navigation
+- The fixed QR panel shared the bottom edge with member navigation, hiding its link and close button on phones. Position it above navigation only when present; give Close a dedicated touch-sized top-right position and wrap the app link onto a separate row on phones. Dismissal and tournament/scoring permissions remain unchanged; no data writes.
+
 ## 2026-11-01 — Isolated device scoring protection foundation
 - Symptom: a heartbeat lock becomes stale offline and direct tournament score/result writers can overwrite a device-scored match. Finding: presence locks are not authoritative ownership. Fix: separate private explicit match reservations with no heartbeat expiry; guard direct fixture update/delete and canonical result saving before any separate result insert, using private transaction/session authority for future validated sync. Guard: eight isolated database tests plus eleven existing marker tests pass; reserved-match writes/reset/delete/result bypass rejected, wrong-session/expired-transaction contexts rejected, unreserved Live update/completion retained. Hosted reservation count is zero; no start API, UI switch or device sync released, no existing fixture enrolled or altered. Durable queue, validated sync, explicit handover and two-phone UI recovery remain the next implementation stage.
 

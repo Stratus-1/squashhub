@@ -306,6 +306,12 @@
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 
+  /* QR controls must sit above the member navigation when it is present. */
+  body:has(nav[aria-label="Primary shortcuts"]) .public-tournament-bar {
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0.5rem !important;
+  }
+
   /* Touch-friendly tap targets */
   .touch-target {
     min-height: 44px;

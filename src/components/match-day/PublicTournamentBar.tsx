@@ -42,8 +42,8 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
   return (
     <>
       {/* Spacer so the fixed panel never covers the last matches or controls. */}
-      <div aria-hidden className="h-20" style={{ height: "calc(5rem + env(safe-area-inset-bottom, 0px))" }} />
-      <div className="fixed inset-x-0 bottom-0 z-50 px-3 pt-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
+      <div aria-hidden className="h-36 sm:h-24" />
+      <div className="public-tournament-bar fixed inset-x-0 bottom-0 z-50 px-3 pt-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="mx-auto max-w-3xl space-y-2">
           {showNotice && (
             <div role="status" data-testid="public-view-notice" className="rounded-lg border border-primary/30 bg-card p-3 text-[13px] text-card-foreground shadow-lg">
@@ -54,7 +54,7 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
                     ? "You're viewing the public tournament page. To see My Games and your personal fixtures, open this tournament in SquashHub."
                     : "You're viewing the public Match Day page. To see your own games, open SquashHub."}
                 </p>
-                <button type="button" onClick={dismiss} aria-label="Dismiss" className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                <Button type="button" variant="ghost" size="icon" onClick={dismiss} aria-label="Dismiss" title="Dismiss notice" className="shrink-0 text-foreground"><X className="h-4 w-4" /></Button>
               </div>
               <div className="mt-2 flex flex-wrap justify-end gap-2">
                 <Button type="button" size="sm" variant="ghost" onClick={closeBar}>Continue as visitor</Button>
@@ -62,13 +62,13 @@ export function PublicTournamentBar({ kind, competitionId }: { kind: "tournament
               </div>
             </div>
           )}
-          <div data-testid="public-view-panel" className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-[13px] text-card-foreground shadow-md backdrop-blur">
+          <div data-testid="public-view-panel" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[13px] text-card-foreground shadow-md sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <span className="min-w-0 leading-tight">
               <span className="font-semibold">{isT ? "Public tournament view" : "Public Match Day view"}</span>
               <span className="block text-xs text-muted-foreground sm:inline sm:text-[13px]"><span className="hidden sm:inline"> · </span>{isT ? "My Games is available in SquashHub" : "Your games are in SquashHub"}</span>
             </span>
-            <Button asChild size="sm" className="shrink-0"><a href={href}><ExternalLink className="mr-1 h-3.5 w-3.5" />Open in SquashHub</a></Button>
-            <button type="button" onClick={closeBar} aria-label="Close" className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            <Button type="button" variant="outline" size="icon" onClick={closeBar} aria-label="Close" title="Close public tournament bar" className="col-start-2 row-start-1 shrink-0 text-foreground sm:col-start-3"><X className="h-5 w-5" /></Button>
+            <Button asChild size="sm" className="col-span-2 h-auto min-h-9 whitespace-normal py-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"><a href={href}><ExternalLink className="mr-1 h-3.5 w-3.5" />Open in SquashHub</a></Button>
           </div>
         </div>
       </div>

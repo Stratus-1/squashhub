@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMatchDayDevice, useLeagueGamesHome } from "@/contexts/MatchDayDevice";
 import { useIsClubAdmin } from "@/hooks/use-club";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import { parseServingMethod } from "@/lib/marker/doubles-serving";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
@@ -34,6 +36,7 @@ import { AdminManualScoreDialog } from "@/components/league-games/AdminManualSco
 import { doublesRubberColumns, dropEmptyGames } from "@/lib/leagues/doubles-rubber-columns";
 import { LadderImpactPreview } from "@/components/league-games/LadderImpactPreview";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
@@ -338,6 +341,8 @@ export default function LeagueGameDetail() {
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdminRaw = useIsClubAdmin();
+  const { club: memberClub } = useClubContext();
+  const hasLeaguePermission = useHasPermission("leagues");
   const isClubAdmin = md ? false : isClubAdminRaw;
   // Admin manual adjustment to original-player count (e.g. unrecorded sub).
   // Stored as a signed delta applied on top of the computed count.
@@ -2821,7 +2826,13 @@ export default function LeagueGameDetail() {
   const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
   // Match Day device links are scoring/viewing only — player replacement
   // requires a signed-in captain or admin.
-  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain);
+  const hasFixtureSetupPermission = canManageLeagueFixtureSetup({
+    isDevice: !!md,
+    hasLeaguePermission,
+    memberClubId: activeMember ? memberClub?.id : null,
+    fixtureClubIds: [homeClubId, awayClubId],
+  });
+  const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
    *  - Not yet played → captain/admin may keep replacing players; latest save wins.
@@ -2834,7 +2845,7 @@ export default function LeagueGameDetail() {
     return rubberEditRights({
       hasPlay: rubberHasPlay(pos),
       isClubAdmin,
-      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain,
+      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission,
       isViewMode,
     });
   };

@@ -9,7 +9,10 @@ import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, 
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -53,6 +56,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   // Match Day secure link: no member identity; the device may mark any open fixture
   // of its competition, and a court link shows only that court's fixtures.
   const md = useMatchDayDevice();
+  const { club: memberClub } = useClubContext();
   const { activeMember: memberCtxActive } = useMemberContext();
   const activeMember = md ? null : memberCtxActive;
   const navigate = useNavigate();
@@ -214,6 +218,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   // Captain check: which team codes (leagues) is the active member captain of?
   const isClubAdminRaw = useIsClubAdmin();
+  const hasLeaguePermission = useHasPermission("leagues");
   const isSuperAdminRaw = useIsSuperAdmin();
   const isClubAdmin = md ? false : isClubAdminRaw;
   const isSuperAdmin = md ? false : isSuperAdminRaw;
@@ -616,7 +621,13 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         // Set Up & Mark restricted to: captain of one of the teams,
                         // members assigned to play, members in that league, or admins.
                         // Everyone else gets a View-only button.
-                        const canSetupAndMark = mine || inLineup || isCaptain || canEnter || (!!md && md.scoringOpen && !f.isTournament);
+                        const leagueSetupAllowed = !needsAdminMode && canManageLeagueFixtureSetup({
+                          isDevice: !!md,
+                          hasLeaguePermission,
+                          memberClubId: activeMember ? memberClub?.id : null,
+                          fixtureClubIds: [clubId],
+                        });
+                        const canSetupAndMark = mine || inLineup || isCaptain || canEnter || leagueSetupAllowed || (!!md && md.scoringOpen && !f.isTournament);
                         const viewOnly = !canSetupAndMark && !f.isTournament;
                         const label = f.isTournament
                           ? "Tournament"

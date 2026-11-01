@@ -409,10 +409,12 @@ export default function LeagueGameDetail() {
       if (error) throw error; return data as any[];
     },
     enabled: !!fixtureId,
+    // Realtime pushes live points; this poll is only a fallback, so keep it
+    // slow and never run it while the screen/tab is hidden (DB load).
     refetchInterval: () => (
-      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame) ? 3_000 : false
+      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame) ? 10_000 : false
     ),
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 
   // ---- Live follow: subscribe to realtime score updates for this fixture ----

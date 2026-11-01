@@ -5,6 +5,13 @@ Add an optional **Score on this device** mode so poor venue internet does not in
 
 This plan covers tournaments first and league games second. It authorises no changes to live tournament data and no publication during implementation.
 
+## Non-negotiable: protect current Live scoring
+- **Live continues exactly as it works today:** same point handling, immediate updates, format rules, saving, spectator display and permissions. No automatic switch to device mode.
+- The new local queue and retry worker run **only** after an explicit device-mode choice. Live sessions do not depend on the new storage, reservations or sync worker.
+- Keep existing Live write and lock behaviour unchanged for matches without an explicit device reservation. New ownership checks apply only where a device session was deliberately reserved, preventing a competing marker from overwriting that match; existing ongoing Live matches are never adopted or migrated.
+- Test Live with the club switch both OFF and ON while Live remains selected, and alongside a different match using device mode. Check points, undo, reload, completion, spectators, league scorecards and tournament progression against the existing behaviour.
+- **Release gate:** any change to current Live behaviour blocks rollout. If safe isolation requires a wider Live-scoring rewrite, stop and seek approval rather than expand this work.
+
 ## What the scorer sees
 - Before starting an eligible match, choose **Live** or **Score on this device**.
 - Device mode saves each point, undo, game score and serving state on that phone before attempting to send it.

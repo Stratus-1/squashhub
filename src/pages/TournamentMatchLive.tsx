@@ -46,7 +46,7 @@ export default function TournamentMatchLive() {
   const [loading, setLoading] = useState(true);
   const [takeoverOpen, setTakeoverOpen] = useState(false);
 
-  const { lock, fresh } = useChampMarkerLock(matchId, user?.id);
+  const { lock, fresh, offline } = useChampMarkerLock(matchId, user?.id);
 
   useEffect(() => {
     if (!matchId) return;

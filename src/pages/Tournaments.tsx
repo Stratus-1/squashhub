@@ -352,8 +352,10 @@ export default function Tournaments() {
       return md?.court != null ? (named as any[]).filter((m: any) => m.court_id === md.court) : named;
     },
     enabled: champIds.length > 0,
-    // Match the spectator scoreboard's safety poll in the Riverside pilot.
-    refetchInterval: clubId === "11111111-1111-1111-1111-111111111111" ? 5000 : 10000,
+    // Realtime (tournament-live-matches channel) pushes changes; this full
+    // list reload is only a safety net, so keep it slow to spare the database.
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
   });
 
   // Rounds created later from the draw hold the live play-by dates (round 4

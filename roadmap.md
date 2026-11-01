@@ -84,4 +84,4 @@
 
 - [x] Appointed Deon Groenewald as Uitsig treasurer (club_offices + clubs.treasurer_member_id).
 - [x] Fixed GL account permission block: club_gl_accounts only allowed full club admins; added finance-staff policy matching other finance tables. Deon passes finance permission check; migration 0328 applied.
-- [ ] Offline scoring wording: choice screen explains when to use live vs offline and that scores auto-sync (every point live, offline syncs when possible).
+- [x] Offline scoring wording: choice screen explains live (good internet, every point synced) vs offline (unstable internet, auto-syncs where possible); viewers see "LIVE · offline" with auto-sync note. Verified in preview; test data restored.

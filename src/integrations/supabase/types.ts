@@ -3882,6 +3882,75 @@ export type Database = {
           },
         ]
       }
+      champ_device_reservations: {
+        Row: {
+          club_id: string
+          created_at: string
+          match_id: string
+          owner_access_id: string | null
+          owner_user_id: string | null
+          revoked_at: string | null
+          session_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          match_id: string
+          owner_access_id?: string | null
+          owner_user_id?: string | null
+          revoked_at?: string | null
+          session_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          match_id?: string
+          owner_access_id?: string | null
+          owner_user_id?: string | null
+          revoked_at?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "champ_device_reservations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "champ_device_reservations_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      champ_device_write_context: {
+        Row: {
+          backend_pid: number
+          id: string
+          match_id: string
+          session_id: string
+          transaction_id: number
+        }
+        Insert: {
+          backend_pid?: number
+          id?: string
+          match_id: string
+          session_id: string
+          transaction_id?: number
+        }
+        Update: {
+          backend_pid?: number
+          id?: string
+          match_id?: string
+          session_id?: string
+          transaction_id?: number
+        }
+        Relationships: []
+      }
       champ_doubles_pairs: {
         Row: {
           accepted_at: string | null
@@ -20804,6 +20873,10 @@ export type Database = {
         Returns: boolean
       }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
+      _champ_device_assert_write: {
+        Args: { p_match: string }
+        Returns: undefined
+      }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
         Args: { p_fee_id: string; p_new_amount: number; p_note: string }

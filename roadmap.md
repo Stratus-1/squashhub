@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Remove the duplicate Who may enter estimate and verify planning uses Structure counts; preserve actual-registration draw generation and all live games.
+- [x] Removed duplicate Who may enter estimate; planning capacity/summary use active Structure counts, eligibility checks audience only. 44 tests and signed-in Riverside screen pass, build OK. No hosted saves or live-game changes; preview-only.
 - [x] Maintenance blocks no longer count the creating admin as a player: applied both-direction ops exclusion and conversion guard; six isolated database tests pass, build OK. Court occupancy/scheduled fixture guards unchanged; no real court blocks created or existing bookings altered.
 - [ ] Device scoring: match-only guard foundation applied; eight isolated database and eleven marker tests pass, build OK, hosted reservations zero. No device-start API or switch exposed. Remaining: durable per-device queue, validated reservation/sync/handover APIs and two-phone practice pilot; release waits on those safety checks/sign-off. Unreserved Live writes/locks unchanged; no existing fixture enrolled or altered, no publication.
 - [x] Prepare Live/device scoring plan for tournaments then leagues; explicitly preserve current Live behaviour, isolate device syncing and gate release on Live regression checks. Plan only; no application or hosted changes.

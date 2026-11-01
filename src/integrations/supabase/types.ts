@@ -23453,6 +23453,10 @@ export type Database = {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
+      is_league_fixture_club_member: {
+        Args: { _fixture_id: string; _uid: string }
+        Returns: boolean
+      }
       is_member_eligible_for_tournament: {
         Args: { _club_member_id: string; _tournament_id: string }
         Returns: boolean

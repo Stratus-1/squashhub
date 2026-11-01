@@ -97,6 +97,7 @@ export function useOfflineScoring(onAccepted: (r: OfflineResult) => void) {
     if (!s || busy.current) return;
     if (!s.pending && !s.result) { setStatus("synced"); return; }
     busy.current = true;
+    let failed = false;
     try {
       if (s.pending) {
         const rev = s.revision;
@@ -131,6 +132,7 @@ export function useOfflineScoring(onAccepted: (r: OfflineResult) => void) {
       setAttention(null);
       setStatus(ref.current?.pending ? "waiting" : "synced");
     } catch (err: any) {
+      failed = true;
       if (isNetworkError(err)) {
         setStatus("waiting");
         if (timer.current) clearTimeout(timer.current);
@@ -141,12 +143,12 @@ export function useOfflineScoring(onAccepted: (r: OfflineResult) => void) {
       }
     } finally {
       busy.current = false;
-      if (ref.current?.pending && ref.current.revision > ref.current.acked && status !== "attention") {
+      if (ref.current?.pending && ref.current.revision > ref.current.acked && !failed) {
         // A newer change arrived while sending.
         setTimeout(() => void flush(), 50);
       }
     }
-  }, [status]);
+  }, []);
 
   useEffect(() => {
     const on = () => { attempt.current = 0; void flush(); };

@@ -19,12 +19,16 @@ export const TOURNAMENT_VIEW_FEATURES = {
 } as const;
 export type TournamentViewFeature = keyof typeof TOURNAMENT_VIEW_FEATURES;
 
-/** Pure lookup: any error or missing row means OFF (fails closed). */
+/** Features rolled out to every club — no club_beta_features row needed (approved 1 Nov 2026). */
+const ALWAYS_ON_FEATURES: ReadonlySet<string> = new Set(["tournament_device_scoring"]);
+
+/** Pure lookup: any error or missing row means OFF (fails closed), except ALWAYS_ON_FEATURES. */
 export async function fetchClubBetaFeature(
   clubId: string,
   feature: string,
   from: typeof fromExt = fromExt,
 ): Promise<boolean> {
+  if (ALWAYS_ON_FEATURES.has(feature)) return true;
   try {
     const { data, error } = await from("club_beta_features")
       .select("club_id").eq("club_id", clubId).eq("feature", feature).maybeSingle();

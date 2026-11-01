@@ -387,7 +387,7 @@ export default function Tournaments() {
   // is actually scoring it (fresh heartbeat in champ_marker_locks). When the
   // marker walks away the game stays in_progress with its score intact, but is
   // shown as "Paused · Resume" so anyone may pick it up.
-  const { freshMatchIds } = useChampMarkerLocks(
+  const { freshMatchIds, offlineMatchIds } = useChampMarkerLocks(
     (allMatches || []).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
   );
   const inPlay = (m: any) => {
@@ -1717,11 +1717,14 @@ export default function Tournaments() {
         {isLive(m) && (
           <button
             type="button"
-            title="Watch this game live"
+            title={offlineMatchIds.has(m.id)
+              ? "Being scored offline — the score updates when the marker's phone reconnects"
+              : "Watch this game live"}
             className="live-indicator text-[10px] shrink-0 px-2.5 py-1 hover:opacity-90"
             onClick={(e) => { e.stopPropagation(); navigate(`/tournament-live/${m.id}`); }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-current" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+            {offlineMatchIds.has(m.id) && <span className="font-normal opacity-80"> · offline</span>}
           </button>
         )}
 

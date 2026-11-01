@@ -32,13 +32,16 @@ export type ChampMarkerLock = {
   takeover_requested_name: string | null;
   takeover_requested_at: string | null;
   takeover_declined_at: string | null;
+  scoring_mode?: string | null;
 };
 
 const table = () => (supabase as any).from("champ_marker_locks");
 
 export function isLockFresh(lock: ChampMarkerLock | null | undefined): boolean {
   if (!lock) return false;
-  return Date.now() - new Date(lock.heartbeat_at).getTime() < CHAMP_LOCK_FRESH_MS;
+  const age = Date.now() - new Date(lock.heartbeat_at).getTime();
+  if (lock.scoring_mode === "offline") return age < CHAMP_OFFLINE_FRESH_MS;
+  return age < CHAMP_LOCK_FRESH_MS;
 }
 
 /** Read the current lock for a single match (one-shot, no subscription). */

@@ -36,6 +36,7 @@ import { AdminManualScoreDialog } from "@/components/league-games/AdminManualSco
 import { doublesRubberColumns, dropEmptyGames } from "@/lib/leagues/doubles-rubber-columns";
 import { LadderImpactPreview } from "@/components/league-games/LadderImpactPreview";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
@@ -340,6 +341,7 @@ export default function LeagueGameDetail() {
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdminRaw = useIsClubAdmin();
+  const { club: memberClub } = useClubContext();
   const hasLeaguePermission = useHasPermission("leagues");
   const isClubAdmin = md ? false : isClubAdminRaw;
   // Admin manual adjustment to original-player count (e.g. unrecorded sub).
@@ -2827,7 +2829,7 @@ export default function LeagueGameDetail() {
   const hasFixtureSetupPermission = canManageLeagueFixtureSetup({
     isDevice: !!md,
     hasLeaguePermission,
-    memberClubId: activeMember?.club_id,
+    memberClubId: activeMember ? memberClub?.id : null,
     fixtureClubIds: [homeClubId, awayClubId],
   });
   const canEditLineup = !isSubmitted && !md && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);

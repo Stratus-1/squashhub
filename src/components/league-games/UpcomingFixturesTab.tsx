@@ -9,6 +9,7 @@ import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, 
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useHasPermission } from "@/hooks/use-club-permissions";
 import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
@@ -55,6 +56,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   // Match Day secure link: no member identity; the device may mark any open fixture
   // of its competition, and a court link shows only that court's fixtures.
   const md = useMatchDayDevice();
+  const { club: memberClub } = useClubContext();
   const { activeMember: memberCtxActive } = useMemberContext();
   const activeMember = md ? null : memberCtxActive;
   const navigate = useNavigate();
@@ -622,7 +624,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const leagueSetupAllowed = !needsAdminMode && canManageLeagueFixtureSetup({
                           isDevice: !!md,
                           hasLeaguePermission,
-                          memberClubId: activeMember?.club_id,
+                          memberClubId: activeMember ? memberClub?.id : null,
                           fixtureClubIds: [clubId],
                         });
                         const canSetupAndMark = mine || inLineup || isCaptain || canEnter || leagueSetupAllowed || (!!md && md.scoringOpen && !f.isTournament);

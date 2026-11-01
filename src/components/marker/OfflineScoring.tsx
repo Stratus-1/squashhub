@@ -45,15 +45,17 @@ export function OfflineScoringBanner({
     );
   }
   const waiting = status === "waiting";
+  // Fixed single-line height: the status text changes with every point scored,
+  // and wrapping to a second line made the scoreboard jump up and down.
   return (
-    <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs flex flex-wrap items-center gap-1.5">
-      {waiting ? <WifiOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-      <span className="font-semibold">Score offline</span>
-      <span className="text-muted-foreground">
-        {waiting ? "· saved on this phone — auto-syncs when the internet is back" : "· all scores sent"}
+    <div className="mb-3 flex h-9 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-lg border border-border bg-muted/40 px-3 text-xs">
+      {waiting ? <WifiOff className="h-3.5 w-3.5 shrink-0" /> : <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />}
+      <span className="shrink-0 font-semibold">Score offline</span>
+      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+        {waiting ? "· saved on phone — syncs when online" : "· all scores sent"}
       </span>
       {onHandOver && (
-        <Button size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs" disabled={waiting} onClick={onHandOver}
+        <Button size="sm" variant="outline" className="ml-auto h-7 shrink-0 px-2 text-xs" disabled={waiting} onClick={onHandOver}
           title={waiting ? "Available once all scores are sent" : "Let another phone carry on marking"}>
           Hand over
         </Button>

@@ -1718,7 +1718,7 @@ export default function Tournaments() {
           <button
             type="button"
             title={offlineMatchIds.has(m.id)
-              ? "Being scored offline — the score updates when the marker's phone reconnects"
+              ? "Being scored offline — the score auto-syncs when the marker's phone reconnects"
               : "Watch this game live"}
             className="live-indicator text-[10px] shrink-0 px-2.5 py-1 hover:opacity-90"
             onClick={(e) => { e.stopPropagation(); navigate(`/tournament-live/${m.id}`); }}

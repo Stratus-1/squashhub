@@ -135,7 +135,7 @@ export default function TournamentMatchLive() {
             {live && fresh && (
               <span
                 className="live-indicator text-[11px] px-2.5 py-1"
-                title={offline ? "Being scored offline — the score updates when the marker's phone reconnects" : undefined}
+                title={offline ? "Being scored offline — the score auto-syncs when the marker's phone reconnects" : undefined}
               >
                 <Radio className="w-3 h-3" /> LIVE{offline ? <span className="font-normal opacity-80"> · offline</span> : null}
               </span>

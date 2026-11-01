@@ -3568,7 +3568,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             return (
               <span
                 className="live-indicator text-[10px] px-2.5 py-1"
-                title={offlineMatchIds.has(m.id) ? "Being scored offline — the score updates when the marker's phone reconnects" : undefined}
+                title={offlineMatchIds.has(m.id) ? "Being scored offline — the score auto-syncs when the marker's phone reconnects" : undefined}
               >
                 LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
                 {offlineMatchIds.has(m.id) && <span className="font-normal opacity-80"> · offline</span>}

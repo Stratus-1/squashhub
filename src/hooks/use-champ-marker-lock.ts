@@ -141,7 +141,7 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
   }, [matchId, userId, refresh]);
 
   return {
-    lock, fresh, heldByMe, heldByOther,
+    lock, fresh, heldByMe, heldByOther, offline,
     refresh, claim, release, requestTakeover, approveTakeover, declineTakeover,
   };
 }
@@ -226,10 +226,9 @@ export function useChampMarkerLocks(matchIds: string[]) {
 
   useEffect(() => {
     const recompute = () => {
-      const now = Date.now();
       const s = new Set<string>();
       for (const [id, l] of Object.entries(locks)) {
-        if (now - new Date(l.heartbeat_at).getTime() < CHAMP_LOCK_FRESH_MS) s.add(id);
+        if (isLockFresh(l)) s.add(id);
       }
       setFreshIds(s);
     };
@@ -238,5 +237,15 @@ export function useChampMarkerLocks(matchIds: string[]) {
     return () => clearInterval(id);
   }, [locks]);
 
-  return { locks, freshMatchIds: freshIds };
+  // Matches currently scored offline on another device: shown as "LIVE ·
+  // offline" so viewers know the score updates only on reconnection.
+  const offlineMatchIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const [id, l] of Object.entries(locks)) {
+      if (l.scoring_mode === "offline" && freshIds.has(id)) s.add(id);
+    }
+    return s;
+  }, [locks, freshIds]);
+
+  return { locks, freshMatchIds: freshIds, offlineMatchIds };
 }

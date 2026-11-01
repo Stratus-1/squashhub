@@ -1,3 +1,6 @@
+## 2026-11-01 — Maintenance blocks mistaken for player bookings
+- Symptom: a second overlapping maintenance block on another court failed with the administrator already booked. Finding: the player-overlap trigger treated ops creator membership as a participant. Fix: exclude ops on both the incoming row and existing clash rows; changing ops into a player booking rechecks clashes. Guard: isolated database regression tests cover multiple court blocks, personal/ops coexistence, player/opponent clashes and ops-to-player conversion; independent court occupancy and championship guards unchanged. No existing bookings altered.
+
 ## 2026-10-31 — Highveld combined final rankings
 - Add a read-only combined final ranking below the existing progression/classic pool views for Myburg 7’s only. Finals fix 1/2 and 5/6; semifinal losers and corresponding lower pool finishers use pool game difference then pool points difference. Exact statistical ties remain joint; incomplete or inconsistent finals do not show a confirmed ranking. No pool, score, fixture or ladder writes.
 

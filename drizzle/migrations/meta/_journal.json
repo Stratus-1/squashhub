@@ -2367,6 +2367,13 @@
       "when": 1793539445647,
       "tag": "0337_offline_live_indicator_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 338,
+      "version": "7",
+      "when": 1793540577945,
+      "tag": "0338_md_read_device_scoring_flag",
+      "breakpoints": true
     }
   ]
 }

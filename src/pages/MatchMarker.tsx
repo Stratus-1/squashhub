@@ -138,10 +138,10 @@ export default function MatchMarker() {
   });
   const offlineMatchRef = useRef<string | null>(null);
   const { data: offlineFlag, isLoading: offlineFlagLoading } = useClubBetaFeature(
-    tournamentMatchId ? config?.clubId : undefined,
+    tournamentMatchId ? (config?.clubId ?? md?.clubId) : undefined,
     "tournament_device_scoring",
   );
-  const offlineEligible = !!tournamentMatchId && !md && (offlineFlag === true || offlineFlagLoading) && storageWritable();
+  const offlineEligible = !!tournamentMatchId && (!md || md.kind === "tournament") && (offlineFlag === true || offlineFlagLoading) && storageWritable();
   const [scoreMode, setScoreMode] = useState<"live" | "offline" | null>(null);
   const [offlineStarting, setOfflineStarting] = useState(false);
   const [offlineChoiceError, setOfflineChoiceError] = useState<string | null>(null);

@@ -165,7 +165,16 @@ export function useOfflineScoring(onAccepted: (r: OfflineResult) => void) {
     if (!session) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; return ""; };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    // Stop mobile pull-down-to-refresh while scoring offline.
+    const root = document.documentElement;
+    const prev = root.style.overscrollBehaviorY;
+    root.style.overscrollBehaviorY = "contain";
+    document.body.style.overscrollBehaviorY = "contain";
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      root.style.overscrollBehaviorY = prev;
+      document.body.style.overscrollBehaviorY = "";
+    };
   }, [session]);
 
   /** Start (or resume) scoring this match offline. Throws when refused. */

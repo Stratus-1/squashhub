@@ -34,7 +34,8 @@ export function useClubCapabilityRows(clubId?: string) {
       return (data || []) as ClubCapabilityRow[];
     },
     enabled: !!clubId,
-    staleTime: 60_000,
+    // Switches rarely change and admin edits invalidate this key directly.
+    staleTime: 10 * 60_000,
   });
 }
 

@@ -3886,8 +3886,11 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string
+          last_revision: number
+          last_state: Json | null
           match_id: string
           owner_access_id: string | null
+          owner_label: string | null
           owner_user_id: string | null
           revoked_at: string | null
           session_id: string
@@ -3895,8 +3898,11 @@ export type Database = {
         Insert: {
           club_id: string
           created_at?: string
+          last_revision?: number
+          last_state?: Json | null
           match_id: string
           owner_access_id?: string | null
+          owner_label?: string | null
           owner_user_id?: string | null
           revoked_at?: string | null
           session_id: string
@@ -3904,8 +3910,11 @@ export type Database = {
         Update: {
           club_id?: string
           created_at?: string
+          last_revision?: number
+          last_state?: Json | null
           match_id?: string
           owner_access_id?: string | null
+          owner_label?: string | null
           owner_user_id?: string | null
           revoked_at?: string | null
           session_id?: string
@@ -20877,6 +20886,7 @@ export type Database = {
         Args: { p_match: string }
         Returns: undefined
       }
+      _champ_device_can_mark: { Args: { p_match: string }; Returns: boolean }
       _champ_draw_notice_mode: { Args: { p_champ_id: string }; Returns: string }
       _champ_fee_adjust: {
         Args: { p_fee_id: string; p_new_amount: number; p_note: string }
@@ -22358,6 +22368,36 @@ export type Database = {
       }
       champ_apply_paid_registration: {
         Args: { p_payment_ref?: string; p_registration_id: string }
+        Returns: Json
+      }
+      champ_device_complete: {
+        Args: {
+          p_match: string
+          p_result: Json
+          p_revision: number
+          p_session: string
+        }
+        Returns: Json
+      }
+      champ_device_release: {
+        Args: { p_match: string; p_session: string }
+        Returns: boolean
+      }
+      champ_device_reserve: {
+        Args: { p_match: string; p_owner_label?: string; p_session: string }
+        Returns: Json
+      }
+      champ_device_status: {
+        Args: { p_match: string; p_session?: string }
+        Returns: Json
+      }
+      champ_device_sync: {
+        Args: {
+          p_match: string
+          p_revision: number
+          p_session: string
+          p_state: Json
+        }
         Returns: Json
       }
       champ_division_fee_cents: {

@@ -2374,6 +2374,13 @@
       "when": 1793540577945,
       "tag": "0338_md_read_device_scoring_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 339,
+      "version": "7",
+      "when": 1793554234073,
+      "tag": "0339_league_registrations_leagues_permission",
+      "breakpoints": true
     }
   ]
 }

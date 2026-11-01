@@ -184,7 +184,7 @@ export default function TournamentMatchLive() {
 
               <p className="text-xs text-center text-muted-foreground">
                 {fresh && lock
-                  ? <>Being marked by <span className="font-medium text-foreground">{lock.user_name}</span>{offline ? " · scoring offline" : null}</>
+                  ? <>Being marked by <span className="font-medium text-foreground">{lock.user_name}</span>{offline ? " · scoring offline — the score auto-syncs when the phone reconnects" : null}</>
                   : live
                     ? "Nobody is marking this game right now — you can take over from the current score."
                     : completed ? "This match is finished." : "This match has not started yet."}

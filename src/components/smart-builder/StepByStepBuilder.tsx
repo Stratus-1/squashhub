@@ -124,7 +124,7 @@ import { choosePlayoffPairing } from "@/lib/smart-builder/playoff-pairing-choice
 import { formatSource, setCategoryFormat, resetCategoryFormat, unsetCategories } from "@/lib/smart-builder/format-default";
 import { StructureGuidePanel, RecommendationCard, guideRecommendations } from "./StructureGuidePanel";
 import { guideEntryCounts, guideCountText } from "./guide-entry-counts";
-import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
+import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate, structureEstimateTotal } from "@/lib/smart-builder/expected-entries";
 import type { RegLite } from "@/lib/smart-builder/step-draw";
 import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
@@ -1256,7 +1256,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   // "ExpEntries" was merged into the Structure guide; old links/resume points land there.
   const go = (k: StepKey) => { const t: StepKey = k === "ExpEntries" ? "Guide" : k; const i = steps.indexOf(cardStructure && (MERGED_STRUCTURE_STEPS.includes(t) || t === "Seeding") ? "Structure" : cardStructure && t === "Entries" ? "Eligibility" : rowStructure && ["Guide", "Subcategories", "Format", "Structure", "What"].includes(t) ? "Categories" : structureStep && ["Guide", "Subcategories", "Format"].includes(t) ? "Structure" : structureStep && t === "Overrides" ? "Match" : t); if (i >= 0 && !rowStructureDirty) setStep(i); };
 
-  const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
+  const expectedTotal = cardStructure ? structureEstimateTotal(a, cats) : Number(a.entries);
+  const entriesOk = expectedTotal > 0 && Number.isFinite(expectedTotal);
   const playOk = a.playType !== null;
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
@@ -1291,7 +1292,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const roundCounts = clubId === RIVERSIDE_CLUB_ID ? roundCountCheck(a as any, units, stages) : [];
   const roundCountProblems = roundCounts.map((r) => r.problem).filter((x): x is string => !!x);
   const okFor: Record<StepKey, boolean> = { StructureReview: false, Structure: false, Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0 && cats.every((c) => COMPETITION_CATEGORIES.includes(a.categoryTypes?.[c] ?? Object.entries(a.categoryTypes ?? {}).find(([k]) => k.trim() === c)?.[1])), Guide: estimateConflicts(a, cats).length === 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk && (!cardStructure || entriesOk), Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined && roundCountProblems.length === 0, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null && !!fee.basis && !(fee.basis === "per_player" && feeAmountsVary && !fee.mixedRule)), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined && roundCountProblems.length === 0, Playoffs: true, Summary: false };
   okFor.Structure = okFor.Guide && okFor.Subcategories && okFor.Format;
   if (structureStep) okFor.Match = okFor.Match && okFor.Overrides;
   if (rowStructure) okFor.Categories = !rowStructureDirty && structureRowIssues(a).length === 0 && okFor.Format;
@@ -1795,13 +1796,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Eligibility" && (
             <>
               <Q t="Who may enter each category?" h="Keep it simple — you can change this later." />
-              {cardStructure && (
-                <div className="max-w-[260px] space-y-1">
-                  <Label htmlFor="sbs-entries">About how many entries in total (players or pairs)?</Label>
-                  <Input id="sbs-entries" type="number" min={1} inputMode="numeric" value={a.entries} onChange={(e) => setA({ ...a, entries: e.target.value })} placeholder="e.g. 32" />
-                  <p className="text-[11px] text-muted-foreground">A rough guess is fine — it updates as entries are finalised.</p>
-                </div>
-              )}
               <div className="space-y-3">
                 {pickUnits.map((u) => {
                   const e = eligOf(u.key);
@@ -2472,7 +2466,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 const p = playoffFor(u.key);
                 const sc = scoringFor(u.key) ?? scoring;
                 const savedTime = structureSlotTimes(a, u.key);
-                return { key: u.key, label: u.base, entrants: players > 0 ? (u.disc === "doubles" ? Math.ceil(players / 2) : players) : Number(a.unitEntries?.[u.key]) || (units.length === 1 ? Number(a.entries) || 0 : 0), doubles: u.disc === "doubles", estimated: players === 0,
+                return { key: u.key, label: u.base, entrants: players > 0 ? (u.disc === "doubles" ? Math.ceil(players / 2) : players) : Number(a.unitEntries?.[u.key]) || (units.length === 1 ? expectedTotal || 0 : 0), doubles: u.disc === "doubles", estimated: players === 0,
                   slotMinutes: savedTime.slotMinutes, poolSlots: savedTime.poolSlots,
                   playoffGames: p.choice === "playoffs" ? 2 ** p.rounds - 1 : 0,
                   playoffRounds: p.choice === "playoffs" ? p.rounds : 0,
@@ -2893,7 +2887,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <SummaryRow icon={<Users className="h-4 w-4" />} label="Organiser" onEdit={() => go("Basics")}>{a.organiser?.name ?? "No organiser selected"}</SummaryRow>
               {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("Guide")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
-              </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>}
+              </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : cardStructure ? "Structure" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${expectedTotal || "?"} (estimate)`}</SummaryRow>}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Match format" onEdit={() => go("Match")}>
                 <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
@@ -3051,7 +3045,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   return <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">~{a.unitEntries?.[u.key] || "?"} expected{act > 0 ? ` · ${act} actual` : ""}</span></TreeLeaf>;
                 })}
               </TreeNode>}
-              {!isChamps && entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
+              {!isChamps && entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${expectedTotal} entries`} onClick={() => go(cardStructure ? "Structure" : "Entries")} />}
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
                 {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}

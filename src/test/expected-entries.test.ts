@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
+import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate, structureEstimateTotal } from "@/lib/smart-builder/expected-entries";
 
 // Mirrors the reported screenshots: Structure guide 13/14/14/16/18 vs Expected entries 14/16/16/16/18.
 const legacy = () => ({
@@ -10,6 +10,20 @@ const legacy = () => ({
 const cats = ["Men's A", "Men's B", "Men's C", "Men's D", "Ladies"];
 
 describe("canonical expected entries", () => {
+  it("uses Structure counts instead of a conflicting separately entered total", () => {
+    const a = { entries: "99", unitEntries: { Singles: "12", Doubles: "8", Removed: "50" } };
+    expect(structureEstimateTotal(a, ["Singles", "Doubles"])).toBe(20);
+    expect(a.entries).toBe("99");
+    expect(structureEstimateTotal({ ...a, unitEntries: { ...a.unitEntries, Singles: "16" } }, ["Singles", "Doubles"])).toBe(24);
+  });
+  it("sums subcategories once without adding the parent estimate", () => {
+    const a = { subcats: { Men: ["A", "B"] }, unitEntries: { Men: "40", "Men::A": "8", "Men::B": "6", Ladies: "10" } };
+    expect(structureEstimateTotal(a, ["Men", "Ladies"])).toBe(24);
+  });
+  it("does not revive a duplicate total when Structure counts are empty", () => {
+    const a = { entries: "32", unitEntries: {} };
+    expect(structureEstimateTotal(a, ["Singles"])).toBe(0);
+  });
   it("flags conflicting legacy estimates without changing either", () => {
     const a = legacy();
     expect(estimateConflicts(a, cats).map((c) => c.cat)).toEqual(["Men's A", "Men's B", "Men's C"]);

@@ -28,6 +28,11 @@ export function categoryEstimate(a: EstimateAnswers, cat: string): number {
   return fromUnits || n(a.guide?.expected?.[cat]);
 }
 
+/** Overall planning estimate is a read-only total of active Structure categories. */
+export function structureEstimateTotal(a: EstimateAnswers, cats: string[]): number {
+  return [...new Set(cats)].reduce((total, cat) => total + categoryEstimate(a, cat), 0);
+}
+
 /** Categories where the old Structure guide guess and the old Expected entries answer disagree and the admin hasn't chosen. */
 export function estimateConflicts(a: EstimateAnswers, cats: string[]): EstimateConflict[] {
   return cats.flatMap((cat) => {

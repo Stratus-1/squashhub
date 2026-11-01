@@ -4201,3 +4201,9 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-11-01 — NSC Tuesday test forfeit and league setup access
 - Cleared the explicitly confirmed test 3–0 forfeit on Double Troubles vs Twin Turbos, 3 November, preserving participants and fixture date. Guarded against submitted/locked results, recorded original and cleared state in audit_events, and verified empty scores, zero game wins, no forfeit/winner or participant lock.
 - Vian already has an explicit leagues permission, but Upcoming and lineup setup only recognised full admins/captains/players. Unsubmitted setup now recognises that existing grant within the member's club, without granting full-admin final-result or played-participant correction authority. No roles, RLS, schedules or tournament records changed.
+
+
+### 2026-11-01 — One Structure entry estimate
+- Removed the duplicate total-entry input from Who may enter. Eligibility now checks audience choices only; its Next button no longer depends on an unseen duplicate estimate.
+- Overall planning capacity and summary derive active category/subcategory totals via structureEstimateTotal; removed categories and stale separately typed totals cannot override Structure. Per-unit planning continues reading unitEntries, and draw generation still uses actual registrations.
+- 44 focused tests pass, preview build OK. Signed-in Riverside test tournament edit verified Who may enter has no duplicate input, Next enabled, and summary shows the six Structure entries. No save/update, fixture, score, booking or hosted tournament changes; web/PWA/native shared screen only, preview-only.

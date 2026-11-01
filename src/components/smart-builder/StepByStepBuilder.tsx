@@ -1795,13 +1795,6 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           {cur === "Eligibility" && (
             <>
               <Q t="Who may enter each category?" h="Keep it simple — you can change this later." />
-              {cardStructure && (
-                <div className="max-w-[260px] space-y-1">
-                  <Label htmlFor="sbs-entries">About how many entries in total (players or pairs)?</Label>
-                  <Input id="sbs-entries" type="number" min={1} inputMode="numeric" value={a.entries} onChange={(e) => setA({ ...a, entries: e.target.value })} placeholder="e.g. 32" />
-                  <p className="text-[11px] text-muted-foreground">A rough guess is fine — it updates as entries are finalised.</p>
-                </div>
-              )}
               <div className="space-y-3">
                 {pickUnits.map((u) => {
                   const e = eligOf(u.key);

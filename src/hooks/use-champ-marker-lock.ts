@@ -18,6 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const CHAMP_LOCK_FRESH_MS = 60_000;
 export const CHAMP_TAKEOVER_WAIT_MS = 60_000;
 const HEARTBEAT_MS = 20_000;
+// A match reserved for "Score offline" cannot send heartbeats while the phone
+// has no internet. Its lock stays fresh for this long after the last contact
+// with the server, so viewers see "LIVE · offline" instead of "Paused".
+export const CHAMP_OFFLINE_FRESH_MS = 6 * 60 * 60_000;
 
 export type ChampMarkerLock = {
   match_id: string;
@@ -28,13 +32,16 @@ export type ChampMarkerLock = {
   takeover_requested_name: string | null;
   takeover_requested_at: string | null;
   takeover_declined_at: string | null;
+  scoring_mode?: string | null;
 };
 
 const table = () => (supabase as any).from("champ_marker_locks");
 
 export function isLockFresh(lock: ChampMarkerLock | null | undefined): boolean {
   if (!lock) return false;
-  return Date.now() - new Date(lock.heartbeat_at).getTime() < CHAMP_LOCK_FRESH_MS;
+  const age = Date.now() - new Date(lock.heartbeat_at).getTime();
+  if (lock.scoring_mode === "offline") return age < CHAMP_OFFLINE_FRESH_MS;
+  return age < CHAMP_LOCK_FRESH_MS;
 }
 
 /** Read the current lock for a single match (one-shot, no subscription). */
@@ -77,6 +84,9 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
   const fresh = useMemo(() => isLockFresh(lock), [lock, tick]);
   const heldByMe = !!lock && !!userId && lock.user_id === userId;
   const heldByOther = fresh && !!lock && !heldByMe;
+  // The match is being scored offline on another device: still live, but the
+  // score only updates when that phone reaches the server again.
+  const offline = fresh && !!lock && lock.scoring_mode === "offline";
 
   const claim = useCallback(async () => {
     if (!matchId || !userId) return;
@@ -85,6 +95,7 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
       user_id: userId,
       user_name: userName || "Marker",
       heartbeat_at: new Date().toISOString(),
+      scoring_mode: "live",
       takeover_requested_by: null,
       takeover_requested_name: null,
       takeover_requested_at: null,
@@ -130,7 +141,7 @@ export function useChampMarkerLock(matchId: string | null | undefined, userId?: 
   }, [matchId, userId, refresh]);
 
   return {
-    lock, fresh, heldByMe, heldByOther,
+    lock, fresh, heldByMe, heldByOther, offline,
     refresh, claim, release, requestTakeover, approveTakeover, declineTakeover,
   };
 }
@@ -215,10 +226,9 @@ export function useChampMarkerLocks(matchIds: string[]) {
 
   useEffect(() => {
     const recompute = () => {
-      const now = Date.now();
       const s = new Set<string>();
       for (const [id, l] of Object.entries(locks)) {
-        if (now - new Date(l.heartbeat_at).getTime() < CHAMP_LOCK_FRESH_MS) s.add(id);
+        if (isLockFresh(l)) s.add(id);
       }
       setFreshIds(s);
     };
@@ -227,5 +237,15 @@ export function useChampMarkerLocks(matchIds: string[]) {
     return () => clearInterval(id);
   }, [locks]);
 
-  return { locks, freshMatchIds: freshIds };
+  // Matches currently scored offline on another device: shown as "LIVE ·
+  // offline" so viewers know the score updates only on reconnection.
+  const offlineMatchIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const [id, l] of Object.entries(locks)) {
+      if (l.scoring_mode === "offline" && freshIds.has(id)) s.add(id);
+    }
+    return s;
+  }, [locks, freshIds]);
+
+  return { locks, freshMatchIds: freshIds, offlineMatchIds };
 }

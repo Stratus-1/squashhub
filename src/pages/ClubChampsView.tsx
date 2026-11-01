@@ -303,7 +303,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
 
 
   // Only badge a match LIVE while a marker is actually present (fresh heartbeat).
-  const { freshMatchIds } = useChampMarkerLocks(
+  const { freshMatchIds, offlineMatchIds } = useChampMarkerLocks(
     (matches as any[]).filter((m: any) => m.status === "in_progress").map((m: any) => m.id),
   );
 
@@ -3566,8 +3566,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           if (completed) return null;
           if (isLiveMatch && freshMatchIds.has(m.id)) {
             return (
-              <span className="live-indicator text-[10px] px-2.5 py-1">
+              <span
+                className="live-indicator text-[10px] px-2.5 py-1"
+                title={offlineMatchIds.has(m.id) ? "Being scored offline — the score auto-syncs when the marker's phone reconnects" : undefined}
+              >
                 LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+                {offlineMatchIds.has(m.id) && <span className="font-normal opacity-80"> · offline</span>}
               </span>
             );
           }

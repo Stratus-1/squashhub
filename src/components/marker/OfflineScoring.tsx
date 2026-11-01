@@ -12,7 +12,9 @@ export function ScoreModeChoice({
         <Wifi className="h-4 w-4" />
         <span className="text-left">
           <span className="block font-semibold">Score live</span>
-          <span className="block text-xs opacity-80">As always — every point shows immediately.</span>
+          <span className="block text-xs opacity-80">
+            Use when the internet connection is good. Every point is synced automatically as you score.
+          </span>
         </span>
       </Button>
       <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3" onClick={onOffline} disabled={busy}>
@@ -20,7 +22,8 @@ export function ScoreModeChoice({
         <span className="text-left">
           <span className="block font-semibold">{busy ? "Reserving…" : "Score offline"}</span>
           <span className="block text-xs text-muted-foreground">
-            Only this phone scores the match. Scores save here and send when the internet is back.
+            Use when the internet connection is not stable. Only this phone scores the match; it auto-syncs
+            regularly wherever possible and sends everything when the internet is back.
           </span>
         </span>
       </Button>
@@ -47,7 +50,7 @@ export function OfflineScoringBanner({
       {waiting ? <WifiOff className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
       <span className="font-semibold">Score offline</span>
       <span className="text-muted-foreground">
-        {waiting ? "· saved on this phone, will send when online" : "· all scores sent"}
+        {waiting ? "· saved on this phone — auto-syncs when the internet is back" : "· all scores sent"}
       </span>
     </div>
   );

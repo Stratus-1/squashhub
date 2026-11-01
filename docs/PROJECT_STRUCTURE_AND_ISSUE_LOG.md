@@ -4207,3 +4207,12 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Removed the duplicate total-entry input from Who may enter. Eligibility now checks audience choices only; its Next button no longer depends on an unseen duplicate estimate.
 - Overall planning capacity and summary derive active category/subcategory totals via structureEstimateTotal; removed categories and stale separately typed totals cannot override Structure. Per-unit planning continues reading unitEntries, and draw generation still uses actual registrations.
 - 44 focused tests pass, preview build OK. Signed-in Riverside test tournament edit verified Who may enter has no duplicate input, Next enabled, and summary shows the six Structure entries. No save/update, fixture, score, booking or hosted tournament changes; web/PWA/native shared screen only, preview-only.
+
+## 2026-11-01 — Offline scoring shows "LIVE · offline" to viewers
+- Ask: when the marker scores offline, viewers saw the plain LIVE chip (or "Paused" once the 60s heartbeat went stale, because an offline phone cannot send heartbeats). Show an explicit offline note.
+- Fix: `champ_marker_locks.scoring_mode` ('live' | 'offline', default 'live'); trigger `champ_device_reservation_lock_sync` mirrors `champ_device_reservations` into the marker lock (upsert on reserve/sync, delete on release/revoke; v2 fixed the DELETE branch — NEW is NULL for DELETE, must use TG_OP). Marker-lock `claim()` writes `scoring_mode='live'`; heartbeats never touch the mode.
+- Freshness: offline locks stay fresh 6h after last server contact (`CHAMP_OFFLINE_FRESH_MS`); live locks keep the 60s rule, so Live behaviour is unchanged.
+- UI: fixture rows and live page show "LIVE <score> · offline" with tooltip "Being scored offline — the score auto-syncs when the marker's phone reconnects"; TournamentMatchLive takeover button goes straight to the marker for offline-reserved matches (an offline phone cannot answer a takeover request).
+- Choice-screen wording: Score live = "use when the internet connection is good; every point is synced automatically"; Score offline = "use when the internet connection is not stable; auto-syncs regularly wherever possible".
+- Tests: 3 vitest freshness tests; transactional DB trigger checks (create/sync/release) rolled back cleanly; verified in the Riverside preview with a temporary offline lock (restored afterwards).
+- Migrations: 0336_offline_live_indicator, 0337_offline_live_indicator_v2.

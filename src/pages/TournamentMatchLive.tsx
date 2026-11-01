@@ -46,7 +46,7 @@ export default function TournamentMatchLive() {
   const [loading, setLoading] = useState(true);
   const [takeoverOpen, setTakeoverOpen] = useState(false);
 
-  const { lock, fresh } = useChampMarkerLock(matchId, user?.id);
+  const { lock, fresh, offline } = useChampMarkerLock(matchId, user?.id);
 
   useEffect(() => {
     if (!matchId) return;
@@ -114,7 +114,9 @@ export default function TournamentMatchLive() {
 
   const takeOverOrResume = () => {
     if (!markRoute) return;
-    if (fresh && lock && lock.user_id !== user?.id) {
+    // An offline-reserved match cannot answer a takeover request (the scoring
+    // phone may have no internet) — send the marker straight to the game.
+    if (fresh && lock && lock.user_id !== user?.id && !offline) {
       setTakeoverOpen(true);
       return;
     }
@@ -131,8 +133,11 @@ export default function TournamentMatchLive() {
           </Button>
           <div className="flex items-center gap-2">
             {live && fresh && (
-              <span className="live-indicator text-[11px] px-2.5 py-1">
-                <Radio className="w-3 h-3" /> LIVE
+              <span
+                className="live-indicator text-[11px] px-2.5 py-1"
+                title={offline ? "Being scored offline — the score auto-syncs when the marker's phone reconnects" : undefined}
+              >
+                <Radio className="w-3 h-3" /> LIVE{offline ? <span className="font-normal opacity-80"> · offline</span> : null}
               </span>
             )}
             {live && !fresh && (
@@ -179,7 +184,7 @@ export default function TournamentMatchLive() {
 
               <p className="text-xs text-center text-muted-foreground">
                 {fresh && lock
-                  ? <>Being marked by <span className="font-medium text-foreground">{lock.user_name}</span></>
+                  ? <>Being marked by <span className="font-medium text-foreground">{lock.user_name}</span>{offline ? " · scoring offline — the score auto-syncs when the phone reconnects" : null}</>
                   : live
                     ? "Nobody is marking this game right now — you can take over from the current score."
                     : completed ? "This match is finished." : "This match has not started yet."}

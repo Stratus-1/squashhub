@@ -2353,6 +2353,13 @@
       "when": 1793532601970,
       "tag": "0335_device_scoring_match_only_guard_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1793539339779,
+      "tag": "0336_offline_live_indicator",
+      "breakpoints": true
     }
   ]
 }

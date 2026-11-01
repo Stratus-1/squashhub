@@ -4075,6 +4075,7 @@ export type Database = {
           created_at: string
           heartbeat_at: string
           match_id: string
+          scoring_mode: string
           takeover_declined_at: string | null
           takeover_requested_at: string | null
           takeover_requested_by: string | null
@@ -4086,6 +4087,7 @@ export type Database = {
           created_at?: string
           heartbeat_at?: string
           match_id: string
+          scoring_mode?: string
           takeover_declined_at?: string | null
           takeover_requested_at?: string | null
           takeover_requested_by?: string | null
@@ -4097,6 +4099,7 @@ export type Database = {
           created_at?: string
           heartbeat_at?: string
           match_id?: string
+          scoring_mode?: string
           takeover_declined_at?: string | null
           takeover_requested_at?: string | null
           takeover_requested_by?: string | null

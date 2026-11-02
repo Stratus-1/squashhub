@@ -87,8 +87,19 @@ describe("more than one fee may add family members", () => {
   it("keeps the family-named fee as the main package by default", () => {
     expect(mainFamilyPackage(cats)?.id).toBe("f");
   });
-  it("offers only payable, non-family fees as extras", () => {
-    expect(extraFamilyCandidates(cats, "f", "a").map((c) => c.id)).toEqual(["h", "s"]);
+  it("offers non-family fees as extras, including free ones like Life member", () => {
+    expect(extraFamilyCandidates(cats, "f", "a").map((c) => c.id)).toEqual(["h", "z", "s"]);
+  });
+  it("never offers visitors, additional-family fees or non-membership charges as extras", () => {
+    const mixed: FamilyCategory[] = [
+      { id: "f", name: "Family Package", annual_fee: 3000, family_role: "primary" },
+      { id: "a", name: "Additional Family Member", annual_fee: 0, family_role: null },
+      { id: "v", name: "Visitor", annual_fee: 50, family_role: null },
+      { id: "c", name: "Cleaning levy", annual_fee: 100, family_role: null },
+      { id: "ho", name: "Honorary member", annual_fee: 0, family_role: null },
+      { id: "ls", name: "Longstanding member", annual_fee: 0, family_role: null },
+    ];
+    expect(extraFamilyCandidates(mixed, "f", "").map((c) => c.id)).toEqual(["ho", "ls"]);
   });
   it("keeps the extra fee's own name for members", () => {
     expect(familyPackageName({ name: "Honorary" })).toBe("Honorary");

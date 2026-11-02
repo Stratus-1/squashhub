@@ -50,10 +50,12 @@ export async function settlePayfastSession(admin: any, session: any) {
     const isPartial = amount < total - 0.001;
 
     if (!isPartial) {
+      // The card transaction above already posted Dr Bank / Cr Debtors, so the
+      // fee is marked settled_from_wallet to stop a second "Fee paid" posting.
       for (const f of fees || []) {
         await admin
           .from("club_member_fee_payments")
-          .update({ paid: true, paid_at: new Date().toISOString() })
+          .update({ paid: true, paid_at: new Date().toISOString(), settled_from_wallet: true })
           .eq("id", f.id);
       }
     } else {
@@ -64,9 +66,7 @@ export async function settlePayfastSession(admin: any, session: any) {
         remaining -= deduction;
         const newAmount = feeAmt - deduction;
         if (newAmount <= 0) {
-          await admin
-            .from("club_member_fee_payments")
-            .update({ paid: true, paid_at: new Date().toISOString(), amount: 0 })
+            .update({ paid: true, paid_at: new Date().toISOString(), amount: 0, settled_from_wallet: true })
             .eq("id", f.id);
         } else {
           await admin.from("club_member_fee_payments").update({ amount: newAmount }).eq("id", f.id);

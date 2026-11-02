@@ -425,13 +425,14 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
                     <TableHead className="w-32">{asLabel} #</TableHead>
                     <TableHead className="w-16">Rank</TableHead>
                     <TableHead className="w-20">Captain</TableHead>
+                    <TableHead className="w-20" title="Rubbers won / played in the last 12 months">Won/Played</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {leagues.map((l) => (
                     <>
                       <TableRow key={`h-${l.id}`} className="bg-muted/40">
-                        <TableCell colSpan={5} className="py-1.5">
+                        <TableCell colSpan={6} className="py-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm">{l.name}</span>
                             {l.team_code && (
@@ -452,7 +453,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
                       </TableRow>
                       {l.regs.length === 0 ? (
                         <TableRow key={`e-${l.id}`}>
-                          <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-2">
+                          <TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-2">
                             No players allocated
                           </TableCell>
                         </TableRow>
@@ -476,6 +477,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
                                 </span>
                               )}
                             </TableCell>
+                            <TableCell className="text-xs tabular-nums">{r.won}/{r.played}</TableCell>
                           </TableRow>
                         ))
                       )}

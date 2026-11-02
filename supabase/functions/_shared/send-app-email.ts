@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { EmailAPIError } from 'npm:@lovable.dev/email-js@0.1.0'
-import { sendTemplateEmail } from './transactional-email-templates/send-email.ts'
+import { sendTemplateEmail, renderTemplateEmail } from './transactional-email-templates/send-email.ts'
 
 /**
  * Server-side app-email send used across this project's edge functions.
@@ -47,8 +47,60 @@ async function logSend(row: Record<string, unknown>) {
   }
 }
 
+// Platform-to-club emails stay on SquashHub's own sender; everything else a club
+// sends to its members goes through the club's own SMTP + signature when set up.
+const PLATFORM_TEMPLATES = new Set([
+  'new-club-registered', 'stitch-onboarding-application', 'support-new-message', 'support-admin-reply',
+  'subscription-invoice', 'subscription-invoice-reminder', 'trial-ending', 'sla-outstanding',
+])
+const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525])
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+
+/** Returns true when sent via club SMTP, false when the club has no SMTP configured. */
+async function trySendViaClubSmtp(args: SendAppEmailArgs): Promise<boolean> {
+  const { templateName, recipientEmail, templateData, clubId, replyTo } = args
+  if (!clubId || PLATFORM_TEMPLATES.has(templateName)) return false
+  const db = admin()
+  const { data: secrets } = await db.from('club_secrets')
+    .select('smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email').eq('club_id', clubId).maybeSingle()
+  if (!secrets?.smtp_host || !secrets?.smtp_user || !secrets?.smtp_pass || !secrets?.sender_email) return false
+  const port = Number(secrets.smtp_port) || 587
+  if (!ALLOWED_SMTP_PORTS.has(port)) return false
+  const { data: club } = await db.from('clubs').select('name,email,email_signature_html,email_disclaimer').eq('id', clubId).maybeSingle()
+  const r = await renderTemplateEmail(templateName, (templateData ?? {}) as Record<string, any>)
+  const sig = club?.email_signature_html
+    ? `<div style="margin:24px auto 0;max-width:600px;border-top:1px solid #e2e8f0;padding-top:14px;font-family:Arial,sans-serif;font-size:13px">${club.email_signature_html}</div>` : ''
+  const disc = club?.email_disclaimer
+    ? `<p style="margin:14px auto 0;max-width:600px;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(club.email_disclaimer)}</p>` : ''
+  const html = (sig || disc) && r.html.includes('</body>') ? r.html.replace('</body>', `${sig}${disc}</body>`) : r.html + sig + disc
+  const sigText = club?.email_signature_html ? '\n\n--\n' + club.email_signature_html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim() : ''
+  const nodemailer = await import('npm:nodemailer@6.9.14')
+  const transporter = nodemailer.default.createTransport({
+    host: secrets.smtp_host, port, secure: port === 465, requireTLS: port === 587,
+    auth: { user: secrets.smtp_user, pass: secrets.smtp_pass },
+  })
+  await transporter.sendMail({
+    from: `${secrets.sender_name || club?.name || 'Club'} <${secrets.sender_email}>`,
+    to: r.fixedTo || recipientEmail, subject: r.subject, html, text: r.text + sigText,
+    replyTo: replyTo || club?.email || undefined,
+  })
+  return true
+}
+
 export async function sendAppEmail(args: SendAppEmailArgs): Promise<SendAppEmailResult> {
   const { templateName, recipientEmail, templateData, idempotencyKey, clubId, replyTo } = args
+
+  try {
+    if (await trySendViaClubSmtp(args)) {
+      await logSend({ club_id: clubId ?? null, template_name: templateName, recipient_email: recipientEmail, status: 'sent' })
+      return { ok: true, sent: true }
+    }
+  } catch (e) {
+    const message = (e as Error).message
+    console.error('club SMTP send failed', { templateName, message })
+    await logSend({ club_id: clubId ?? null, template_name: templateName, recipient_email: recipientEmail, status: 'failed', error_message: `Club SMTP: ${message}` })
+    return { ok: false, error: `Club email (SMTP) failed: ${message}` }
+  }
 
   for (let attempt = 0; ; attempt++) {
     try {

@@ -11,7 +11,7 @@ export type PlannedPlayoffRow = { key: string; stage: string; id: string; text: 
 
 const ord = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
 
-const ORDER = ["Quarterfinal", "Semifinal", "Final"];
+const ORDER = ["Quarterfinal", "Semifinal", "3rd place", "Final"];
 
 function whenOf(s: any): string | null {
   if (!s) return null;
@@ -57,7 +57,7 @@ export function plannedPlayoffBracket(plan: any, unitKey: string, pools: number,
         if (sm) { const rank = Number(sm[1]); return { label: ord(rank), name: name("A", rank), pool: null, rank }; }
         return { label: raw, name: null, pool: null, rank: null };
       });
-      return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === (placement ? "Final" : g.stage))) };
+      return { sides: [sides[0], sides[1] ?? { label: "Bye", name: null, pool: null, rank: null }] as [PlannedSide, PlannedSide], key: g.key, stage: g.stage, id, text, when: whenOf(timeline.find((s) => s.name === (placement || g.stage === "3rd place" ? "Final" : g.stage))) };
     });
 }
 

@@ -22,7 +22,10 @@ export const tabFromParam = (v: string | null | undefined): TournamentTab =>
  * date/court/time is already assigned; they appear automatically once the pairing is filled in.
  */
 export type SwissSlotLike = { is_bye?: boolean | null; player_a_member_id?: string | null; player_b_member_id?: string | null; stage?: string | null; stage_key?: string | null };
-export const isSwissMatch = (m: SwissSlotLike, champ?: { scoring_mode?: string | null } | null) =>
-  champ?.scoring_mode === "swiss" || /swiss/i.test(String(m.stage_key ?? "")) || /swiss/i.test(String(m.stage ?? ""));
+export const isSwissMatch = (m: SwissSlotLike, champ?: { scoring_mode?: string | null } | null) => {
+  const stage = String(m.stage ?? ""), key = String(m.stage_key ?? "");
+  if (/playoff|final|semi|quarter/i.test(stage) || /-po\d|#ph$/.test(key)) return false;
+  return champ?.scoring_mode === "swiss" || /swiss/i.test(key) || /swiss/i.test(stage);
+};
 export const isProvisionalSwissSlot = (m: SwissSlotLike, champ?: { scoring_mode?: string | null } | null) =>
   !m.is_bye && isSwissMatch(m, champ) && (!m.player_a_member_id || !m.player_b_member_id);

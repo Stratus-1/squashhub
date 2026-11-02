@@ -30,6 +30,14 @@ export function bottomHalfFor(plan: any, unitKey: string): boolean {
 }
 
 /** Lower-half first-stage labels: the same pairing rule, shifted to the next positions (A3 v B4, B3 v A4 …). */
+export function thirdPlaceFor(plan: any, unitKey: string): boolean {
+  const raw = plan?.originalStructure;
+  const keys: string[] = raw?._unit_keys ?? [];
+  const i = keys.indexOf(unitKey), j = keys.indexOf(unitKey.split("::")[0]);
+  const index = i >= 0 ? i : j;
+  return index >= 0 && (raw?.league_planned_playoff_rounds?.[String(index + 1)] ?? []).includes("third");
+}
+
 function lowerLabels(g: number, pairing: Pairing, pools: number): string[] {
   const shift = (t: string) => t.replace(/#(\d+)|Seed (\d+)|Qualifier (\d+)/g, (m, a, b, c) => a ? `#${Number(a) + (pools >= 2 && pairing !== "seeded" ? g : 2 * g)}` : b ? `Seed ${Number(b) + 2 * g}` : `Qualifier ${Number(c) + 2 * g}`);
   return firstLabels(g, pairing, pools).map(shift);
@@ -92,6 +100,10 @@ export function provisionalPlayoffs(plan: any, unitKey: string, pools: number): 
       ? Array.from({ length: g }, (_, k) => `Winner ${prev[2 * k] ?? "?"} v Winner ${prev[2 * k + 1] ?? "?"}`)
       : firstLabels(g, pairings[i], pools);
     const ids = labels.map((_, k) => (g === 1 ? ab : `${ab}${k + 1}`));
+    if (name === "Final" && thirdPlaceFor(plan, unitKey) && prev.length === 2) {
+      out.push({ key: `${unitKey}|3p|1`, unitKey, phase: i + 1, stage: "3rd place", label: `3rd/4th: Loser ${prev[0]} v Loser ${prev[1]}` });
+      if (bottom && prevLow.length === 2) out.push({ key: `${unitKey}|3p|low|1`, unitKey, phase: i + 1, stage: "3rd place", label: `7th/8th: Loser ${prevLow[0]} v Loser ${prevLow[1]}` });
+    }
     labels.forEach((label, k) => out.push({ key: `${unitKey}|${ab}|${k + 1}`, unitKey, phase: i + 1, stage: name, label: `${ids[k]}: ${label}` }));
     if (bottom) {
       const low = i > 0 && pairings[i] === "winners"

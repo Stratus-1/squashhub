@@ -46,7 +46,7 @@ export function placeholderGames(div: { stages: any[] }): PlaceholderGame[] {
     const label = (uid: string) => {
       const s = unit.get(uid)?.slots?.[0];
       if (!s) return "TBD";
-      if (m.source === "stage_winners") return `Winner ${prev[s.position - 1] ?? `game ${s.position}`}`;
+      if (m.source === "stage_winners") return `${m.losers ? "Loser" : "Winner"} ${prev[s.position - 1] ?? `game ${s.position}`}`;
       return m.pools > 1 ? `Pool ${L(s.pool)} #${s.position}` : `#${s.position}`;
     };
     games.forEach((g: any, i: number) => out.push({ stageKey: st.id, stageName: st.name, order: i + 1, a: label(g.a), b: label(g.b) }));
@@ -72,11 +72,7 @@ export async function syncPlayoffPlaceholders(champId: string): Promise<{ create
   ]);
   const all = (rows ?? []) as any[];
   const old = all.filter((m) => isPlaceholderKey(m.stage_key) && !m.winner_member_id && !DONE.includes(String(m.status ?? "").toLowerCase()));
-  if (old.length) {
-    const { error } = await fromExt("club_champs_matches").delete().in("id", old.map((m) => m.id));
-    if (error) throw new Error(error.message);
-  }
-  await fromExt("club_champs_rounds").delete().eq("champ_id", champId).like("stage_key", `%${PH}`);
+  // Retain existing placeholders and their slots: an explicit repeated save is not a rebuild.
   const divId = new Map(((divs ?? []) as any[]).map((d) => [d.spec_key, d.id]));
   let created = 0;
   for (const d of spec.divisions) {
@@ -90,6 +86,7 @@ export async function syncPlayoffPlaceholders(champId: string): Promise<{ create
     for (const [sk, list] of byStage) {
       i++;
       if (all.some((m) => m.group_number === g && m.stage_key === sk)) continue; // real games exist
+      if (old.some((m) => m.group_number === g && m.stage_key === `${sk}${PH}`)) continue;
       const stage_id = ((stages ?? []) as any[]).find((s) => s.division_id === division_id && s.spec_key === sk)?.id;
       if (!stage_id) continue;
       const name = list[0].stageName, ab = abbrOf(name);

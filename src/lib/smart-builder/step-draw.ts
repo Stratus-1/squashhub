@@ -11,6 +11,7 @@ import { resolveStagePlan } from "./stage-plan";
 import { RIVERSIDE_CLUB_ID } from "@/lib/tournaments/swiss-riverside-aabb-charts";
 import { rrFinishIssues, type RrFinish } from "@/lib/tournaments/swiss-rr-finish";
 import { buildPlayoffChain } from "./playoff-chain";
+import { thirdPlaceFor } from "@/lib/tournaments/provisional-playoffs";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
 import { recommendPools, type PoolPlan, type PoolReview } from "@/lib/smart-builder/pool-plan";
@@ -162,7 +163,7 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
   try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
 }
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
-export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "stagePlans", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan", "playoffPoolQualifiers", "tieBreaks", "scoring", "scoringOverrides", "scheduling", "courtRules"] as const;
+export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "stagePlans", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan", "playoffPoolQualifiers", "tieBreaks", "scoring", "scoringOverrides", "scheduling", "courtRules", "originalStructure"] as const;
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
@@ -213,7 +214,16 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
   let changed = false;
   const divisions = spec.divisions.map((d: any) => {
     // Real play-off stages already exist: append-only, never rebuilt here.
-    if (d.stages.length > 1) return d;
+    if (d.stages.length > 1) {
+      const unit = unitKeyOf(d.label);
+      if (!thirdPlaceFor(plan, unit) || d.stages.some((s: any) => s.mapping?.losers)) return d;
+      const final = d.stages.find((s: any) => /^final$/i.test(s.name) && s.mapping?.source === "stage_winners");
+      const semi = final && d.stages.find((s: any) => s.id === final.mapping.sourceStageId && /semi/i.test(s.name));
+      if (!final || !semi) return d;
+      changed = true;
+      const third = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order - 0.5, mapping: { ...final.mapping, losers: true } };
+      return { ...d, stages: [...d.stages, third].sort((a: any, b: any) => a.order - b.order) };
+    }
     // Deferred ("Decide later") play-offs from an earlier save are only a plan: a later explicit save with more
     // complete stages/pairing/dates replaces them, so a Quarterfinal added afterwards is not silently ignored.
     const hadDeferred = (d.deferredStages ?? []).length > 0;
@@ -228,7 +238,7 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
     // Setup never confirmed the play-offs (historical "Decide later"): keep organiser confirmation.
     const legacy = (playoffAnswer(plan, label)?.choice ?? "later") !== "playoffs";
-    const next = { ...d, ...playoffStagesFor(d.stages[0], version, { ...p, thirdPlace: !!(d as any).playoffThirdPlace }, { forceConfirm: legacy }) };
+    const next = { ...d, ...playoffStagesFor(d.stages[0], version, { ...p, thirdPlace: thirdPlaceFor(plan, unitKeyOf(label)) || !!d.playoffThirdPlace }, { forceConfirm: legacy }) };
     if (hadDeferred && JSON.stringify(next.stages) === JSON.stringify(d.stages) && JSON.stringify(next.deferredStages) === JSON.stringify(d.deferredStages)) return d;
     changed = true;
     return next;

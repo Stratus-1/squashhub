@@ -1466,6 +1466,7 @@ export default function Tournaments() {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles" || !!m.partner_a_member_id || !!m.partner_b_member_id;
     const isPlaceholder = m.status === "placeholder";
+    const awaitingQualification = !m.player_a_member_id || !m.player_b_member_id;
     // A bye has no opponent — nothing to schedule, mark or score.
     const isBye = isByeFixture(m);
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
@@ -1473,7 +1474,7 @@ export default function Tournaments() {
     const teamB = isPlaceholder ? "Drag a match here" : sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles, m) + hcLabel(m.handicap_b ?? m.n_b);
 
     // Play-off heading always names its event, e.g. "Men's Singles · Semi-final 1 · Pool A #1 vs Pool B #2"
-    const isPlayoffMatch = typeof m.stage === "string" && m.stage.startsWith("playoff");
+    const isPlayoffMatch = (typeof m.stage === "string" && m.stage.startsWith("playoff")) || /-po\d/.test(String(m.stage_key ?? ""));
     const seedPair = m.placeholder_a && m.placeholder_b ? `${m.placeholder_a} vs ${m.placeholder_b}` : null;
     const playoffHeading = isPlayoffMatch
       ? playoffHeadingText(m.group_number != null ? getGroupLabel(champ, m.group_number) : null, m.stage_label, seedPair)
@@ -1788,7 +1789,7 @@ export default function Tournaments() {
             format's marker button; self-scheduled knockout matches offer the
             same thing to the two players as "Score it live". */}
         {(() => {
-          if (isPlaceholder || isBye) return null;
+          if (isPlaceholder || isBye || awaitingQualification) return null;
           const selfScheduled = stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "self";
           if (selfScheduled) {
             const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
@@ -1857,7 +1858,7 @@ export default function Tournaments() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              {!isPlaceholder && m.status !== "completed" && (m.side_a_points ?? 0) === 0 && (m.side_b_points ?? 0) === 0 && (
+              {!isPlaceholder && !awaitingQualification && m.status !== "completed" && (m.side_a_points ?? 0) === 0 && (m.side_b_points ?? 0) === 0 && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setReplaceMatch(m); }}>
                   <User className="w-3.5 h-3.5 mr-2" /> Replace a player
                 </DropdownMenuItem>

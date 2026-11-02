@@ -4247,3 +4247,9 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-11-02 — COT municipal receivable incorrectly included in petty cash
 - User confirmed municipality owes Uitsig R392,925. Null parent on the custom Asset account caused opening-balance fallback to cash. Approved atomic data correction sets COT base_account and the exact opening journal carrier to debtors, retaining original date, amount, custom ID and opening-equity contra, with before/after ledger audit. No shared fallback or unrelated balances changed.
 - Seven opening-balance tests pass, including exact R392,925 debtor save/reopen and unchanged equity contra.
+
+### 2026-11-02 — Family add blocked by self sign-up guard (Nelspruit)
+- Pottie Potgieter (Nelspruit, Family Package Main Member) could not add his daughter Ane: "Self sign-up may only create a member or visitor record".
+- Root cause: the child was added with the parent's own login email, so `auto_link_member_on_email_change` linked the new row to the parent's user_id. `club_members_guard_self_fields` then treated the family add as a self-application; Nelspruit has no admin with a linked login, so it forced `role='admin'`, which `club_members_prevent_self_role_change` correctly rejected. At clubs with a linked admin the same path would instead have rewritten approval/numbering fields and wiped the required club-admin approval.
+- Fix (migration 0342): `family_add_member` sets transaction-local `app.family_add='1'` before inserting the pending member; the self-fields guard returns the row untouched when the flag is set (same pattern as `app.activation_claim`). Role stays `member`, category stays the additional-family category, `is_pending_approval` stays true.
+- Verified by a rolled-back rehearsal as Pottie: Ane would be created as pending member on Family Package - Non-paying. 5 vitest checks pass. No member data changed; Pottie can retry the add himself.

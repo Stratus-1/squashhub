@@ -54,8 +54,9 @@ const Email = ({
         <Heading style={h1}>{clubName}</Heading>
         <Text style={text}>Hi {memberName},</Text>
         <Text style={text}>
-          Your annual membership renewal is coming up. Please find your invoice
-          details below.
+          The fee below has been added to your member account at {clubName}.
+          This email is your invoice. You can pay now online, or by EFT using
+          the bank details below.
         </Text>
 
         <Section style={card}>
@@ -65,9 +66,26 @@ const Email = ({
           <Row label="Due Date" value={dueDate} />
         </Section>
 
+        {paymentUrl && (
+          <>
+            <Heading as="h2" style={h2}>Pay online now</Heading>
+            <Text style={text}>
+              Sign in, go to <strong>My Account</strong> and choose the payment or top-up option.
+            </Text>
+            <Text style={text}>
+              <a
+                href={paymentUrl}
+                style={{ backgroundColor: '#1E3A5F', color: '#ffffff', padding: '10px 18px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}
+              >
+                Go to My Account
+              </a>
+            </Text>
+          </>
+        )}
+
         {bankAccountNumber && (
           <>
-            <Heading as="h2" style={h2}>Payment Details</Heading>
+            <Heading as="h2" style={h2}>Or pay by EFT</Heading>
             <Section style={card}>
               {bankName && <Row label="Bank" value={bankName} />}
               {bankAccountName && <Row label="Account Name" value={bankAccountName} />}
@@ -76,15 +94,6 @@ const Email = ({
               {bankReference && <Row label="Reference" value={bankReference} />}
             </Section>
           </>
-        )}
-
-        {paymentUrl && (
-          <Text style={text}>
-            Or pay online:{' '}
-            <a href={paymentUrl} style={{ color: '#1E3A5F' }}>
-              {paymentUrl}
-            </a>
-          </Text>
         )}
 
         <Hr style={hr} />

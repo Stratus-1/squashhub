@@ -81,7 +81,7 @@ export function overlayRealPlayoffWinners(rows: PlannedPlayoffRow[], real: any[]
     const w = nameOf(m, m.winner_member_id ?? null);
     if (w && m.status === "completed") winners[r.id] = w;
     const a = nameOf(m, m.player_a_member_id ?? null), b = nameOf(m, m.player_b_member_id ?? null);
-    const when = m.scheduled_date ? `${m.scheduled_date}${m.scheduled_time ? ` ${String(m.scheduled_time).slice(0, 5)}` : ""}` : m.play_by ? `play by ${m.play_by}` : r.when;
+    const when = m.scheduled_date && m.scheduled_time ? `${m.scheduled_date} ${String(m.scheduled_time).slice(0, 5)}` : r.when ?? (m.scheduled_date ? String(m.scheduled_date) : m.play_by ? `play by ${m.play_by}` : null);
     return { ...r, when, winner: m.status === "completed" ? w : null, sides: [{ ...r.sides[0], name: a ?? r.sides[0].name }, { ...r.sides[1], name: b ?? r.sides[1].name }] as [PlannedSide, PlannedSide] };
   });
   return out.map((r) => ({ ...r, sides: r.sides.map((s) => { const k = s.label.match(/^Winner (\w+)$/)?.[1]; return k && winners[k] && !s.name ? { ...s, name: winners[k] } : s; }) as [PlannedSide, PlannedSide] }));

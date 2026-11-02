@@ -5,6 +5,7 @@ import { placeholderGames } from "@/lib/smart-builder/playoff-placeholders";
 import { plannedPlayoffBracket } from "@/lib/tournaments/planned-playoff-bracket";
 import { resolvePlayoffSessions } from "@/lib/smart-builder/playoff-schedule";
 import { isProvisionalSwissSlot } from "@/lib/tournaments/fixture-split";
+import { planPendingPlayoffSlots } from "@/lib/smart-builder/refresh-playoff-slots";
 const plan = { originalStructure: { _unit_keys: ["Mens A", "Ladies B"], league_planned_playoff_rounds: { "1": ["sf", "final", "third"], "2": ["sf", "final", "third"] } }, stages: ["Mens A", "Ladies B"].flatMap((unit) => [
   { unit, phase: "playoff", name: "Semifinal", mode: "play_by", deadline: "2026-11-12", pairing: "crossover" },
   { unit, phase: "playoff", name: "Final", mode: "scheduled", date: "2026-11-21", from: "09:15", to: "13:15", courtIds: [27, 36], pairing: "winners" },
@@ -15,6 +16,11 @@ const division = (label: string, groupNumber: number) => ({ divisionId: `g${grou
   { id: "v-po2", order: 2, kind: "mapped", name: "Final", schedule: { rule: "play_by", deadline: "2026-11-21" }, mapping: { source: "stage_winners", sourceStageId: "v-po1", matches: [{ a: "A1", b: "A2", order: 1 }], units: [{ id: "A1", slots: [{ pool: 0, position: 1 }] }, { id: "A2", slots: [{ pool: 0, position: 2 }] }] } },
 ] });
 describe("late Uitsig placement finals", () => {
+  it("plays both placement games before both Finals, with Men's A last", () => {
+    const result = planPendingPlayoffSlots([{ id: "mf", group: 1, bracket: 1, placement: false }, { id: "lf", group: 6, bracket: 1, placement: false }, { id: "m3", group: 1, bracket: 1, placement: true }, { id: "l3", group: 6, bracket: 1, placement: true }], { date: "2026-11-21", from: "09:15", to: "13:15", courtIds: [27, 36] }, 45, []);
+    expect(result.slots.map((s) => [s.id, s.time])).toEqual([["l3", "09:15"], ["m3", "10:00"], ["lf", "10:45"], ["mf", "11:30"]]);
+    expect(result.overflow).toEqual([]);
+  });
   const spec: any = { divisions: [division("Mens A", 1), division("Ladies B", 6)] };
   it("retains the saved third/fourth selections in the shared draw plan", () => expect(drawPlanOf(plan).originalStructure).toEqual(plan.originalStructure));
   it("adds exactly one loser final per category without altering existing stages", () => {

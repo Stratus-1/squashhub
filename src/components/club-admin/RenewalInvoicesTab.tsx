@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Send, Search, Eye, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Send, Search, Eye, Trash2, Upload } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { InvoicePreviewDialog } from "./InvoicePreviewDialog";
 import { GenerateInvoicesDialog } from "./GenerateInvoicesDialog";
+import { ImportLeagueFeesDialog } from "./ImportLeagueFeesDialog";
 
 interface Props { clubId: string }
 
@@ -23,6 +24,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["renewal-invoices", clubId],
@@ -214,6 +216,9 @@ export function RenewalInvoicesTab({ clubId }: Props) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setImportOpen(true)}>
+            <Upload className="w-3.5 h-3.5" /> Import league fees
+          </Button>
           <Button size="sm" onClick={() => setGenOpen(true)} disabled={generate.isPending} className="gap-1.5 h-8">
             {generate.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Generate / Regenerate Invoices
@@ -309,6 +314,8 @@ export function RenewalInvoicesTab({ clubId }: Props) {
       </Card>
 
       <InvoicePreviewDialog invoiceId={previewId} onClose={() => setPreviewId(null)} />
+      <ImportLeagueFeesDialog open={importOpen} clubId={clubId} onClose={() => setImportOpen(false)}
+        onDone={() => qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] })} />
       <GenerateInvoicesDialog
         open={genOpen}
         clubId={clubId}

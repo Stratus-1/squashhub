@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const migration = readFileSync(
-  join(__dirname, "../../supabase/migrations/20261102125000_family_add_self_guard_bypass.sql"),
+  join(__dirname, "../../drizzle/migrations/0342_family_add_self_guard_bypass.sql"),
   "utf8",
 );
 

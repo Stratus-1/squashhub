@@ -53,9 +53,32 @@ export function mainFamilyPackage<T extends FamilyCategory>(cats: T[]): T | null
   return primaries.find((c) => looksLikeFamilyPackage(c.name, c.description)) ?? primaries[0] ?? null;
 }
 
-/** Fees that may be ticked as also allowing family additions: payable (non-zero) and not already a family fee. */
+/**
+ * Categories that must never be offered as family-add extras, whatever their
+ * amount: visitors, the additional-family fee itself, and non-membership
+ * charges such as cleaning. Zero-fee membership categories (Honorary,
+ * Longstanding, Life member) stay eligible.
+ */
+const EXTRA_FAMILY_EXCLUDED = [
+  "visitor",
+  "additional family",
+  "extra family",
+  "family member",
+  "member of family",
+  "family extra",
+  "cleaning",
+];
+
+function excludedFromFamilyExtras(name: string, description?: string | null): boolean {
+  const text = `${name} ${description ?? ""}`.toLowerCase();
+  return EXTRA_FAMILY_EXCLUDED.some((h) => text.includes(h));
+}
+
+/** Fees that may be ticked as also allowing family additions: any real membership category, payable or free, but never visitors, the additional-family fee or non-membership charges. */
 export function extraFamilyCandidates<T extends FamilyCategory>(cats: T[], mainId: string, additionalId: string): T[] {
-  return cats.filter((c) => Number(c.annual_fee) > 0 && c.id !== mainId && c.id !== additionalId);
+  return cats.filter(
+    (c) => c.id !== mainId && c.id !== additionalId && !excludedFromFamilyExtras(c.name, c.description),
+  );
 }
 
 /** Display name for a category — standard names win for family types. */

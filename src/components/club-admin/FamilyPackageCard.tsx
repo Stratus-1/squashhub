@@ -260,7 +260,8 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
           <div className="space-y-1">
             <Label className="text-xs">Other fees that may also add family members (optional)</Label>
             <p className="text-[11px] text-muted-foreground">
-              E.g. Honorary members. They use the same rules and {FAMILY_ADDITIONAL_LABEL} fee as above. Only fees with an amount are listed.
+              E.g. Honorary or longstanding members — free categories are listed too. They use the same rules and{" "}
+              {FAMILY_ADDITIONAL_LABEL} fee as above. Visitors and the {FAMILY_ADDITIONAL_LABEL} fee itself are never listed.
             </p>
             <div className="flex flex-wrap gap-4 pt-1">
               {candidates.map((c) => (

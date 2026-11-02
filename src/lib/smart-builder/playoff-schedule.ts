@@ -73,11 +73,11 @@ export function resolvePlayoffSessions(spec: TournamentSpec, setupStages: any[] 
   // Setup's Stages & scheduling rows are the organiser's latest times: a category's own row first, then the shared row.
   const unitOf = (label: string) => String(label).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
   const fromSetup = (s: PlannedStage, label: string): PlannedStage | null => {
-    const rows = setupStages.filter((r) => r?.phase === "playoff" && r.mode === "scheduled" && r.date && r.from && r.to && (r.courtIds ?? []).length && roundKey(r.name) === roundKey(s.name));
+    const rows = setupStages.filter((r) => r?.phase === "playoff" && r.mode === "scheduled" && r.date && r.from && r.to && (r.courtIds ?? []).length && roundKey(r.name) === roundKey(s.mapping?.losers ? "Final" : s.name));
     const r = rows.find((x) => x.unit && unitOf(label) === String(x.unit).split(" › ").join("::")) ?? rows.find((x) => !x.unit);
     return r ? { ...s, schedule: { ...s.schedule, rule: "fixed", date: r.date, timeFrom: r.from, timeTo: r.to, courtIds: r.courtIds.map(Number) } } : null;
   };
-  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => (s.order > 0 && s.schedule?.rule === "fixed" && !fullSession(s) ? fromSetup(s, d.label) ?? s : s)) })) };
+  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => (s.order > 0 ? fromSetup(s, d.label) ?? s : s)) })) };
   const byRound = new Map<string, PlannedStage>();
   for (const d of spec.divisions) for (const s of d.stages) if (s.order > 0 && fullSession(s) && !byRound.has(roundKey(s.name))) byRound.set(roundKey(s.name), s);
   const out = new Map<string, PlannedStage & { keys: Array<{ group: number; stageId: string }> }>();

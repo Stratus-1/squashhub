@@ -1,3 +1,9 @@
+## 2026-11-02 — Late Uitsig placement finals and saved timetable
+- Saved Men's A / Ladies B third-place selections were dropped by the draw-plan bridge, existing stages bypassed attachment, and mixed-format Swiss filtering hid play-off placeholders. Retain structure flags, append one loser branch per selected category, preserve existing stages/placeholders, use loser labels and show placement rounds in the shared progression bracket.
+- Explicit setup saves refresh pending, unbooked play-off slots from latest saved sessions; placement games precede Finals, bottom categories first. Capacity conflicts fail visibly; no silent success when fixture refresh fails. Unknown-player slots expose no marking or participant-replacement action.
+- Owner-approved Uitsig Save applied two third/fourth-place rows. 21 November, Court 1: Ladies B 3rd/4th 09:15, Men's A 3rd/4th 10:00, Ladies B Final 10:45, Men's A Final 11:30. Courts 1/4 are the approved availability window; the allocator needs only Court 1. Repeated saves preserve all eight play-off IDs and slots. Existing pool results and personal bookings unchanged.
+- 47 focused tests passed (one optional fixture-file test skipped); signed-in Uitsig save and progression/fixture board readback verified. Shared web/PWA/native presentation only, no native configuration changes. Frontend not published; final-standing placement calculations remain outside this correction.
+
 ## 2026-11-02 — Stitch bar confirmation recovery
 - André Visser's Nelspruit tab remained pending despite a provider-confirmed paid checkout. The callback looked only for member sessions and the backup excluded bar sales older than three days. Resolve bar references in the callback through provider verification, remove the bar age cutoff, retain unknown automatic checks, and propagate/retry partial sale/tab writes through the shared finaliser. Recurring handlers unchanged. André's previously verified tab remains paid; no new payment initiated.
 

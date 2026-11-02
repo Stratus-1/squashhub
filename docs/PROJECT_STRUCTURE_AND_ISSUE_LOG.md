@@ -4235,3 +4235,4 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-11-02 — COT name obscured on phone chart of accounts
 - Fixed narrow account-name track: account tables now keep a readable minimum width with local horizontal scrolling and wrapped custom names, rather than collapsing COT beneath the type badge. No balances, stock or permissions changed.
 - Investigating stock ledger absence separately; physical stock valuation must not be substituted for an unposted ledger balance.
+- Hosted readback: Uitsig's COT Utility Account exists; no bar_stock_on_hand journals. Current recorded average-cost stock valuations are Bar R27,818.25620966 and Shop R301,812.89; these are inventory records, not verified ledger balances. No book adjustment made. Phone UI check blocked by unavailable authenticated screen; build OK.

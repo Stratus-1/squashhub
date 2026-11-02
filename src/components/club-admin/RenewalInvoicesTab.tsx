@@ -33,7 +33,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
           id, fee_label, amount, paid, season_year,
           invoice_number, invoice_due_date, invoice_send_date,
           invoice_issued_at, invoice_email_sent_at, invoice_email_status,
-          club_members!inner ( id, name, club_id )
+          club_members!club_member_fee_payments_club_member_id_fkey!inner ( id, name, club_id )
         `)
         .eq("fee_type", "renewal")
         .eq("club_members.club_id", clubId)

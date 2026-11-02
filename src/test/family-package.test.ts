@@ -73,3 +73,25 @@ describe("amounts", () => {
     expect(proRatedAmount(0, true, 7)).toBe(0);
   });
 });
+
+import { mainFamilyPackage, extraFamilyCandidates, familyPackageName } from "@/lib/family/family-package";
+
+describe("more than one fee may add family members", () => {
+  const cats: FamilyCategory[] = [
+    { id: "h", name: "Honorary", annual_fee: 500, family_role: "primary" },
+    { id: "f", name: "Family Package", annual_fee: 3000, family_role: "primary" },
+    { id: "a", name: "Additional", annual_fee: 800, family_role: "additional" },
+    { id: "z", name: "Life member", annual_fee: 0, family_role: null },
+    { id: "s", name: "Senior", annual_fee: 1200, family_role: null },
+  ];
+  it("keeps the family-named fee as the main package by default", () => {
+    expect(mainFamilyPackage(cats)?.id).toBe("f");
+  });
+  it("offers only payable, non-family fees as extras", () => {
+    expect(extraFamilyCandidates(cats, "f", "a").map((c) => c.id)).toEqual(["h", "s"]);
+  });
+  it("keeps the extra fee's own name for members", () => {
+    expect(familyPackageName({ name: "Honorary" })).toBe("Honorary");
+    expect(familyPackageName({ name: "Family Package" })).toBe("Family Package");
+  });
+});

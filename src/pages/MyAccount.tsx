@@ -907,6 +907,9 @@ export default function MyAccount() {
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   Top-ups less outstanding fees & bar tab
                 </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Invoices you've received that aren't due yet don't count against what you can spend until their due date.
+                </p>
               </div>
             </div>
             <Button size="sm" variant="outline" onClick={() => { setTopUpAmount("100"); setTopUpOpen(true); }} className="gap-1.5">

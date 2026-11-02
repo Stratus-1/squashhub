@@ -36,7 +36,7 @@ export function AvailableToSpendCard({ clubId, memberId }: { clubId?: string | n
       {data.barBlocked && <div className="mt-1 text-destructive">Top up {data.available < 0 ? `at least ${R(data.available)}` : "your account"} to charge bar or shop items to your account.</div>}
       {open && (
         <div className="mt-2 rounded-md bg-muted/50 p-2 text-[12px] text-muted-foreground">
-          Available = what you're allowed to owe (unpaid fees on a recurring payment plus any credit the club has given you) minus what you currently owe. Money paid in advance adds to it.
+          Available = what you're allowed to owe (unpaid fees on a recurring payment plus any credit the club has given you) minus what you currently owe. Money paid in advance adds to it. Invoices you've received that aren't due yet don't count until their due date.
         </div>
       )}
       <div className="mt-2 flex gap-2">

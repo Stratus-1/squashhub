@@ -76,3 +76,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - AGM storage reads use the boolean-only exact attached-path definer check, never an invoker query of protected ballot rows; why: attendance-link downloads must work without exposing ballot or voter data.
 - Ladder moves go through `apply_ladder_result` (club source switches + per-source approval; events only narrow); why: no unchosen reshuffles.
 - `member_account_gate` adds issued unpaid invoices not yet due (Johannesburg) to spending allowance; why: no ledger change.
+- Regional league fees: on-allocation drafts and imports share private `_league_fee_upsert_draft` (one unsent invoice per member/league/season; never deletes or touches sent/paid rows); why: team moves, drop-outs and re-imports must never double-charge or silently withdraw a fee.

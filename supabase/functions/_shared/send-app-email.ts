@@ -66,9 +66,9 @@ async function logoHeader(templateName: string, clubId?: string | null): Promise
   const left = club?.logo_url
     ? `<img src="${escapeHtml(club.logo_url)}" alt="${name}" height="40" style="display:inline-block;max-height:40px;max-width:150px;border-radius:6px">`
     : `<span style="font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#1E3A5F">${name}</span>`
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:16px auto 0"><tr>` +
-    `<td align="left" valign="middle" style="padding:0 20px">${left}</td>` +
-    `<td align="right" valign="middle" style="padding:0 20px"><img src="${SQUASHHUB_LOGO_URL}" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px"></td>` +
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>` +
+    `<td align="left" valign="middle" style="padding:0">${left}</td>` +
+    `<td align="right" valign="middle" style="padding:0"><img src="${SQUASHHUB_LOGO_URL}" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px"></td>` +
     `</tr></table>`
 }
 

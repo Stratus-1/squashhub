@@ -46,12 +46,16 @@ interface RegRow {
   league_association_number: string | null;
   member_name: string;
   affiliation_number: string | null;
+  is_reserve: boolean;
+  played: number;
+  won: number;
 }
 
 interface LeagueRow {
   id: string;
   name: string;
   team_code: string | null;
+  season_year: number | null;
   gender: string | null;
   regs: RegRow[];
 }
@@ -83,7 +87,8 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       // 1. Leagues (teams) in this association for this club.
       //    `leagues` = the club's teams in the association. `league_associations` = the association itself.
       const { data: leagues, error: le } = await fromExt("leagues")
-        .select("id, name, code, nsa_team_code")
+        .select("id, name, code, nsa_team_code, season_year, archived_at")
+        .is("archived_at", null)
         .eq("club_id", clubId)
         .eq("association_id", association.id)
         .order("name", { ascending: true });
@@ -95,7 +100,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
 
       // 2. Registrations
       const { data: regs, error: re } = await fromExt("member_league_registrations")
-        .select("league_id, club_member_id, is_captain, player_rank, league_association_number")
+        .select("league_id, club_member_id, is_captain, is_reserve, player_rank, league_association_number")
         .in("league_id", leagueIds);
       if (re) throw re;
       const regList = (regs || []) as any[];
@@ -127,10 +132,41 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
         }
       }
 
+      // 5. Player stats: league rubbers played/won in the last 12 months (read-only).
+      const statMap = new Map<string, { played: number; won: number }>();
+      if (memberIds.length) {
+        const since = new Date(Date.now() - 365 * 86400000).toISOString();
+        const bump = (id: string | null, win: boolean) => {
+          if (!id || !memberIds.includes(id)) return;
+          const s = statMap.get(id) ?? { played: 0, won: 0 };
+          s.played++;
+          if (win) s.won++;
+          statMap.set(id, s);
+        };
+        for (const side of ["home", "away"] as const) {
+          const cols = `${side}_player_member_id, ${side}_player2_member_id, winner, is_forfeit`;
+          for (let i = 0; i < memberIds.length; i += 100) {
+            const chunk = memberIds.slice(i, i + 100);
+            const { data: res } = await fromExt("league_match_results")
+              .select(cols)
+              .in(`${side}_player_member_id`, chunk)
+              .not("winner", "is", null)
+              .gte("created_at", since);
+            for (const m of (res || []) as any[]) {
+              if (m.is_forfeit) continue;
+              const win = m.winner === side;
+              bump(m[`${side}_player_member_id`], win);
+              bump(m[`${side}_player2_member_id`], win);
+            }
+          }
+        }
+      }
+
       const grouped: LeagueRow[] = leagueList.map((l) => ({
         id: l.id,
         name: l.name,
         team_code: (l.nsa_team_code as string | null) || (l.code as string | null) || null,
+        season_year: (l.season_year as number | null) ?? null,
         gender: inferGender(l.name),
         regs: regList
           .filter((r) => r.league_id === l.id)
@@ -143,6 +179,9 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             league_id: r.league_id,
             club_member_id: r.club_member_id,
             is_captain: !!r.is_captain,
+            is_reserve: !!r.is_reserve,
+            played: statMap.get(r.club_member_id)?.played ?? 0,
+            won: statMap.get(r.club_member_id)?.won ?? 0,
             player_rank: r.player_rank ?? null,
             league_association_number: r.league_association_number ?? null,
             member_name: memberMap.get(r.club_member_id) || "(Unknown)",
@@ -176,6 +215,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
 
   const csv = useMemo(() => {
     const header = [
+      "Season",
       "League",
       "Team Code",
       "Gender",
@@ -183,11 +223,15 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       `${association.abbreviation || association.name} Number`,
       "Captain",
       "Rank",
+      "Reserve",
+      "Rubbers played (12 months)",
+      "Rubbers won (12 months)",
     ];
     const rows: string[][] = [header];
     for (const l of leagues) {
       for (const r of l.regs) {
         rows.push([
+          l.season_year == null ? "" : String(l.season_year),
           l.name,
           l.team_code || "",
           (l.gender || "").toUpperCase(),
@@ -195,6 +239,9 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
           r.affiliation_number || "",
           r.is_captain ? "YES" : "",
           r.player_rank == null ? "" : String(r.player_rank),
+          r.is_reserve ? "YES" : "",
+          String(r.played),
+          String(r.won),
         ]);
       }
     }

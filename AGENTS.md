@@ -40,7 +40,6 @@
 - Riverside hybrid opening-round views show canonical saved fixture blocks even when a reused exact preview chart differs; Uitsig chart routes remain unchanged; why: recorded results must never be hidden behind hypothetical opponents or leaked into other rounds.
 - Pending Swiss previews use paired numeric slots with null participant IDs; Riverside AABB Ladies B may preview final current-rank non-repeat matching without enrolling its persisted engine policy; why: a positional target is not a committed fixture, and display corrections must preserve existing draws.
 - Booking grid uses saved tournament duration, not historical booking lengths, inside reserved evenings; fixture slots preserve that interval, other courts keep club slots, overlaps stay separate; why: setup changes must not retain stale short rows or move bookings.
-- Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
 - Scope Club Admin steps/contrast locally (portals too); why: shared UI stays unchanged.
 - Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
 - Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
@@ -61,7 +60,6 @@
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
-- Peak late-cancel limits/penalties are separate opt-in switches (OFF/0), shared by all court grids; penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
 
 - Menu prefs apply after permission filtering (never grant access).
 - Dense tournament views use the display-only `TournamentInteractiveViewer`, gated by per-club `club_beta_features` rows set from Super Admin, never migration-seeded; why: one zoom behaviour, safe pilots.
@@ -72,5 +70,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - Uitsig Ladies B fixture-list headings prefer confirmed category-scoped deadline rounds, falling back to the pure pool ID projection; approved deadline corrections update fixture overrides, linked legacy round overrides and stage schedule together with audit, preserving results/allocations; why: incomplete member lists cannot project whole pools and must still agree with bookable deadlines.
 - AGM (see src/components/club-admin/comms/AGENTS.md): secrecy, one vote, deadline and post-close results live in security-definer RPCs; votes never reference members; why: UI can't secure a secret ballot.
 - AGM run-offs are immutable-parent child ballots for server-computed tied remaining seats; token resolution follows child rounds and locks each round's voter independently; why: original results and receipts stay intact while every eligible member gets one new secret vote.
-- AGM storage reads use the boolean-only exact attached-path definer check, never an invoker query of protected ballot rows; why: attendance-link downloads must work without exposing ballot or voter data.
 - Ladder moves go through `apply_ladder_result` (club source switches + per-source approval; events only narrow); why: no unchosen reshuffles.

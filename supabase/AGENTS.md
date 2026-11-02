@@ -16,3 +16,6 @@
 - Member "Available to spend" reuses the booking/bar gate inputs (allowance = recurring-plan fees + approved credit, minus owing) via existing read-only RPCs; why: the dashboard must never disagree with what the till or booking screen allows.
 - `member_account_gate` adds issued unpaid invoices not yet due (Johannesburg) to spending allowance; why: no ledger change.
 - Regional league fees: on-allocation drafts and imports share private `_league_fee_upsert_draft` (one unsent invoice per member/league/season; never deletes or touches sent/paid rows); why: team moves, drop-outs and re-imports must never double-charge or silently withdraw a fee.
+- Booking writes enforce scheduled, unlinked championship allocations through `guard_scheduled_championship_booking`, using saved fixture duration without an admin bypass; why: capacity holds must not conceal already assigned games.
+- Peak late-cancel limits/penalties are separate opt-in switches (OFF/0), shared by all court grids; penalties only for SquashHub-lit clubs, once per booking, never backdated; why: no accidental charges.
+- AGM storage reads use the boolean-only exact attached-path definer check, never an invoker query of protected ballot rows; why: attendance-link downloads must work without exposing ballot or voter data.

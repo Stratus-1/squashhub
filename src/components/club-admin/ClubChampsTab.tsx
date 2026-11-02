@@ -10664,7 +10664,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       { v: "qf", l: "Quarterfinal" },
                                       { v: "sf", l: "Semifinal" },
                                       { v: "final", l: "Final" },
-                                    ].map((o) => {
+                                      { v: "third", l: leaguePlayoffBottomHalf[key] ? "3rd/4th & 7th/8th place" : "3rd/4th place" },
+                                    ].filter((o) => o.v !== "third" || ((leaguePlannedPlayoffRounds[key] ?? []).includes("sf") && (leaguePlannedPlayoffRounds[key] ?? []).includes("final"))).map((o) => {
                                       const cur = leaguePlannedPlayoffRounds[key] ?? [];
                                       return (
                                         <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">

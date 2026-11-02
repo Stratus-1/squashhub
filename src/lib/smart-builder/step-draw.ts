@@ -228,7 +228,7 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
     // Setup never confirmed the play-offs (historical "Decide later"): keep organiser confirmation.
     const legacy = (playoffAnswer(plan, label)?.choice ?? "later") !== "playoffs";
-    const next = { ...d, ...playoffStagesFor(d.stages[0], version, p, { forceConfirm: legacy }) };
+    const next = { ...d, ...playoffStagesFor(d.stages[0], version, { ...p, thirdPlace: !!(d as any).playoffThirdPlace }, { forceConfirm: legacy }) };
     if (hadDeferred && JSON.stringify(next.stages) === JSON.stringify(d.stages) && JSON.stringify(next.deferredStages) === JSON.stringify(d.deferredStages)) return d;
     changed = true;
     return next;

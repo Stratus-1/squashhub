@@ -198,7 +198,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={sendingAll || (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length === 0}>
                 {sendingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                Send all ((rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length)
+                Send all ({stats.pending})
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>

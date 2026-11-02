@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Check Rachel's Nelspruit Stitch receipts against bar sales and unresolved bar references; distinguish member top-ups from bar checkout receipts.
 - [ ] Repair Stitch bar-tab webhook confirmation and age-independent pending recovery; preserve unknown payments and test retries before deployment.
 - [x] COT phone label no longer collapses under badges (local scroll/wrapped names); build OK, signed-in phone check blocked by unavailable screen. No balances changed.
 - [ ] Uitsig stock asset absent from ledger: current inventory valuation differs from posted financial balances. Opening valuation/date and approved contra must be verified before an audited accounting adjustment; no books changed.

@@ -49,7 +49,7 @@ const sale = (status = "pending") => ({ id: "sale", club_id: "club", guest_tab_i
 
 describe("bar payment recovery", () => {
   it("repairs a paid sale's tab on retry without touching another club", async () => {
-    const tables = { bar_visitor_sales: [sale("paid")], bar_guest_tabs: [{ id: "tab", club_id: "club", status: "closing" }, { id: "tab", club_id: "other", status: "open" }] };
+    const tables: Record<string, Row[]> = { bar_visitor_sales: [sale("paid")], bar_guest_tabs: [{ id: "tab", club_id: "club", status: "closing" }, { id: "tab", club_id: "other", status: "open" }] };
     await finaliseBarReference(database(tables).admin, "club", "reference", "paid");
     expect(tables.bar_guest_tabs.map(t => t.status)).toEqual(["settled", "open"]);
     const closedAt = tables.bar_guest_tabs[0].closed_at;

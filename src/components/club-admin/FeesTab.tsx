@@ -446,6 +446,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
     if (existing?.source === "national_body_fees") return (existing.raw as NationalBodyFee).fee_payment_details || "";
     return "";
   });
+  const [invoiceTiming, setInvoiceTiming] = useState<"on_allocation" | "end_of_season">(
+    existing?.source === "league_associations" ? (((existing.raw as any).fee_invoice_timing as any) || "end_of_season") : "end_of_season");
+  const [ladiesAmount, setLadiesAmount] = useState<string>(
+    existing?.source === "league_associations" && (existing.raw as any).fee_annual_ladies != null ? String((existing.raw as any).fee_annual_ladies) : "");
+
+
 
   const handleTypeChange = (t: FeeType) => {
     setFeeType(t);
@@ -492,7 +498,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_annual_ladies: ladiesAmount.trim() === "" ? null : Number(ladiesAmount), fee_invoice_timing: invoiceTiming, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -625,6 +631,32 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
                 <p className="text-[10px] text-muted-foreground">Charged to the member's account every month on day {feeDueDay}. Pro-rate does not apply to monthly fees.</p>
               )}
             </>
+          )}
+
+          {feeType === "league" && !isVisitorPass && (
+            <Card className="p-3 bg-muted/30 space-y-3">
+              <div className="space-y-1">
+                <Label>Ladies Fee ({currencySymbol}) — optional</Label>
+                <Input type="number" min={0} value={ladiesAmount} onChange={e => setLadiesAmount(e.target.value)} placeholder="Same as above" />
+                <p className="text-[10px] text-muted-foreground">Ladies are charged this once, even when they play in a men's team.</p>
+              </div>
+              <div className="space-y-1">
+                <Label>When to invoice</Label>
+                <Select value={invoiceTiming} onValueChange={v => setInvoiceTiming(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="on_allocation">When allocated to a league team</SelectItem>
+                    <SelectItem value="end_of_season">End of season (import list)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  {invoiceTiming === "on_allocation"
+                    ? "Placing a player in a team (reserves too) creates one unsent invoice per season in Annual Renewals. Moving teams or dropping out never removes it. Regional leagues only."
+                    : "Nothing happens automatically. Import the fee list in Finance → Annual Renewals to create unsent invoices."}
+                  {" "}Due date uses the due day and month above.
+                </p>
+              </div>
+            </Card>
           )}
 
           {/* Sort order (membership only) */}

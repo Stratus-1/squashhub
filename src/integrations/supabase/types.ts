@@ -10766,8 +10766,10 @@ export type Database = {
           external_club_id: string | null
           external_source: string | null
           fee_annual: number | null
+          fee_annual_ladies: number | null
           fee_class: string
           fee_due_month: number | null
+          fee_invoice_timing: string
           fee_payable_to: string | null
           fee_payment_details: string | null
           fill_up_leagues_enabled: boolean | null
@@ -10799,8 +10801,10 @@ export type Database = {
           external_club_id?: string | null
           external_source?: string | null
           fee_annual?: number | null
+          fee_annual_ladies?: number | null
           fee_class?: string
           fee_due_month?: number | null
+          fee_invoice_timing?: string
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           fill_up_leagues_enabled?: boolean | null
@@ -10832,8 +10836,10 @@ export type Database = {
           external_club_id?: string | null
           external_source?: string | null
           fee_annual?: number | null
+          fee_annual_ladies?: number | null
           fee_class?: string
           fee_due_month?: number | null
+          fee_invoice_timing?: string
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           fill_up_leagues_enabled?: boolean | null
@@ -20963,6 +20969,22 @@ export type Database = {
       }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
+      _league_fee_next_due: {
+        Args: { _day: number; _month: number }
+        Returns: string
+      }
+      _league_fee_upsert_draft: {
+        Args: {
+          _amount: number
+          _assoc_id: string
+          _club_id: string
+          _due: string
+          _member_id: string
+          _overwrite: boolean
+          _season: number
+        }
+        Returns: string
+      }
       _match_rollups_for_member: {
         Args: { target_member_id: string }
         Returns: {
@@ -23525,6 +23547,16 @@ export type Database = {
       help_center_verify_dispatch: {
         Args: { p_token: string }
         Returns: boolean
+      }
+      import_league_fee_invoices: {
+        Args: {
+          p_association_id: string
+          p_club_id: string
+          p_due: string
+          p_rows: Json
+          p_season: number
+        }
+        Returns: Json
       }
       income_statement_sale_costs: {
         Args: { _club: string; _from: string; _to: string }

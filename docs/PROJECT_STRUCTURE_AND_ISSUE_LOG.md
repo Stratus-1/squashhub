@@ -4255,3 +4255,6 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Verified by a rolled-back rehearsal as Pottie: Ane would be created as pending member on Family Package - Non-paying. 5 vitest checks pass. No member data changed; Pottie can retry the add himself.
 
 - 2026-11-02: Not-yet-due issued invoices no longer reduce bar/booking spending power until their due date (migration 0346, member_account_gate).
+
+## 2026-11-02 Regional league fee invoice timing
+League fees gain "When allocated to a team" (trigger creates unsent invoice, reserves included, ladies fee) or "End of season (import)"; Annual Renewals has Import league fees (xlsx/csv, matches league number, member number, unique name).

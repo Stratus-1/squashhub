@@ -2430,6 +2430,13 @@
       "when": 1793633793286,
       "tag": "0346_gate_ignore_not_yet_due_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 347,
+      "version": "7",
+      "when": 1793634598071,
+      "tag": "0347_league_fee_invoice_timing",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { invoicePayUrl } from '../_shared/invoice-pay-token.ts'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { buildInvoicePdf } from './invoice-pdf.ts'
 import { sendAppEmail } from '../_shared/send-app-email.ts'
 import { financialCaller, assertFinanceAdministrator } from '../_shared/chairman-finance.ts'
 
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     .select(`
       id, fee_label, amount, invoice_number, invoice_due_date, invoice_issued_at, club_member_id,
       club_members:club_member_id ( id, name, email, club_id, user_id,
-        clubs:club_id ( name, payment_gateway, subdomain )
+        clubs:club_id ( name, payment_gateway, subdomain, email, phone, logo_url )
       )
     `)
     .eq('paid', false)
@@ -88,7 +89,20 @@ Deno.serve(async (req) => {
     }
 
     try {
+      const payNowUrl = club.payment_gateway ? await invoicePayUrl(r.id) : undefined
+      let attachments: { filename: string; content: Uint8Array }[] | undefined
+      try {
+        const pdfBytes = await buildInvoicePdf({
+          clubName: club.name, clubEmail: club.email, clubPhone: club.phone, logoUrl: club.logo_url,
+          memberName: cm.name, invoiceNumber: r.invoice_number, issueDate: today, dueDate: r.invoice_due_date,
+          description: r.fee_label, amount: Number(r.amount), bankName: secrets.bank_name,
+          bankAccountName: secrets.bank_account_name, bankAccountNumber: secrets.bank_account_number,
+          bankBranchCode: secrets.bank_branch_code, reference: r.invoice_number || secrets.bank_reference, payNowUrl,
+        })
+        attachments = [{ filename: `Invoice-${r.invoice_number || r.id}.pdf`, content: pdfBytes }]
+      } catch (e) { console.error('invoice pdf failed', r.id, (e as Error).message) }
       const sendResult = await sendAppEmail({
+        attachments,
         templateName: 'membership-renewal-invoice',
         recipientEmail: testEmail || cm.email,
         clubId: cm.club_id,
@@ -105,7 +119,7 @@ Deno.serve(async (req) => {
             bankAccountNumber: secrets.bank_account_number,
             bankBranchCode: secrets.bank_branch_code,
           bankReference: r.invoice_number || secrets.bank_reference,
-          payNowUrl: club.payment_gateway ? await invoicePayUrl(r.id) : undefined,
+          payNowUrl,
           paymentUrl: club.subdomain ? `https://${club.subdomain}.squashhub.co.za/my-account` : 'https://squashhub.co.za/my-account',
         },
       })

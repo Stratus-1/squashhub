@@ -17,6 +17,8 @@ export interface SendAppEmailArgs {
   idempotencyKey?: string
   clubId?: string | null
   replyTo?: string
+  /** Only delivered when the club sends via its own SMTP. */
+  attachments?: { filename: string; content: Uint8Array; contentType?: string }[]
 }
 
 export type SendAppEmailResult =
@@ -58,7 +60,7 @@ const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
 
 /** Returns true when sent via club SMTP, false when the club has no SMTP configured. */
 async function trySendViaClubSmtp(args: SendAppEmailArgs): Promise<boolean> {
-  const { templateName, recipientEmail, templateData, clubId, replyTo } = args
+  const { templateName, recipientEmail, templateData, clubId, replyTo, attachments } = args
   if (!clubId || PLATFORM_TEMPLATES.has(templateName)) return false
   const db = admin()
   const { data: secrets } = await db.from('club_secrets')
@@ -83,6 +85,7 @@ async function trySendViaClubSmtp(args: SendAppEmailArgs): Promise<boolean> {
     from: `${secrets.sender_name || club?.name || 'Club'} <${secrets.sender_email}>`,
     to: r.fixedTo || recipientEmail, subject: r.subject, html, text: r.text + sigText,
     replyTo: replyTo || club?.email || undefined,
+    attachments: attachments?.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType || 'application/pdf' })),
   })
   return true
 }

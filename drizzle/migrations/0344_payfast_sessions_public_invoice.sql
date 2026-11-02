@@ -1,0 +1,2 @@
+ALTER TABLE public.payfast_payment_sessions ALTER COLUMN user_id DROP NOT NULL;
+COMMENT ON COLUMN public.payfast_payment_sessions.user_id IS 'Payer login; NULL for public invoice pay-links (member without login), which are verified by signed invoice token server-side.';

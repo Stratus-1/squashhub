@@ -15283,7 +15283,7 @@ export type Database = {
           purpose: string
           status: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -15303,7 +15303,7 @@ export type Database = {
           purpose: string
           status?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -15323,7 +15323,7 @@ export type Database = {
           purpose?: string
           status?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

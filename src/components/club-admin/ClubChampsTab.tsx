@@ -10519,7 +10519,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 <label className="flex items-center gap-2 text-[11px] font-medium cursor-pointer pl-0.5">
                                   <input
                                     type="checkbox"
-                                    className="h-3.5 w-3.5 accent-fuchsia-500"
+                                    className="tick-check"
                                     checked={playoffsForLeague(gn)}
                                     onChange={(e) => {
                                       const on = e.target.checked;
@@ -10548,7 +10548,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                                           <input
                                             type="radio"
-                                            className="h-3 w-3 accent-fuchsia-500"
+                                            className="tick-radio"
                                             name={`playoff-mode-${key}`}
                                             checked={playoffModeForLeague(gn) === o.v}
                                             onChange={() =>
@@ -10599,7 +10599,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     <label className="flex items-center gap-2 text-[11px] cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        className="h-3.5 w-3.5 accent-fuchsia-500"
+                                        className="tick-check"
                                         checked={playoffPointsForLeague(gn) == null && !leaguePlayoffMatchFormats[key]}
                                         onChange={(e) => {
                                           if (e.target.checked) {
@@ -10671,7 +10671,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                                           <input
                                             type="checkbox"
-                                            className="h-3.5 w-3.5 accent-fuchsia-500"
+                                            className="tick-check"
                                             checked={cur.includes(o.v)}
                                             onChange={() =>
                                               setLeaguePlannedPlayoffRounds((m) => {
@@ -10691,7 +10691,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     if (!n || hasFollowerStage(gn)) return null;
                                     return (
                                       <label className="flex items-start gap-1.5 text-[11px] cursor-pointer pt-1">
-                                        <input type="checkbox" className="mt-0.5 h-3.5 w-3.5 accent-fuchsia-500" checked={!!leaguePlayoffBottomHalf[key]}
+                                        <input type="checkbox" className="mt-0.5 tick-check" checked={!!leaguePlayoffBottomHalf[key]}
                                           onChange={() => setLeaguePlayoffBottomHalf((m) => ({ ...m, [key]: !m[key] }))} />
                                         <span>Bottom half too — players {n + 1}–{n * 2} play their own {n === 8 ? "quarterfinals, semifinals" : "semifinals"} and final ({n + 1} v {n * 2}, {n + 2} v {n * 2 - 1} …). Needs at least {n * 2} players.</span>
                                       </label>
@@ -10702,7 +10702,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       <label className="flex items-center gap-2 text-[11px] cursor-pointer">
                                         <input
                                           type="checkbox"
-                                          className="h-3.5 w-3.5 accent-fuchsia-500"
+                                          className="tick-check"
                                           checked={playoffPointsForLeague(gn) == null && !leaguePlayoffMatchFormats[key]}
                                           onChange={(e) => {
                                             if (e.target.checked) {
@@ -10766,7 +10766,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       <label key={o.v || "none"} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                                         <input
                                           type="radio"
-                                          className="h-3 w-3 accent-fuchsia-500"
+                                          className="tick-radio"
                                           name={`follow-up-${key}`}
                                           checked={(leagueFollowUpFormats[key] ?? "") === o.v}
                                           onChange={() => { setLeagueFollowUpFormats((m) => ({ ...m, [key]: o.v })); if (o.v) addFollowUpStageAt(gn, o.v); }}

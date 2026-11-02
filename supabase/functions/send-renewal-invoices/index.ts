@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { invoicePayUrl } from '../_shared/invoice-pay-token.ts'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { sendAppEmail } from '../_shared/send-app-email.ts'
 import { financialCaller, assertFinanceAdministrator } from '../_shared/chairman-finance.ts'
@@ -101,6 +102,7 @@ Deno.serve(async (req) => {
             bankAccountNumber: secrets.bank_account_number,
             bankBranchCode: secrets.bank_branch_code,
           bankReference: r.invoice_number || secrets.bank_reference,
+          payNowUrl: club.payment_gateway ? await invoicePayUrl(r.id) : undefined,
           paymentUrl: club.subdomain ? `https://${club.subdomain}.squashhub.co.za/my-account` : 'https://squashhub.co.za/my-account',
         },
       })

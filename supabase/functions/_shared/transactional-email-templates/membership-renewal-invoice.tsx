@@ -25,6 +25,7 @@ interface Props {
   bankBranchCode?: string
   bankReference?: string
   paymentUrl?: string
+  payNowUrl?: string
 }
 
 const fmtAmount = (a: number | string | undefined) => {
@@ -45,6 +46,7 @@ const Email = ({
   bankBranchCode,
   bankReference,
   paymentUrl,
+  payNowUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -66,20 +68,27 @@ const Email = ({
           <Row label="Due Date" value={dueDate} />
         </Section>
 
-        {paymentUrl && (
+        {(payNowUrl || paymentUrl) && (
           <>
             <Heading as="h2" style={h2}>Pay online now</Heading>
-            <Text style={text}>
-              Sign in, go to <strong>My Account</strong> and choose the payment or top-up option.
-            </Text>
-            <Text style={text}>
-              <a
-                href={paymentUrl}
-                style={{ backgroundColor: '#1E3A5F', color: '#ffffff', padding: '10px 18px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}
-              >
-                Go to My Account
-              </a>
-            </Text>
+            {payNowUrl && (
+              <>
+                <Text style={text}>Pay this invoice directly online — no sign-in needed:</Text>
+                <Text style={text}>
+                  <a href={payNowUrl} style={{ backgroundColor: '#1E3A5F', color: '#ffffff', padding: '10px 18px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>Pay now online</a>
+                </Text>
+              </>
+            )}
+            {paymentUrl && (
+              <>
+                <Text style={text}>
+                  Or sign in, go to <strong>My Account</strong> and choose the payment or top-up option:
+                </Text>
+                <Text style={text}>
+                  <a href={paymentUrl} style={{ backgroundColor: '#ffffff', color: '#1E3A5F', border: '2px solid #1E3A5F', padding: '8px 16px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>Sign in to My Account</a>
+                </Text>
+              </>
+            )}
           </>
         )}
 

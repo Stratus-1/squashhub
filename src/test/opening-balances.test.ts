@@ -7,6 +7,15 @@ const cot: ClubGLAccount = { id: "cot", club_id: club, name: "COT", category: "E
 const standard = { general_expense: { label: "General Expenses", type: "IS" as const, category: "Expense" as const, normal: "Dr" as const } };
 const accounts = openingBalanceAccounts(standard, [cot], club);
 describe("club GL opening balances", () => {
+  it("keeps Uitsig's R392925 municipal receivable in debtors on save and reopen, not petty cash", () => {
+    const utility = { ...cot, name: "COT Utility Account", category: "Asset" as const, reporting_category: null, base_account: "debtors" };
+    const list = openingBalanceAccounts({}, [utility], club);
+    const rows = openingBalanceRows(list, { "custom:cot": "392925" }, club, "ref", "2026-10-12T22:00:00Z");
+    expect(rows[0]).toMatchObject({ account: "debtors", custom_account_id: "cot", debit: 392925, credit: 0 });
+    expect(rows.some(row => row.account === "cash")).toBe(false);
+    expect(rows[1]).toMatchObject({ account: "opening_balance_equity", credit: 392925, debit: 0 });
+    expect(openingBalanceValues(rows, list)["custom:cot"]).toBe("392925");
+  });
   it("includes club-created COT separately from its standard carrier", () => {
     expect(accounts.find(a => a.code === "custom:cot")).toMatchObject({ account: "general_expense", custom_account_id: "cot", meta: { label: "COT", normal: "Dr" } });
     expect(accounts.find(a => a.code === "general_expense")?.custom_account_id).toBeNull();

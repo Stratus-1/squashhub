@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Uitsig COT R392,925 opening balance corrected from cash to debtors; custom account parent now debtors so reopen/save retains mapping. Original date, debit, custom identity and R392,925 equity contra preserved; audited, seven opening-balance tests pass.
 - [x] Uitsig outsourced catering 30 October–1 November: 28 audited corrections zero R1,350 automatic costs on 25 Curry and Rice and 24 Toasted Sandwich portions; R1,595 sales unchanged. Three isolated report tests pass; other costs and stock unchanged. Actual caterer payout left for treasurer entry (amount not supplied).
 - [x] Check Rachel's Nelspruit concern: recovered Jacques Braun R30 via provider-confirmed PAID; André already recovered. Paid direct bar sales R3,971 and bar-income ledger credits R9,168 since 1 September. Member top-ups remain separate, not new bar income.
 - [ ] Nine Nelspruit bar references totalling R220 remain unconfirmed after direct checks (PENDING/unknown); provider payment detail is needed before any paid status or accounting change.

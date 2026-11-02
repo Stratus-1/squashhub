@@ -62,7 +62,23 @@ function scheduleOf(p: PlannedPlayoff): PlannedStage["schedule"] | null {
  * Build the predefined play-off stages that follow `main`. `forceConfirm` keeps owner confirmation for
  * tournaments whose setup never chose a trigger (historical "Decide later").
  */
-export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean } = {}): ChainResult {
+export function buildPlayoffChain(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean; thirdPlace?: boolean } = {}): ChainResult {
+  const res = buildPlayoffChainCore(main, version, planned, opts);
+  return opts.thirdPlace && !res.reason ? withThirdPlace(res) : res;
+}
+
+/**
+ * "3rd/4th place": the semifinal losers play once more, scheduled with the final and played before it
+ * (bottom players first). With "Bottom half too" the bottom semifinal losers also play for 7th/8th.
+ */
+export function withThirdPlace(res: ChainResult): ChainResult {
+  const final = res.stages[res.stages.length - 1];
+  if (!final || final.mapping?.source !== "stage_winners") return { ...res, notes: [...res.notes, "3rd/4th place needs a semifinal before the final."] };
+  const third: PlannedStage = { ...final, id: `${final.id}-3p`, name: "3rd/4th place", order: final.order, mapping: { ...final.mapping, losers: true } };
+  return { ...res, stages: [...res.stages.slice(0, -1), third, { ...final, order: final.order + 1 }] };
+}
+
+function buildPlayoffChainCore(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean } = {}): ChainResult {
   const notes: string[] = [];
   if (!planned.length) return { stages: [], reason: null, notes };
   if (planned.length > 3) return { stages: [], reason: "More than three play-off stages can't be mapped automatically.", notes };

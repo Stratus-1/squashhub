@@ -26,6 +26,8 @@ export interface StageMapping {
   matches: MappedMatch[];
   /** true = generated from rotation + in-tie pairing; false = edited by the admin. */
   derived: boolean;
+  /** stage_winners only: take the LOSER of each source game instead (3rd/4th and 7th/8th place games). */
+  losers?: boolean;
   /** Explicit pool membership (entrant ids per pool, seed order) — e.g. cross-league: pool = league. Overrides entry seeding. */
   positions?: string[][];
 }

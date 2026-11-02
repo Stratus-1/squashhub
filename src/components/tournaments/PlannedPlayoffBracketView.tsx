@@ -72,7 +72,7 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
     return () => ro.disconnect();
   }, [rows, pools, confirmed, champion]);
 
-  const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^Winner (\S+)$/)?.[1]).filter(Boolean).join(",");
+  const feedsOf = (g: PlannedPlayoffRow) => g.sides.map((s) => s.label.match(/^(?:Winner|Loser) (\S+)$/)?.[1]).filter(Boolean).join(",");
 
   return (
     <TournamentInteractiveViewer title="Play-off bracket" inlineHeight={460} defaultFit="none" wheelZoom="direct">
@@ -111,7 +111,7 @@ export function PlannedPlayoffBracketView({ rows, pools = [], confirmed = false,
                   return (
                     <div key={g.key} data-game={g.id} data-feeds={feedsOf(g) || undefined}
                       className={cn("overflow-hidden rounded-lg border bg-card text-xs shadow-sm", last ? "border-2 border-warning" : "border-border")}>
-                      <div className={cn("flex items-center justify-between px-2 py-1 text-[10px]", last ? "bg-warning/15" : "bg-muted/60")}>
+                      <div className={cn("flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2 py-1 text-[10px]", last ? "bg-warning/15" : "bg-muted/60")}>
                         <span className={cn("font-bold", last ? "text-warning" : "text-foreground")}>{last ? "🏆 " : ""}{g.id}</span>
                         {g.when && <span className="text-muted-foreground">{g.when}</span>}
                       </div>

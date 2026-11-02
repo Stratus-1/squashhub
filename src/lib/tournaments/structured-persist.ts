@@ -192,7 +192,10 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
         if (errs.length) throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
         return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
       })() : null;
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, ...(st.rrFinish?.enabled ? { rrFinish: st.rrFinish } : {}), qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
+      // Late loser branches sit between SF and Final in the canonical spec without renumbering either.
+      // The integer storage ordinal is only a unique row key; engine ordering remains the spec's order.
+      const storedOrder = Number.isInteger(st.order) ? st.order : Math.max(...d.stages.map((s) => Math.ceil(s.order))) + 1;
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: storedOrder, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, ...(st.rrFinish?.enabled ? { rrFinish: st.rrFinish } : {}), qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id; ids.stageKind[sk] = st.kind;
       if (st.kind === "pools") for (let i = 0; i < (st.pools ?? 1); i++) {

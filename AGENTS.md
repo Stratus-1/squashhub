@@ -75,3 +75,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - AGM run-offs are immutable-parent child ballots for server-computed tied remaining seats; token resolution follows child rounds and locks each round's voter independently; why: original results and receipts stay intact while every eligible member gets one new secret vote.
 - AGM storage reads use the boolean-only exact attached-path definer check, never an invoker query of protected ballot rows; why: attendance-link downloads must work without exposing ballot or voter data.
 - Ladder moves go through `apply_ladder_result` (club source switches + per-source approval; events only narrow); why: no unchosen reshuffles.
+- Issued, unpaid fee invoices whose due date (Johannesburg) has not passed are added to the member spending allowance in `member_account_gate`; why: members keep bar/booking spending power until the invoice is due, without changing the ledger.

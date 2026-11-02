@@ -2437,6 +2437,13 @@
       "when": 1793634598071,
       "tag": "0347_league_fee_invoice_timing",
       "breakpoints": true
+    },
+    {
+      "idx": 348,
+      "version": "7",
+      "when": 1793647969377,
+      "tag": "0348_organiser_winner_change_correction",
+      "breakpoints": true
     }
   ]
 }

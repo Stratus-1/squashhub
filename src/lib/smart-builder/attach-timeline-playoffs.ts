@@ -7,6 +7,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { startReadyStages } from "@/lib/tournaments/progression";
 import { isPlaceholderKey, abbrOf, syncPlayoffPlaceholders, adoptPlaceholderRows } from "./playoff-placeholders";
 import { assertTournamentPairingWritable } from "@/lib/tournaments/swiss-sequencing-policy";
+import { refreshPlayoffSlots } from "./refresh-playoff-slots";
 
 /**
  * Timeline play-offs default to starting automatically once their source stage is decided: the organiser
@@ -53,7 +54,7 @@ export async function attachTimelinePlayoffs(tid: string, plan: any): Promise<bo
 /** Pure: the date fields a placeholder fixture takes from its setup row (play-by deadline or fixed day). */
 export function placeholderDates(plan: any, unitLabel: string, stageName: string): { play_by?: string; scheduled_date?: string } {
   const unit = String(unitLabel).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "");
-  const rows = ((plan?.stages ?? []) as any[]).filter((r) => r?.phase === "playoff" && abbrOf(String(r.name)) === abbrOf(stageName));
+  const rows = ((plan?.stages ?? []) as any[]).filter((r) => r?.phase === "playoff" && abbrOf(String(r.name)) === abbrOf(/3rd|7th/i.test(stageName) ? "Final" : stageName));
   const r = rows.find((x) => x.unit && String(x.unit) === unit) ?? rows.find((x) => !x.unit);
   if (!r) return {};
   if (r.mode === "scheduled" && r.date) return { scheduled_date: r.date };
@@ -78,7 +79,9 @@ export async function createPlannedPlayoffFixtures(tid: string, plan: any): Prom
     const d = placeholderDates(plan, labels[String(m.group_number)] ?? "", String(m.stage_label ?? ""));
     if (!d.play_by && !d.scheduled_date) continue;
     if ((d.play_by ?? null) === (m.play_by ?? null) && (d.scheduled_date ?? null) === (m.scheduled_date ?? null)) continue;
-    await fromExt("club_champs_matches").update(d as any).eq("id", m.id).is("winner_member_id", null);
+    const { error } = await fromExt("club_champs_matches").update(d as any).eq("id", m.id).is("winner_member_id", null);
+    if (error) throw new Error(error.message);
   }
+  await refreshPlayoffSlots(tid, plan);
   return created;
 }

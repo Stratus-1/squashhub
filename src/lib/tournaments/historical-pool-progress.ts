@@ -22,6 +22,7 @@ export interface StructuredStageLike {
   name: string;
   order: number;
   mapping?: {
+    losers?: boolean;
     source?: string;
     sourceStageId?: string;
     units?: Array<{ id: string; slots: Array<{ pool: number; position: number }> }>;

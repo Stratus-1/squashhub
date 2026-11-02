@@ -4243,3 +4243,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 ### 2026-11-02 — Uitsig outsourced weekend catering costs
 - User confirmed all takeaway meals for 30 October–1 November must have zero automatic item costs, with the actual caterer expense entered separately once. Recorded scope: 25 Curry and Rice and 24 Toasted Sandwich portions, 28 sale lines; existing fallback costs R1,350, no food stock movements.
 - Migration 0341 adds privileged-written per-sale audit overrides read by the existing finance report. Original item prices, sales, revenue, stock movements and quantities remain unchanged; unrelated drinks, other periods and clubs retain their costs. Caterer payout is not invented or posted.
+
+### 2026-11-02 — COT municipal receivable incorrectly included in petty cash
+- User confirmed municipality owes Uitsig R392,925. Null parent on the custom Asset account caused opening-balance fallback to cash. Approved atomic data correction sets COT base_account and the exact opening journal carrier to debtors, retaining original date, amount, custom ID and opening-equity contra, with before/after ledger audit. No shared fallback or unrelated balances changed.
+- Seven opening-balance tests pass, including exact R392,925 debtor save/reopen and unchanged equity contra.

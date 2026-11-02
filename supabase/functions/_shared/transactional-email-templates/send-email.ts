@@ -46,7 +46,6 @@ export async function renderTemplateEmail(templateName: string, templateData: Re
   if (!template) throw new Error(`Template '${templateName}' not found`)
   const element = React.createElement(template.component, templateData)
   let html = await renderAsync(element)
-  if (options.headerHtml) html = injectHeader(html, options.headerHtml)
   const text = await renderAsync(element, { plainText: true })
   const subject = typeof template.subject === 'function' ? template.subject(templateData) : template.subject
   return { html, text, subject, fixedTo: template.to }

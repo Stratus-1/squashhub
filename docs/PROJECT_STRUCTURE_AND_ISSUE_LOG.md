@@ -4231,3 +4231,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Choice-screen wording: Score live = "use when the internet connection is good; every point is synced automatically"; Score offline = "use when the internet connection is not stable; auto-syncs regularly wherever possible".
 - Tests: 3 vitest freshness tests; transactional DB trigger checks (create/sync/release) rolled back cleanly; verified in the Riverside preview with a temporary offline lock (restored afterwards).
 - Migrations: 0336_offline_live_indicator, 0337_offline_live_indicator_v2.
+
+### 2026-11-02 — COT name obscured on phone chart of accounts
+- Fixed narrow account-name track: account tables now keep a readable minimum width with local horizontal scrolling and wrapped custom names, rather than collapsing COT beneath the type badge. No balances, stock or permissions changed.
+- Investigating stock ledger absence separately; physical stock valuation must not be substituted for an unposted ledger balance.

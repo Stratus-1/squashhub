@@ -118,8 +118,8 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
         return (
           <div key={category}>
             <h4 className={cn("text-xs font-bold uppercase tracking-wider mb-2", categoryColor[category] ?? "text-destructive")}>{categoryLabel(category)}</h4>
-            <div className="border rounded-lg overflow-hidden mb-3">
-              <div className="grid grid-cols-[1fr_60px_70px_90px_64px] gap-1 px-3 py-1.5 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="border rounded-lg overflow-x-auto mb-3">
+              <div className="grid min-w-[540px] grid-cols-[minmax(180px,1fr)_45px_50px_120px_64px] gap-1 px-3 py-1.5 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span>Account</span>
                 <span>Type</span>
                 <span>Normal</span>
@@ -131,8 +131,8 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                 const meta = accounts[account];
                 const balance = getBalance(account);
                 return (
-                  <div key={account} className="grid grid-cols-[1fr_60px_70px_90px_64px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0">
-                    <span className="font-medium">{meta.label}</span>
+                  <div key={account} className="grid min-w-[540px] grid-cols-[minmax(180px,1fr)_45px_50px_120px_64px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0">
+                    <span className="font-medium break-words min-w-0">{meta.label}</span>
                     <Badge variant="outline" className="text-[10px] w-fit">{meta.type}</Badge>
                     <span className="text-[10px] text-muted-foreground">{meta.normal}</span>
                     <span className={cn("text-right tabular-nums font-medium",
@@ -150,9 +150,9 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                 const balance = getCustomBalance(acc.id);
                 const normal: "Dr" | "Cr" = acc.category === "Asset" || acc.category === "Expense" ? "Dr" : "Cr";
                 return (
-                  <div key={acc.id} className="grid grid-cols-[1fr_60px_70px_90px_64px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0 bg-primary/[0.03]">
-                    <span className="font-medium flex items-center gap-1.5 min-w-0">
-                      <span className="truncate">{acc.name}</span>
+                  <div key={acc.id} className="grid min-w-[540px] grid-cols-[minmax(180px,1fr)_45px_50px_120px_64px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0 bg-primary/[0.03]">
+                    <span className="font-medium flex flex-wrap items-center gap-1.5 min-w-0">
+                      <span className="break-words min-w-0">{acc.name}</span>
                       <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">Club</Badge>
                       {!acc.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">Inactive</Badge>}
                     </span>

@@ -33,8 +33,9 @@ Deno.serve(async (req) => {
       )
     `)
     .eq('paid', false)
-    .eq('invoice_email_status', 'pending')
     .limit(500)
+  // A copy to another address (test/forward) may also be made of an already-sent, unpaid invoice.
+  if (!testEmail) query = query.eq('invoice_email_status', 'pending')
 
   if (onlyIds && onlyIds.length) {
     query = query.in('id', onlyIds)

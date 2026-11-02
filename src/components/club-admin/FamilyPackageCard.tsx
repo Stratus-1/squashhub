@@ -18,6 +18,8 @@ import {
   FAMILY_ADDITIONAL_LABEL,
   FAMILY_RELATIONSHIPS,
   suggestFamilyRole,
+  mainFamilyPackage,
+  extraFamilyCandidates,
   type FamilyCategory,
 } from "@/lib/family/family-package";
 
@@ -42,7 +44,11 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
     },
   });
 
-  const current = useMemo(() => categories.find((c) => c.family_role === "primary") || null, [categories]);
+  const current = useMemo(() => mainFamilyPackage(categories), [categories]);
+  const currentExtras = useMemo(
+    () => categories.filter((c) => c.family_role === "primary" && c.id !== current?.id).map((c) => c.id),
+    [categories, current],
+  );
   const currentAdditional = useMemo(
     () => categories.find((c) => c.family_role === "additional") || null,
     [categories],
@@ -53,12 +59,14 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
   const [maxAdditional, setMaxAdditional] = useState<string>("");
   const [relationships, setRelationships] = useState<string[]>([]);
   const [maxAge, setMaxAge] = useState<string>("");
+  const [extraIds, setExtraIds] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
 
   const effPrimary = touched ? primaryId : current?.id ?? "";
   const effAdditional = touched ? additionalId : currentAdditional?.id ?? "";
   const effMax = touched ? maxAdditional : current?.family_max_additional?.toString() ?? "";
   const effRels = touched ? relationships : current?.family_allowed_relationships ?? [];
+  const effExtras = touched ? extraIds : currentExtras;
   const effAge = touched ? maxAge : current?.family_dependent_max_age?.toString() ?? "";
 
   const startEdit = () => {
@@ -69,6 +77,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
     setMaxAdditional(current?.family_max_additional?.toString() ?? "");
     setRelationships(current?.family_allowed_relationships ?? []);
     setMaxAge(current?.family_dependent_max_age?.toString() ?? "");
+    setExtraIds(currentExtras);
     setTouched(true);
   };
 
@@ -80,7 +89,10 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
     setSaving(true);
     try {
       // clear previous roles for this club (amounts are never touched)
-      const stale = categories.filter((c) => c.family_role && c.id !== effPrimary && c.id !== effAdditional);
+      const extras = effExtras.filter((id) => id !== effPrimary && id !== effAdditional);
+      const stale = categories.filter(
+        (c) => c.family_role && c.id !== effPrimary && c.id !== effAdditional && !extras.includes(c.id),
+      );
       for (const c of stale) {
         await fromExt("member_fee_categories")
           .update({ family_role: null, family_additional_category_id: null } as any)
@@ -94,7 +106,7 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
           family_allowed_relationships: effRels,
           family_dependent_max_age: effAge === "" ? null : Number(effAge),
         } as any)
-        .eq("id", effPrimary);
+        .in("id", [effPrimary, ...extras]);
       if (e1) throw e1;
       const { error: e2 } = await fromExt("member_fee_categories")
         .update({ family_role: "additional", family_additional_category_id: null } as any)
@@ -240,6 +252,35 @@ export function FamilyPackageCard({ clubId }: { clubId: string }) {
           ))}
         </div>
       </div>
+
+      {(() => {
+        const candidates = extraFamilyCandidates(categories, effPrimary, effAdditional);
+        if (candidates.length === 0) return null;
+        return (
+          <div className="space-y-1">
+            <Label className="text-xs">Other fees that may also add family members (optional)</Label>
+            <p className="text-[11px] text-muted-foreground">
+              E.g. Honorary members. They use the same rules and {FAMILY_ADDITIONAL_LABEL} fee as above. Only fees with an amount are listed.
+            </p>
+            <div className="flex flex-wrap gap-4 pt-1">
+              {candidates.map((c) => (
+                <label key={c.id} className="flex items-center gap-2 text-xs">
+                  <Checkbox
+                    disabled={!canChange}
+                    checked={effExtras.includes(c.id)}
+                    onCheckedChange={(v) => {
+                      startEdit();
+                      const base = touched ? extraIds : currentExtras;
+                      setExtraIds(v ? [...base, c.id] : base.filter((x) => x !== c.id));
+                    }}
+                  />
+                  {c.name} — {money(c.annual_fee)}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {suggestions.length > 0 && (
         <div className="rounded-md border p-2 bg-muted/30 space-y-1">

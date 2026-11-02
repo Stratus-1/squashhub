@@ -39,7 +39,7 @@ import { ScrollText } from "lucide-react";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { FamilyMembersStep } from "@/components/family/FamilyMembersStep";
 import { familyDraftError, familyDraftPayload, type FamilyDraft } from "@/lib/family/family-draft";
-import { FAMILY_PRIMARY_LABEL, type FamilyCategory } from "@/lib/family/family-package";
+import { familyPackageName, type FamilyCategory } from "@/lib/family/family-package";
 import {
   SkillsExpertiseFields,
   emptySkillsDraft,
@@ -1600,7 +1600,7 @@ export function MemberOnboardingWizard({
             {currentStepId === "family" && familyPrimaryCat && (
               <motion.div key="family" {...slideVariants} className="flex-1 space-y-4 pt-2">
                 <DialogHeader>
-                  <DialogTitle className="text-lg font-heading">{FAMILY_PRIMARY_LABEL}</DialogTitle>
+                  <DialogTitle className="text-lg font-heading">{familyPackageName(familyPrimaryCat)}</DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground">
                     Who else is on your family membership? You can skip this and add them later.
                   </DialogDescription>

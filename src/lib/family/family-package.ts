@@ -29,9 +29,38 @@ export interface FamilyCategory {
   pro_rate?: boolean | null;
 }
 
+/** True when a category's own wording reads like the main family package. */
+export function looksLikeFamilyPackage(name: string, description?: string | null): boolean {
+  const text = `${name} ${description ?? ""}`.toLowerCase();
+  return PRIMARY_HINTS.some((h) => text.includes(h)) || /\bfamily\b/.test(text);
+}
+
+/**
+ * Name shown for a category that may add family members. The main family
+ * package uses the standard name; other permitted fees (e.g. Honorary) keep
+ * their own name.
+ */
+export function familyPackageName(cat: Pick<FamilyCategory, "name" | "description">): string {
+  return looksLikeFamilyPackage(cat.name, cat.description) ? FAMILY_PRIMARY_LABEL : cat.name;
+}
+
+/**
+ * Choose the club's main family package among every category allowed to add
+ * family members: family-named first, otherwise the first one.
+ */
+export function mainFamilyPackage<T extends FamilyCategory>(cats: T[]): T | null {
+  const primaries = cats.filter((c) => c.family_role === "primary");
+  return primaries.find((c) => looksLikeFamilyPackage(c.name, c.description)) ?? primaries[0] ?? null;
+}
+
+/** Fees that may be ticked as also allowing family additions: payable (non-zero) and not already a family fee. */
+export function extraFamilyCandidates<T extends FamilyCategory>(cats: T[], mainId: string, additionalId: string): T[] {
+  return cats.filter((c) => Number(c.annual_fee) > 0 && c.id !== mainId && c.id !== additionalId);
+}
+
 /** Display name for a category — standard names win for family types. */
-export function familyDisplayName(cat: Pick<FamilyCategory, "name" | "family_role">): string {
-  if (cat.family_role === "primary") return FAMILY_PRIMARY_LABEL;
+export function familyDisplayName(cat: Pick<FamilyCategory, "name" | "family_role" | "description">): string {
+  if (cat.family_role === "primary") return familyPackageName(cat);
   if (cat.family_role === "additional") return FAMILY_ADDITIONAL_LABEL;
   return cat.name;
 }

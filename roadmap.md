@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Uitsig outsourced catering 30 October–1 November: zero automatic costs for all recorded takeaway meals using audited per-sale corrections; preserve sales/stock and leave actual caterer payout for treasurer entry.
 - [x] Check Rachel's Nelspruit concern: recovered Jacques Braun R30 via provider-confirmed PAID; André already recovered. Paid direct bar sales R3,971 and bar-income ledger credits R9,168 since 1 September. Member top-ups remain separate, not new bar income.
 - [ ] Nine Nelspruit bar references totalling R220 remain unconfirmed after direct checks (PENDING/unknown); provider payment detail is needed before any paid status or accounting change.
 - [x] Stitch bar callback/recovery repair deployed (bar-card-verify, stitch-webhook, stitch-sweep-pending-payments); 15 tests pass, build OK. Age-independent bar recovery, unknown references retained, partial finalisation retry tested. Hosted paid replay verified, Jacques's pending-to-paid transition read back; no new checkout or recurring changes. Real future provider callback and staff UI remain unexercised.

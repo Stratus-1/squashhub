@@ -27,7 +27,7 @@ export function InvoicePreviewDialog({ invoiceId, onClose }: Props) {
           id, fee_label, amount, paid, season_year,
           invoice_number, invoice_due_date, invoice_send_date,
           invoice_issued_at, invoice_email_sent_at,
-          club_members!inner (
+          club_members!club_member_fee_payments_club_member_id_fkey!inner (
             id, name, email, phone, club_id,
             clubs:club_id ( name, logo_url, address, email, phone )
           )

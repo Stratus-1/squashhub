@@ -66,6 +66,8 @@ export async function settlePayfastSession(admin: any, session: any) {
         remaining -= deduction;
         const newAmount = feeAmt - deduction;
         if (newAmount <= 0) {
+          await admin
+            .from("club_member_fee_payments")
             .update({ paid: true, paid_at: new Date().toISOString(), amount: 0, settled_from_wallet: true })
             .eq("id", f.id);
         } else {

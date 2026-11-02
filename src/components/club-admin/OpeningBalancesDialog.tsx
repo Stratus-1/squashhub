@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
+import { openingBalanceAccounts, openingBalanceValues, openingBalanceRows, OB_PREFIX, OB_BALANCING_DESC } from "@/lib/opening-balances";
 
 interface AccountMeta {
   label: string;
@@ -24,21 +26,20 @@ interface Props {
   accounts: Record<string, AccountMeta>;
 }
 
-const OB_PREFIX = "Opening balance:";
-const OB_BALANCING_DESC = "Opening balances – balancing entry";
-
 export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: Props) {
   const qc = useQueryClient();
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const { data: customAccounts, isLoading: accountsLoading, error: accountsError } = useClubGLAccounts(clubId);
+  const accountList = useMemo(() => openingBalanceAccounts(accounts, customAccounts ?? [], clubId), [accounts, customAccounts, clubId]);
 
   // Pull existing opening-balance entries (so admin can edit, not double-post)
-  const { data: existing, refetch } = useQuery({
+  const { data: existing, refetch, isLoading: balancesLoading, error: balancesError } = useQuery({
     queryKey: ["club-opening-balances", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_journal_entries")
-        .select("account, debit, credit, description, created_at")
+        .select("account, custom_account_id, debit, credit, description, created_at")
         .eq("club_id", clubId)
         .or(`description.ilike.${OB_PREFIX}%,description.eq.${OB_BALANCING_DESC}`);
       if (error) throw error;
@@ -50,30 +51,15 @@ export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: 
   // Hydrate the form from existing rows whenever the dialog opens
   useEffect(() => {
     if (!open) return;
-    const next: Record<string, string> = {};
+    const next = openingBalanceValues(existing || [], accountList);
     let latest: string | null = null;
     for (const row of existing || []) {
       if (row.description === OB_BALANCING_DESC) continue;
-      const meta = accounts[row.account];
-      if (!meta) continue;
-      const signed = meta.normal === "Dr"
-        ? Number(row.debit) - Number(row.credit)
-        : Number(row.credit) - Number(row.debit);
-      if (signed !== 0) next[row.account] = String(signed);
       if (!latest || new Date(row.created_at) > new Date(latest)) latest = row.created_at;
     }
     setValues(next);
     if (latest) setDate(format(new Date(latest), "yyyy-MM-dd"));
-  }, [open, existing, accounts]);
-
-  const accountList = useMemo(() => {
-    const order: AccountMeta["category"][] = ["Asset", "Liability", "Income", "Expense"];
-    return order.flatMap(cat =>
-      Object.entries(accounts)
-        .filter(([, m]) => m.category === cat)
-        .map(([code, m]) => ({ code, meta: m }))
-    );
-  }, [accounts]);
+  }, [open, existing, accountList]);
 
   // Live balance check (sum of signed values; positive contra goes to OBE)
   const totals = useMemo(() => {
@@ -97,49 +83,16 @@ export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: 
     if (!date) { toast.error("Pick an opening date"); return; }
     setSubmitting(true);
     try {
+      // Validate/build before replacing entries, and retain each custom account's identity.
+      const journal_ref = crypto.randomUUID();
+      const created_at = new Date(`${date}T00:00:00`).toISOString();
+      const rows = openingBalanceRows(accountList, values, clubId, journal_ref, created_at);
       // 1. Wipe prior opening-balance entries for this club
       const { error: delErr } = await fromExt("club_journal_entries")
         .delete()
         .eq("club_id", clubId)
         .or(`description.ilike.${OB_PREFIX}%,description.eq.${OB_BALANCING_DESC}`);
       if (delErr) throw delErr;
-
-      // 2. Build new rows
-      const journal_ref = crypto.randomUUID();
-      const created_at = new Date(`${date}T00:00:00`).toISOString();
-      const rows: any[] = [];
-      let totalDr = 0, totalCr = 0;
-
-      for (const { code, meta } of accountList) {
-        if (code === "opening_balance_equity") continue;
-        const v = parseFloat(values[code] || "0");
-        if (!v) continue;
-        // Convert signed value into debit/credit on the natural side
-        let debit = 0, credit = 0;
-        if (meta.normal === "Dr") {
-          if (v >= 0) debit = v; else credit = -v;
-        } else {
-          if (v >= 0) credit = v; else debit = -v;
-        }
-        rows.push({
-          club_id: clubId, journal_ref, created_at,
-          account: code, debit, credit,
-          description: `${OB_PREFIX} ${meta.label}`,
-        });
-        totalDr += debit; totalCr += credit;
-      }
-
-      // 3. Balancing entry against Opening Balance Equity
-      const diff = totalDr - totalCr;
-      if (diff !== 0) {
-        rows.push({
-          club_id: clubId, journal_ref, created_at,
-          account: "opening_balance_equity",
-          debit: diff < 0 ? -diff : 0,
-          credit: diff > 0 ? diff : 0,
-          description: OB_BALANCING_DESC,
-        });
-      }
 
       if (rows.length > 0) {
         const { error: insErr } = await fromExt("club_journal_entries").insert(rows);
@@ -175,6 +128,7 @@ export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: 
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 w-44 text-xs" />
           </div>
 
+          {(accountsError || balancesError) && <p role="alert" className="text-sm text-destructive">Could not load all opening-balance accounts. Close and try again.</p>}
           <ScrollArea className="h-[360px] rounded border">
             <div className="divide-y">
               {(["Asset", "Liability", "Income", "Expense"] as const).map(cat => {
@@ -191,6 +145,7 @@ export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: 
                             <span className="text-[10px] text-muted-foreground ml-2">({meta.normal})</span>
                           </span>
                           <Input
+                            aria-label={`Opening balance for ${meta.label}`}
                             type="number"
                             step="0.01"
                             placeholder="0.00"
@@ -221,7 +176,7 @@ export function OpeningBalancesDialog({ open, onOpenChange, clubId, accounts }: 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleSave} disabled={submitting}>
+          <Button onClick={handleSave} disabled={submitting || accountsLoading || balancesLoading || !!accountsError || !!balancesError}>
             {submitting ? "Saving..." : "Save Opening Balances"}
           </Button>
         </DialogFooter>

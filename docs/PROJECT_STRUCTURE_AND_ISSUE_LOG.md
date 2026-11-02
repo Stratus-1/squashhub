@@ -1051,6 +1051,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-11-02 · Uitsig custom GL accounts missing from opening balances
+- **Symptom:** Deon can add GL accounts but cannot enter an opening balance for COT; screenshot shows Opening Balances already accessible.
+- **Finding:** The dialog listed only the standard chart and read/saved only `account`, omitting club-created accounts and `custom_account_id`. This is not a missing Treasurer permission.
+- **Fix:** Include club-scoped custom accounts, retain the normal ledger carrier plus custom ID on save/readback, and keep inactive saved account balances available. Block saving while either account/balance query is loading or fails.
+- **Guard:** Focused tests cover COT identity, R250 debit/R330 equity contra with a separate R80 standard balance, save/reopen, liability direction, inactive balances, invalid amounts and cross-club exclusion. No real balances or permissions changed; shared web/PWA/native dialog, no native integration change.
+
 ### 2026-10-28 · Treasurer tournament Paid updates silently filtered
 - **Symptom:** After removing the JSON coercion error, Paid still returned “Payment was not confirmed”.
 - **Finding:** Hosted requests identify the Uitsig Treasurer account, whose saved finance/fees permission is valid but champs permission is false. Direct fee and registration writes are filtered by separate admin/champs policies, returning empty success responses without settlement. Earlier Super Admin preview checks did not exercise that actor.

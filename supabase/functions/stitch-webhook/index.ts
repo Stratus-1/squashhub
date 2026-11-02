@@ -73,6 +73,23 @@ Deno.serve(async (req) => {
     const { data: session } = await admin.from("stitch_payment_sessions")
       .select("*").in("stitch_request_id", candidates).maybeSingle();
     if (!session) {
+      // Bar checkouts are stored on sale lines, not once-off member sessions.
+      // Never trust the callback's claimed status: verify with the club's
+      // provider credentials through the same path as the return page.
+      const { data: barSale, error: barError } = await admin.from("bar_visitor_sales")
+        .select("id").in("payment_reference", candidates)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (barError) throw barError;
+      if (barSale) {
+        const verified = await fetch(`${SUPABASE_URL}/functions/v1/bar-card-verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+          body: JSON.stringify({ sale_id: barSale.id }),
+        });
+        const result = await verified.json().catch(() => ({}));
+        if (!verified.ok || result.error) throw new Error("Bar payment confirmation failed; retry required");
+        return new Response("ok", { status: 200 });
+      }
       console.log("stitch-webhook: no session for", candidates.join(","));
       return new Response("ok", { status: 200 });
     }

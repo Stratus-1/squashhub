@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
     // stitch_payment_sessions. Re-check each pending reference (one sale per
     // reference) through bar-card-verify, which asks the gateway first and only
     // settles/releases on a definite gateway answer — never cancels on its own.
+    // Bar payments have no maximum age: a missed return/callback must remain
+    // recoverable after the member-session three-day window has passed.
     let barChecked = 0, barPaid = 0;
     try {
       const { data: barRows } = await admin.from("bar_visitor_sales")
@@ -109,7 +111,6 @@ Deno.serve(async (req) => {
         .not("payment_reference", "is", null)
         .not("payment_reference", "like", "PF-%")
         .lte("created_at", new Date(now - 2 * 60 * 1000).toISOString())
-        .gte("created_at", new Date(now - MAX_AGE_MS).toISOString())
         .order("created_at", { ascending: true })
         .limit(200);
       const seen = new Set<string>();

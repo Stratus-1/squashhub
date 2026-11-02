@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
       .select("id, club_id, total, payment_status, payment_reference, created_at")
       .eq("id", sale_id).maybeSingle();
     if (!sale) return json({ error: "Sale not found" });
-    if (sale.payment_status === "paid") return json({ status: "paid" });
+    if (sale.payment_status === "paid") {
+      if (sale.payment_reference) await finaliseBarReference(admin, sale.club_id, sale.payment_reference, "paid");
+      return json({ status: "paid" });
+    }
     if (!sale.payment_reference) {
       if (cancelled && sale.payment_status === "pending") {
         await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).eq("id", sale.id);
@@ -106,43 +109,13 @@ Deno.serve(async (req) => {
 
     // The gateway is checked first: a payment that already went through is never
     // undone. Otherwise a customer/staff "Cancel card payment" releases it.
-    // A Yoco/Stitch checkout still unpaid after 15 minutes is released, like PayFast,
-    // so a struggling payer's tab unlocks and they can simply try again.
-    const staleCard = sale.payment_status === "pending" && Date.now() - new Date(sale.created_at).getTime() > 15 * 60 * 1000;
+    // Unknown/pending provider responses never expire merely because the
+    // checkout is old: retain the reference so callbacks/recovery can retry.
     const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state)
-      || ((cancelled || staleCard) && !paid);
+      || (cancelled && !paid);
 
     const next = paid ? "paid" : failed ? "failed" : "pending";
-    if (next !== sale.payment_status) {
-      // Cart payments write one row per line sharing the same reference.
-      const { data: refRows } = await admin.from("bar_visitor_sales")
-        .select("id, guest_tab_id")
-        .eq("club_id", sale.club_id)
-        .eq("payment_reference", sale.payment_reference);
-      const tabIds = [...new Set((refRows || []).map((r: any) => r.guest_tab_id).filter(Boolean))];
-
-      if (next === "failed" && tabIds.length) {
-        // A tab settlement that failed goes back onto the open tab so the
-        // guest can retry or choose another way to pay.
-        await admin.from("bar_visitor_sales")
-          .update({ payment_method: "tab", payment_status: "on_tab", note: "Open bar tab", payment_reference: null })
-          .eq("club_id", sale.club_id)
-          .eq("payment_reference", sale.payment_reference);
-        await admin.from("bar_guest_tabs")
-          .update({ status: "open", settled_method: null })
-          .in("id", tabIds);
-      } else {
-        await admin.from("bar_visitor_sales")
-          .update({ payment_status: next })
-          .eq("club_id", sale.club_id)
-          .eq("payment_reference", sale.payment_reference);
-        if (next === "paid" && tabIds.length) {
-          await admin.from("bar_guest_tabs")
-            .update({ status: "settled", closed_at: new Date().toISOString(), settled_method: "online" })
-            .in("id", tabIds);
-        }
-      }
-    }
+    await finaliseBarReference(admin, sale.club_id, sale.payment_reference, next);
     return json({ status: next, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });
   } catch (e: any) {
     console.error("bar-card-verify error:", e);

@@ -152,7 +152,7 @@ export function RenewalInvoicesTab({ clubId }: Props) {
   const stats = useMemo(() => ({
     total: rows.length,
     pending: rows.filter((r: any) => !r.paid && !r.invoice_email_sent_at).length,
-    sent: rows.filter((r: any) => r.invoice_email_sent_at && !r.paid).length,
+    sent: rows.filter((r: any) => r.invoice_email_sent_at || (r.paid && r.invoice_issued_at)).length,
     paid: rows.filter((r: any) => r.paid).length,
   }), [rows]);
 

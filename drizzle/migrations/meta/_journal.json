@@ -2402,6 +2402,13 @@
       "when": 1793623358265,
       "tag": "0342_family_add_self_guard_bypass",
       "breakpoints": true
+    },
+    {
+      "idx": 343,
+      "version": "7",
+      "when": 1793629167342,
+      "tag": "0343_league_fees_label_income",
+      "breakpoints": true
     }
   ]
 }

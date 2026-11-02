@@ -24,6 +24,8 @@ export interface SendTemplateEmailOptions {
   /** Dedupes retries of the same logical send; defaults to a random UUID (no dedupe). */
   idempotencyKey?: string
   replyTo?: string
+  /** HTML injected at the top of the body (club + SquashHub logo row). */
+  headerHtml?: string
 }
 
 /**
@@ -33,12 +35,18 @@ export interface SendTemplateEmailOptions {
  * ({ sent: false }); any other failure throws — EmailAPIError exposes
  * .code and .status for branching.
  */
+export function injectHeader(html: string, header: string): string {
+  const m = html.match(/<body[^>]*>/i)
+  return m ? html.replace(m[0], m[0] + header) : header + html
+}
+
 /** Renders a registered template without sending (used for club SMTP delivery). */
 export async function renderTemplateEmail(templateName: string, templateData: Record<string, any> = {}) {
   const template = TEMPLATES[templateName]
   if (!template) throw new Error(`Template '${templateName}' not found`)
   const element = React.createElement(template.component, templateData)
-  const html = await renderAsync(element)
+  let html = await renderAsync(element)
+  if (options.headerHtml) html = injectHeader(html, options.headerHtml)
   const text = await renderAsync(element, { plainText: true })
   const subject = typeof template.subject === 'function' ? template.subject(templateData) : template.subject
   return { html, text, subject, fixedTo: template.to }
@@ -70,7 +78,8 @@ export async function sendTemplateEmail(
 
   const templateData = options.templateData ?? {}
   const element = React.createElement(template.component, templateData)
-  const html = await renderAsync(element)
+  let html = await renderAsync(element)
+  if (options.headerHtml) html = injectHeader(html, options.headerHtml)
   const text = await renderAsync(element, { plainText: true })
   const subject =
     typeof template.subject === 'function'

@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { EmailAPIError } from 'npm:@lovable.dev/email-js@0.1.0'
-import { sendTemplateEmail, renderTemplateEmail } from './transactional-email-templates/send-email.ts'
+import { sendTemplateEmail, renderTemplateEmail, injectHeader } from './transactional-email-templates/send-email.ts'
 
 /**
  * Server-side app-email send used across this project's edge functions.
@@ -55,8 +55,26 @@ const PLATFORM_TEMPLATES = new Set([
   'new-club-registered', 'stitch-onboarding-application', 'support-new-message', 'support-admin-reply',
   'subscription-invoice', 'subscription-invoice-reminder', 'trial-ending', 'sla-outstanding',
 ])
+// Templates that already draw the club + SquashHub logo row themselves.
+const OWN_LOGO_TEMPLATES = new Set(['club-notification', 'agm-invite-test'])
+const SQUASHHUB_LOGO_URL = 'https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png'
+
+async function logoHeader(templateName: string, clubId?: string | null): Promise<string | undefined> {
+  if (!clubId || PLATFORM_TEMPLATES.has(templateName) || OWN_LOGO_TEMPLATES.has(templateName)) return undefined
+  const { data: club } = await admin().from('clubs').select('name,logo_url').eq('id', clubId).maybeSingle()
+  const name = escapeHtml(club?.name || 'Club')
+  const left = club?.logo_url
+    ? `<img src="${escapeHtml(club.logo_url)}" alt="${name}" height="40" style="display:inline-block;max-height:40px;max-width:150px;border-radius:6px">`
+    : `<span style="font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#1E3A5F">${name}</span>`
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:16px auto 0"><tr>` +
+    `<td align="left" valign="middle" style="padding:0 20px">${left}</td>` +
+    `<td align="right" valign="middle" style="padding:0 20px"><img src="${SQUASHHUB_LOGO_URL}" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px"></td>` +
+    `</tr></table>`
+}
+
 const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525])
-const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+function escapeHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)) }
+const _unusedEscape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 
 /** Returns true when sent via club SMTP, false when the club has no SMTP configured. */
 async function trySendViaClubSmtp(args: SendAppEmailArgs): Promise<boolean> {
@@ -74,6 +92,8 @@ async function trySendViaClubSmtp(args: SendAppEmailArgs): Promise<boolean> {
     ? `<div style="margin:24px auto 0;max-width:600px;border-top:1px solid #e2e8f0;padding-top:14px;font-family:Arial,sans-serif;font-size:13px">${club.email_signature_html}</div>` : ''
   const disc = club?.email_disclaimer
     ? `<p style="margin:14px auto 0;max-width:600px;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(club.email_disclaimer)}</p>` : ''
+  const header = await logoHeader(templateName, clubId)
+  if (header) r.html = injectHeader(r.html, header)
   const html = (sig || disc) && r.html.includes('</body>') ? r.html.replace('</body>', `${sig}${disc}</body>`) : r.html + sig + disc
   const sigText = club?.email_signature_html ? '\n\n--\n' + club.email_signature_html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim() : ''
   const nodemailer = await import('npm:nodemailer@6.9.14')
@@ -111,6 +131,7 @@ export async function sendAppEmail(args: SendAppEmailArgs): Promise<SendAppEmail
         templateData: templateData as Record<string, any> | undefined,
         idempotencyKey,
         replyTo,
+        headerHtml: await logoHeader(templateName, clubId),
       })
 
       if (!result.sent) {

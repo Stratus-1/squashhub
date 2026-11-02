@@ -2388,6 +2388,13 @@
       "when": 1793600231334,
       "tag": "0340_league_pairs_leagues_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 341,
+      "version": "7",
+      "when": 1793615719832,
+      "tag": "0341_audited_sale_cost_corrections",
+      "breakpoints": true
     }
   ]
 }

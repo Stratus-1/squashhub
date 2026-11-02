@@ -100,7 +100,8 @@ Deno.serve(async (req) => {
             bankAccountName: secrets.bank_account_name,
             bankAccountNumber: secrets.bank_account_number,
             bankBranchCode: secrets.bank_branch_code,
-          bankReference: secrets.bank_reference || r.invoice_number,
+          bankReference: r.invoice_number || secrets.bank_reference,
+          paymentUrl: club.subdomain ? `https://${club.subdomain}.squashhub.co.za/my-account` : 'https://squashhub.co.za/my-account',
         },
       })
       if (!sendResult.ok) throw new Error(sendResult.error)

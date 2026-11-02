@@ -13,3 +13,11 @@ describe("3rd/4th place play-off", () => {
     expect(withThirdPlace({ stages: [{ ...fin, mapping: { source: "stage_standings", matches: [{}] } }], reason: null, notes: [] }).stages).toHaveLength(1);
   });
 });
+import { stageWinners } from "@/lib/tournaments/structured-persist";
+describe("losers lookup", () => {
+  it("returns the loser of each semifinal", () => {
+    const rows = [{ stage_key: "sf", round_number: 1, bracket_position: 1, player_a_member_id: "p1", player_b_member_id: "p4", winner_member_id: "p1" },
+                  { stage_key: "sf", round_number: 1, bracket_position: 2, player_a_member_id: "p2", player_b_member_id: "p3", winner_member_id: "p3" }];
+    expect(stageWinners({ id: "sf", name: "Semifinal" } as any, rows, true)).toEqual(["p4", "p2"]);
+  });
+});

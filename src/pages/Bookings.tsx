@@ -1089,6 +1089,9 @@ export default function Bookings() {
       return combined as any;
     },
     enabled: !!user && !!bookingClubId,
+    // A member approved while this page is open (e.g. a new family member)
+    // must appear without a manual refresh.
+    refetchInterval: 60_000,
   });
 
   // Registered visitors only appear here while they hold a live (active,

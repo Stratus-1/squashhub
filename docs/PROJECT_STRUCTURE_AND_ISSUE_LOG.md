@@ -1051,6 +1051,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-11-02 · League-permitted staff cannot persist doubles pairs
+- **Symptom:** Production RLS errors on league registration/pair saves leave step-by-step teams without their allocations.
+- **Finding:** Registration access is already repaired by applied 0339. Current pair policies still allow only admins/captains; the UI permits staff with Leagues permission. Existing pair-scope trigger derives club/season from the team and rejects foreign-club players.
+- **Fix:** Add authenticated pair INSERT/UPDATE/DELETE policies using the existing club-scoped `has_club_permission(..., 'leagues')`, retaining all legacy admin/captain policies and integrity triggers. No frontend, role or real roster changes.
+- **Guard:** Disposable PostgreSQL tests exercise actual 0339/0340 policies plus the saved scope trigger: League-only roster/pair save/readback, edit/delete, ordinary-member denial, foreign players and spoofed club/team denial. Hosted policy readback verified; the affected person's hosted UI save is not exercised.
+
 ### 2026-11-02 · Uitsig custom GL accounts missing from opening balances
 - **Symptom:** Deon can add GL accounts but cannot enter an opening balance for COT; screenshot shows Opening Balances already accessible.
 - **Finding:** The dialog listed only the standard chart and read/saved only `account`, omitting club-created accounts and `custom_account_id`. This is not a missing Treasurer permission.

@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Verify remaining League staff doubles-pair permission repair: registration policies already applied; add pair policies and run isolated role/club-boundary tests, without changing real rosters.
 - [x] Uitsig Deon: club-added COT/GL accounts now appear in Opening Balances with custom-account save/reopen identity. Six focused tests pass; signed-in owner Uitsig UI shows COT Utility Account, accepts R250 and displays balanced contra, cancelled without saving. Build OK; Deon's own save path not exercised, no real balances/permissions changed, preview only.
 - [x] Mobile screenshot selected completed 7s in Past tournaments. Signed-in 390px check: tapping Test offline then Upcoming Fixtures displays all 15 saved games today (15:00–16:45), both courts. No missing fixtures/data changes; select Test offline on phone.
 - [x] Removed duplicate Who may enter estimate; planning capacity/summary use active Structure counts, eligibility checks audience only. 44 tests and signed-in Riverside screen pass, build OK. No hosted saves or live-game changes; preview-only.

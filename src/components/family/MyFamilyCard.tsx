@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { useClubCurrency } from "@/hooks/use-currency";
 import {
   FAMILY_PRIMARY_LABEL,
+  familyPackageName,
   FAMILY_ADDITIONAL_LABEL,
   FAMILY_RELATIONSHIPS,
   isFamilyFull,
@@ -221,7 +222,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         </div>
 
         <p className="text-[11px] text-muted-foreground mb-3">
-          You are on the {FAMILY_PRIMARY_LABEL} ({money(myCat.annual_fee)}).{" "}
+          You are on the {familyPackageName(myCat)} ({money(myCat.annual_fee)}).{" "}
           {(additionalCat?.annual_fee ?? 0) > 0
             ? `Each ${FAMILY_ADDITIONAL_LABEL} costs ${money(additionalCat?.annual_fee ?? 0)}. `
             : "Family members are included at no extra cost. "}

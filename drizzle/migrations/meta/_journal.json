@@ -2381,6 +2381,13 @@
       "when": 1793554234073,
       "tag": "0339_league_registrations_leagues_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 340,
+      "version": "7",
+      "when": 1793600231334,
+      "tag": "0340_league_pairs_leagues_permission",
+      "breakpoints": true
     }
   ]
 }

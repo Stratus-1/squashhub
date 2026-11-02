@@ -2205,6 +2205,44 @@ export type Database = {
           },
         ]
       }
+      bar_sale_cost_corrections: {
+        Row: {
+          club_id: string
+          corrected_cost: number
+          created_at: string
+          original_cost: number
+          reason: string
+          source_id: string
+          source_table: string
+        }
+        Insert: {
+          club_id: string
+          corrected_cost: number
+          created_at?: string
+          original_cost: number
+          reason: string
+          source_id: string
+          source_table: string
+        }
+        Update: {
+          club_id?: string
+          corrected_cost?: number
+          created_at?: string
+          original_cost?: number
+          reason?: string
+          source_id?: string
+          source_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_sale_cost_corrections_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_shift_tip_allocations: {
         Row: {
           amount: number

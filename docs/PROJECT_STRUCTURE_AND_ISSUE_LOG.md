@@ -4239,3 +4239,7 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 - Fixed narrow account-name track: account tables now keep a readable minimum width with local horizontal scrolling and wrapped custom names, rather than collapsing COT beneath the type badge. No balances, stock or permissions changed.
 - Investigating stock ledger absence separately; physical stock valuation must not be substituted for an unposted ledger balance.
 - Hosted readback: Uitsig's COT Utility Account exists; no bar_stock_on_hand journals. Current recorded average-cost stock valuations are Bar R27,818.25620966 and Shop R301,812.89; these are inventory records, not verified ledger balances. No book adjustment made. Phone UI check blocked by unavailable authenticated screen; build OK.
+
+### 2026-11-02 — Uitsig outsourced weekend catering costs
+- User confirmed all takeaway meals for 30 October–1 November must have zero automatic item costs, with the actual caterer expense entered separately once. Recorded scope: 25 Curry and Rice and 24 Toasted Sandwich portions, 28 sale lines; existing fallback costs R1,350, no food stock movements.
+- Migration 0341 adds privileged-written per-sale audit overrides read by the existing finance report. Original item prices, sales, revenue, stock movements and quantities remain unchanged; unrelated drinks, other periods and clubs retain their costs. Caterer payout is not invented or posted.

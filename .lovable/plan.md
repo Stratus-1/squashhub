@@ -1,36 +1,25 @@
-# NSA league fee charging rules (per club)
+# Restore Uitsig’s planned play-off fixtures
 
-## Recommendation
-Put the charging rule **inside the fee itself** (the "Northern Squash Association" row under Fees payable to the club), not in a separate NSA settings screen. Each club already has its own NSA fee row, so each club sets its own rule there. The same rule can then be used for any league fee (RIL, RDL, etc.), not only NSA.
+## Confirmed problem
+- Men's A and Ladies B both have **Semifinal, Final and 3rd/4th place** selected in saved setup.
+- The running draw contains only Semifinal and Final. The six extra rows are two semifinals and one final per category—not the third/fourth-place matches.
+- Both finals have 21 November saved on their fixture rows, but no start time or court. Setup specifies **09:15–13:15, Courts 1 and 4**.
+- Upcoming Fixtures treats unresolved play-off rows as Swiss slots because the tournament mixes formats, so those rows are hidden.
 
-## What the club picks when editing the fee: "How is this fee charged?"
-1. **Fixed annual amount** (today's behaviour): one amount, billed on the due date.
-2. **When joining the league**: billed once when the player is placed in a team or reserve list for that season.
-3. **Per game played**: amount × games played in the season (for example R40 per game), with an optional maximum (cap).
-4. **Share of season games played (Uitsig sheet)**: brackets are a percentage of the league's season fixtures, so they work for 18, 16, 15, 14 or 12-round leagues:
+## Correction
+1. Carry the saved third/fourth-place selections into the running play-off plan on an explicit setup save. Add one semifinal-losers match per affected category, without replacing the existing semifinal or final stages.
+2. Show planned play-offs in Upcoming Fixtures even before the players qualify, using factual position/winner/loser labels. Keep unresolved Swiss pairings hidden.
+3. Include the third/fourth-place match in the progression presentation and use **Loser SF1 vs Loser SF2**, not winner labels.
+4. Apply the latest saved final sessions to pending play-off slots, allocating actual start times and selected courts within the window. Schedule placement matches before championship finals, check shared court capacity, and report clashes instead of inventing space.
+5. Preserve existing fixture identities, reserved slots, bookings and completed results on repeated saves. Do not regenerate round-robin games or change other categories.
 
-| Share of season games | Fee | 18 rounds | 12 rounds |
-|---|---:|---:|---:|
-| 60%–100% | 100% | 12+ games: R750 | 8+ games: R650 |
-| 40%–60% | 70% (rounded) | 8+ games: R600 | 6+ games: R500 |
-| 20%–40% | 50% (rounded) | 4+ games: R350 | 3+ games: R300 |
-| 0%–20% | nil | under 4: R0 | under 3: R0 |
-
-The club can type the exact rand amount per bracket per league size (the sheet's amounts are rounded, not exact percentages), with separate Men / Ladies full fees.
-
-**Cap rule:** a member never pays more than the full fee for their own category. A lady who also plays in a men's team is charged on all her games combined, but never above the ladies' maximum (e.g. R650) — playing extra games never raises the charge. Same cap per member if they play in more than one team.
-
-## Billing
-- Annual invoices get an **"NSA / league fees"** tick option. When chosen, the app calculates each member's amount from the fee's rule and shows a **preview list** (member, games counted, bracket, amount) before anything is billed.
-- Games counted = league games actually played in that league's season (walkovers/unplayed excluded unless the club chooses otherwise).
-- Bills once per member per season; re-running never charges twice, only tops up or shows a difference for approval.
-- The money still flows as today: member pays club, club owes the association.
-
-## Needed from you before building
-- Uitsig's actual brackets (games ranges and amounts for men and ladies).
-- Which games count: league only, or also reserves/subbing; walkovers yes or no.
-- Season dates the games are counted over, and when the invoice is raised (end of season or annually).
+## Verification and live-data boundary
+- Add focused tests for late placement additions, repeat-save idempotency, mixed-format fixture visibility, loser labels, saved session inheritance and ordering.
+- Check the signed-in Uitsig screens and validate the proposed fixture changes before applying them.
+- Apply only the confirmed Men's A and Ladies B missing placement fixtures and pending final allocations through the authorised save flow; no scores, players or existing personal bookings change.
+- Publication and end-of-tournament position calculations are outside this correction.
 
 ## Technical details
-- Extend the fee schedule row with a charging mode, gender amounts, cap and bracket list (additive; existing fees default to Fixed annual, so nothing changes for current clubs).
-- One read-only calculation that both the preview and the billing step use, plus tests per rule (per-game, bracket edges, cap, men/ladies, no double billing).
+- Fix `drawPlanOf` to retain the supported structure flags, and the existing-stage attachment path to support append-only placement additions.
+- Use the existing placeholder/adoption and play-off scheduling machinery, with the latest saved setup sessions as scheduling authority; do not weaken `structured_commit` stage immutability.
+- Update the shared provisional-Swiss filter to distinguish play-off fixtures from Swiss rounds, and the shared planned-bracket projection to include placement rounds.

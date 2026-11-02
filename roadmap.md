@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Repair Stitch bar-tab webhook confirmation and age-independent pending recovery; preserve unknown payments and test retries before deployment.
 - [x] COT phone label no longer collapses under badges (local scroll/wrapped names); build OK, signed-in phone check blocked by unavailable screen. No balances changed.
 - [ ] Uitsig stock asset absent from ledger: current inventory valuation differs from posted financial balances. Opening valuation/date and approved contra must be verified before an audited accounting adjustment; no books changed.
 - [x] League staff doubles-pair permission repair applied (0340); registration policies already applied (0339). All 16 focused checks pass, including disposable authenticated-role save/readback/edit/delete and cross-club/ordinary-member denial. Hosted pair-policy readback verified, build OK. Affected staff's hosted UI save unverified; real rosters/results unchanged.

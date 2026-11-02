@@ -68,6 +68,8 @@ export type DrawDivision = { group: number; label: string; doubles: boolean; uni
   poolQualifiers?: { perPool: number | null; runnersUp: number } | null;
   /** Structure page "Bottom half too": the next group of players plays its own play-off bracket. */
   bottomHalf?: boolean;
+  /** Structure page "3rd/4th place": semifinal losers play for 3rd (and 7th with bottom half). */
+  thirdPlace?: boolean;
   /** Paced knockout: organiser-reviewed Round 1 matches per pool (index 0 = whole field when there are no pools). Used exactly at Generate. */
   koPairs?: Array<Array<[string, string]>> | null;
   /** Read-only match format from setup (e.g. "PAR 11 · Best of 5"), shown to the admin on the draw page. */
@@ -226,7 +228,7 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null, o
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
     // Setup never confirmed the play-offs (historical "Decide later"): keep organiser confirmation.
     const legacy = (playoffAnswer(plan, label)?.choice ?? "later") !== "playoffs";
-    const next = { ...d, ...playoffStagesFor(d.stages[0], version, p, { forceConfirm: legacy }) };
+    const next = { ...d, ...playoffStagesFor(d.stages[0], version, { ...p, thirdPlace: !!(d as any).playoffThirdPlace }, { forceConfirm: legacy }) };
     if (hadDeferred && JSON.stringify(next.stages) === JSON.stringify(d.stages) && JSON.stringify(next.deferredStages) === JSON.stringify(d.deferredStages)) return d;
     changed = true;
     return next;
@@ -243,10 +245,10 @@ const playoffAnswer = (plan: Plan | null, label: string) => {
  * Planned play-offs as REAL predefined stages (progression runs them; Final ← Semifinal winners) when the
  * plan is complete; otherwise the "Define later" stages as before, set up when the main stage finishes.
  */
-export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; poolQualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
+export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; poolQualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean; thirdPlace?: boolean }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
   const plans = p.playoffPlans ?? p.playoffs.map(() => null);
   if (p.playoffs.length && plans.every(Boolean)) {
-    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), { ...opts, qualifiers: p.poolQualifiers ?? null, bottomHalf: !!p.bottomHalf });
+    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), { ...opts, qualifiers: p.poolQualifiers ?? null, bottomHalf: !!p.bottomHalf, thirdPlace: !!p.thirdPlace });
     if (!chain.reason) return { stages: [main, ...chain.stages], deferredStages: [] };
   }
   return { stages: [main], deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
@@ -660,7 +662,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       divisionId: id, label: d.label, unit: d.doubles ? "pairs" : "players", expectedEntrants: n, groupNumber: d.group,
       ...(kind === "pools" && d.poolNames?.some((x) => x?.trim()) ? { poolLabels: Array.from({ length: f.pools ?? 1 }, (_, i) => d.poolNames?.[i]?.trim() || `Pool ${String.fromCharCode(65 + i)}`) } : {}),
       seeding: { source: "entry_order", method: f.seeding === "random" ? "random" : "snake" },
-      placements: "champion", finalStandings: "last_stage", entrants: [], ...(d.bottomHalf ? { playoffBottomHalf: true } : {}),
+      placements: "champion", finalStandings: "last_stage", entrants: [], ...(d.bottomHalf ? { playoffBottomHalf: true } : {}), ...(d.thirdPlace ? { playoffThirdPlace: true } : {}),
       ...playoffStagesFor({
         id: `${version}-main`, order: 0, kind, name: kind === "knockout" ? "Knockout" : kind === "swiss" ? "Swiss rounds" : kind === "pools" ? "Pools" : "Round robin",
         pools: kind === "pools" || isPooledKnockout(f) ? f.pools : undefined,

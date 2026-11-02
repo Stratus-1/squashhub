@@ -22,6 +22,7 @@ export interface StructuredStageLike {
   name: string;
   order: number;
   mapping?: {
+    losers?: boolean;
     source?: string;
     sourceStageId?: string;
     units?: Array<{ id: string; slots: Array<{ pool: number; position: number }> }>;
@@ -66,7 +67,7 @@ export function stageShort(name: string): string {
  */
 export function knockoutFeeders(stage: StructuredStageLike): Array<{ order: number; a: number | null; b: number | null }> {
   const m = stage.mapping;
-  if (m?.source !== "stage_winners") return [];
+  if (m?.source !== "stage_winners" || m.losers) return [];
   const pos = new Map((m.units ?? []).map((u) => [u.id, u.slots[0]?.position ?? null]));
   return [...(m.matches ?? [])].sort((x, y) => x.order - y.order).map((x) => ({ order: x.order, a: pos.get(x.a) ?? null, b: pos.get(x.b) ?? null }));
 }
@@ -190,6 +191,7 @@ export function playoffDisplayStages(division: StructuredDivisionLike, matches: 
       continue;
     }
     const mapping = stage.mapping;
+    if (mapping?.losers) continue; // 3rd/4th place games never feed the bracket view
     if (mapping?.source !== "stage_winners" || !mapping.sourceStageId) break;
     const srcStage = stages.find((s) => s.id === mapping.sourceStageId);
     const source = orderMatches(matches.filter((m) => m.stage_key === mapping.sourceStageId));

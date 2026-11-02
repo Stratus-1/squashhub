@@ -148,7 +148,7 @@ export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, p
   if (issues.length) throw new IntegrityError("mapping", issues.join("; "));
   const src = st.mapping!.source === "stage_winners" ? d.stages.find((s) => s.id === st.mapping!.sourceStageId) : null;
   const unitPos = new Map(st.mapping!.units.map((u) => [u.id, u.slots[0]?.position]));
-  const feeder = (u: string) => (src ? `Winner ${stageShort(src.name)}${unitPos.get(u)}` : null);
+  const feeder = (u: string) => (src ? `${st.mapping!.losers ? "Loser" : "Winner"} ${stageShort(src.name)}${unitPos.get(u)}` : null);
   return resolveMapping(st.mapping!, positions).map((x) => ({
     ...(src ? { placeholderA: feeder(x.a), placeholderB: feeder(x.b) } : {}),
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "mapped" as const,

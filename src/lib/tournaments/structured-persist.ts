@@ -669,13 +669,14 @@ export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Arr
  * Winners of a finished play-off stage in playing order (round, then game order): out[n-1] = winner of game n.
  * Never falls back to earlier finishing positions — an undecided game blocks.
  */
-export function stageWinners(src: PlannedStage, matches: Array<Record<string, any>>): string[] {
+export function stageWinners(src: PlannedStage, matches: Array<Record<string, any>>, losers = false): string[] {
   const rows = matches.filter((x) => x.stage_key === src.id)
     .sort((a, b) => (a.round_number ?? 1) - (b.round_number ?? 1) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
   return rows.map((x, i) => {
     if (!x.winner_member_id) throw new IntegrityError("prereq", `${src.name}: game ${i + 1} has no winner yet.`);
     const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
-    return String(a).split("+").includes(x.winner_member_id) ? a : b;
+    const aWon = String(a).split("+").includes(x.winner_member_id);
+    return aWon !== losers ? a : b;
   });
 }
 
@@ -692,7 +693,7 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   if (src.kind === "swiss" && Math.max(...done.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) throw new IntegrityError("prereq", `${src.name}: not all Swiss rounds are played yet.`);
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
   const positions = m.source === "stage_winners"
-    ? [stageWinners(src, matches)]
+    ? [stageWinners(src, matches, !!m.losers)]
     : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
   const fixtures = mappedFixtures(tid, d, st, positions);
   const known = new Set(d.entrants.map((e) => e.id));

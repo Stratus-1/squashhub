@@ -36,6 +36,9 @@ export interface SendTemplateEmailOptions {
  * .code and .status for branching.
  */
 export function injectHeader(html: string, header: string): string {
+  // Put the logo row inside the main email column so it lines up with the content.
+  const c = html.match(/<tr style="width:\s*100%;?"\s*>\s*<td[^>]*>/i)
+  if (c) return html.replace(c[0], c[0] + header)
   const m = html.match(/<body[^>]*>/i)
   return m ? html.replace(m[0], m[0] + header) : header + html
 }

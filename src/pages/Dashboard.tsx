@@ -56,6 +56,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { useChampDailyToast } from "@/hooks/use-champ-daily-toast";
 import { useChampBookingReminder } from "@/hooks/use-champ-booking-reminder";
 import { usePendingEftApprovalToast } from "@/hooks/use-pending-eft-toast";
+import { useFamilyLinkNotice } from "@/hooks/use-family-link-notice";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
@@ -169,6 +170,8 @@ export default function Dashboard() {
   useChampBookingReminder(clubId, myMemberId, tournamentsEnabled);
   // Sticky reminder for finance staff when EFT payments await approval.
   usePendingEftApprovalToast(clubId);
+  // Once-off family-package linking notice (all clubs except Uitsig).
+  useFamilyLinkNotice(effectiveClub as any, !isViewingAs && !isPendingApplicant);
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

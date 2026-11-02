@@ -1069,8 +1069,12 @@ export default function Bookings() {
       const combined: Array<{ id: string; name: string; rank: number | null; email: string | null; memberId: string }> = [];
       const seen = new Set<string>();
 
+      // Family members can share one login; each must still be pickable.
+      const loginCount = new Map<string, number>();
+      for (const m of (members || [])) if (m.user_id) loginCount.set(m.user_id, (loginCount.get(m.user_id) || 0) + 1);
       for (const m of (members || [])) {
-        const key = m.user_id || m.id;
+        const shared = !!m.user_id && (loginCount.get(m.user_id) || 0) > 1;
+        const key = shared ? m.id : (m.user_id || m.id);
         if (seen.has(key)) continue;
         if (isVisitorWithoutLivePass(m.role, String(m.id), livePassHolderIds)) continue;
         seen.add(key);
@@ -1078,7 +1082,7 @@ export default function Bookings() {
         // The club roster is the source of truth for names — login profiles are
         // often just a first name, which makes searching by surname fail.
         combined.push({
-          id: m.user_id || m.id,
+          id: key,
           name: m.name || profile?.name || m.email || "Unknown",
           rank: m.ladder_position ?? null,
           email: profile?.email || m.email || null,
@@ -1735,7 +1739,8 @@ export default function Bookings() {
   };
 
   const eligibleOpponents = (() => {
-    const list = (availablePlayers || []).filter((p: any) => p.id !== user?.id);
+    const list = (availablePlayers || []).filter((p: any) =>
+      activeMember?.id ? p.memberId !== activeMember.id && p.id !== activeMember.id : p.id !== user?.id);
 
     if (!bookingDialog) return [] as typeof list;
     // Club Member mode or Friendly mode: show all members

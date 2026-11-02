@@ -13,10 +13,12 @@ Deno.serve(async (req) => {
   )
 
   let onlyIds: string[] | null = null
+  let testEmail: string | null = null
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}))
       if (Array.isArray(body?.ids)) onlyIds = body.ids
+      if (typeof body?.test_email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.test_email.trim())) testEmail = body.test_email.trim().toLowerCase()
     }
   } catch (_) {}
 
@@ -51,6 +53,7 @@ Deno.serve(async (req) => {
 
   try {
     const userId = await financialCaller(req, supabase as any)
+    if (testEmail && (!userId || onlyIds?.length !== 1)) throw new Error('Test send needs a signed-in finance administrator and one invoice')
     if (userId) {
       if (!onlyIds?.length) throw new Error('Choose invoices for financial administration')
       const clubs = new Set<string>((rows ?? []).map((r: any) => r.club_members?.club_id).filter(Boolean))
@@ -68,7 +71,7 @@ Deno.serve(async (req) => {
   for (const r of rows ?? []) {
     const cm: any = r.club_members
     const club: any = cm?.clubs
-    if (!cm?.email || !club) {
+    if ((!cm?.email && !testEmail) || !club) {
       skipped++
       continue
     }
@@ -87,9 +90,9 @@ Deno.serve(async (req) => {
     try {
       const sendResult = await sendAppEmail({
         templateName: 'membership-renewal-invoice',
-        recipientEmail: cm.email,
+        recipientEmail: testEmail || cm.email,
         clubId: cm.club_id,
-        idempotencyKey: `renewal-invoice-${r.id}`,
+        idempotencyKey: testEmail ? `renewal-invoice-test-${r.id}-${Date.now()}` : `renewal-invoice-${r.id}`,
         templateData: {
             memberName: cm.name,
             clubName: club.name,
@@ -107,6 +110,7 @@ Deno.serve(async (req) => {
         },
       })
       if (!sendResult.ok) throw new Error(sendResult.error)
+      if (testEmail) { sent++; continue }
 
       // Atomic: posts member sub-ledger debit AND triggers GL (Dr Debtors / Cr Income)
       const { error: issueErr } = await supabase.rpc('issue_member_invoice', {
@@ -125,6 +129,7 @@ Deno.serve(async (req) => {
       sent++
     } catch (e) {
       console.error('send failed for', r.id, e)
+      if (testEmail) { failed++; continue }
       await supabase
         .from('club_member_fee_payments')
         .update({ invoice_email_status: 'failed' })

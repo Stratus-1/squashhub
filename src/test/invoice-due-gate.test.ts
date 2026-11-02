@@ -40,21 +40,23 @@ suite("issued invoices not yet due do not reduce spending", () => {
   it("a not-yet-due issued invoice does not reduce the available amount (R300 credit + R750 invoice = R1,050)", async () => {
     await sql`INSERT INTO club_member_fee_payments(club_member_id,club_id,paid,amount,invoice_issued_at,invoice_due_date)
       VALUES(${member},${club},false,750,now(),(now() AT TIME ZONE 'Africa/Johannesburg')::date + 30)`;
-    expect(await gate(member)).toMatchObject({ current_owing: 750, allowance: 1050, shortfall: 0 });
+    await sql`INSERT INTO club_journal_entries(club_member_id,club_id,account,debit,credit) VALUES(${member},${club},'debtors',750,0)`;
+    expect(await gate(member)).toMatchObject({ current_owing: "750.00", allowance: "1050.00", shortfall: "0" });
   });
 
   it("an issued invoice past its due date counts against spending again (allowance back to R300)", async () => {
     await sql`UPDATE club_member_fee_payments SET invoice_due_date=(now() AT TIME ZONE 'Africa/Johannesburg')::date - 1 WHERE club_member_id=${member}`;
-    expect(await gate(member)).toMatchObject({ current_owing: 750, allowance: 300, shortfall: 450 });
+    expect(await gate(member)).toMatchObject({ current_owing: "750.00", allowance: "300.00", shortfall: "450.00" });
   });
 
   it("an unsent draft fee (no issue date) never blocks spending", async () => {
     await sql`INSERT INTO club_member_fee_payments(club_member_id,club_id,paid,amount) VALUES(${memberB},${club},false,900)`;
-    expect(await gate(memberB)).toMatchObject({ current_owing: 0, allowance: 300 });
+    expect(await gate(memberB)).toMatchObject({ current_owing: "0.00", allowance: "300.00" });
   });
 
   it("a paid invoice does not count at all", async () => {
     await sql`UPDATE club_member_fee_payments SET paid=true, invoice_issued_at=now(), invoice_due_date=(now() AT TIME ZONE 'Africa/Johannesburg')::date - 5 WHERE club_member_id=${member}`;
-    expect(await gate(member)).toMatchObject({ current_owing: 0, allowance: 300, shortfall: 0 });
+    await sql`INSERT INTO club_journal_entries(club_member_id,club_id,account,debit,credit) VALUES(${member},${club},'debtors',0,750)`;
+    expect(await gate(member)).toMatchObject({ current_owing: "0.00", allowance: "300.00", shortfall: "0" });
   });
 });

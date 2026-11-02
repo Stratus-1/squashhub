@@ -1,3 +1,6 @@
+## 2026-11-02 — Stitch bar confirmation recovery
+- André Visser's Nelspruit tab remained pending despite a provider-confirmed paid checkout. The callback looked only for member sessions and the backup excluded bar sales older than three days. Resolve bar references in the callback through provider verification, remove the bar age cutoff, retain unknown automatic checks, and propagate/retry partial sale/tab writes through the shared finaliser. Recurring handlers unchanged. André's previously verified tab remains paid; no new payment initiated.
+
 ## 2026-11-01 — Public tournament bar hidden behind navigation
 - The fixed QR panel shared the bottom edge with member navigation, hiding its link and close button on phones. Position it above navigation only when present; give Close a dedicated touch-sized top-right position and wrap the app link onto a separate row on phones. Dismissal and tournament/scoring permissions remain unchanged; no data writes.
 

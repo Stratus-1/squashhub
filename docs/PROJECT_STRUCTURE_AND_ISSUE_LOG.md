@@ -4258,3 +4258,6 @@ Added Communications > AGM voting: draft ballot, voter list, personal one-time l
 
 ## 2026-11-02 Regional league fee invoice timing
 League fees gain "When allocated to a team" (trigger creates unsent invoice, reserves included, ladies fee) or "End of season (import)"; Annual Renewals has Import league fees (xlsx/csv, matches league number, member number, unique name).
+
+## 2026-11-02 3rd/4th place play-off
+Structure page "Planned playoffs" gains a 3rd/4th place tick (shown with Semifinal + Final); semifinal losers play before the final, plus 7th/8th when Bottom half too is on. All clubs.

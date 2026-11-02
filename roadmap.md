@@ -94,3 +94,6 @@
 - [x] Appointed Deon Groenewald as Uitsig treasurer (club_offices + clubs.treasurer_member_id).
 - [x] Fixed GL account permission block: club_gl_accounts only allowed full club admins; added finance-staff policy matching other finance tables. Deon passes finance permission check; migration 0328 applied.
 - [x] Offline scoring wording: choice screen explains live (good internet, every point synced) vs offline (unstable internet, auto-syncs where possible); viewers see "LIVE · offline" with auto-sync note. Verified in preview; test data restored.
+
+- [ ] Uitsig NSA fees: verify supplied member list by NSA number, add to annual billing invoices for review before sending (waiting on list)
+- [ ] NSA fee charging rules per club (plan parked by user)

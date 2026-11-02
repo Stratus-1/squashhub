@@ -749,8 +749,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
    */
   const updateTournamentFixtures = async (tid: string, plan: any) => {
     assertTournamentPairingWritable(tid);
-    const attached = await attachTimelinePlayoffs(tid, plan).catch((e: any) => { toast.error(`Play-offs not added to the running tournament: ${e?.message ?? "unknown error"}`); return false; });
-    const made = await createPlannedPlayoffFixtures(tid, plan).catch((e: any) => { toast.error(`Play-off fixtures not created: ${e?.message ?? "unknown error"}`); return 0; });
+    const attached = await attachTimelinePlayoffs(tid, plan);
+    const made = await createPlannedPlayoffFixtures(tid, plan);
     return { attached, made };
   };
   const saveSetupDraft = async () => {

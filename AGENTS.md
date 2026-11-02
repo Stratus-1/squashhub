@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Explicit play-off setup saves retain supported structure flags, append loser branches without rewriting existing stages, and refresh pending slots through the shared session resolver; placeholder identities and player bookings survive repeat saves. Why: setup, progression and Upcoming must agree without regenerating played draws.
 - Family additions use pending club membership and separate administrator approval/recipient acceptance; activation and fee-payer changes use a private atomic writer, and generic application approval delegates to it. Why: adding or claiming a relative must not bypass club approval or change existing members before consent.
 - Chairman guards deny financial transactions; banking configuration and configured unpaid membership/owned-entry fees use scoped server actions with private transaction/target contexts, preserving identity and consent guards. Why: routine administration must not grant payment/waiver authority.
 - Tournament final-ladder adjustments use a club-scoped, permission-checked preview/apply RPC with completion and stale-preview guards; only participants' occupied slots change, and an explicit tournament timing choice preserves legacy per-match behaviour until selected. Why: final standings must not reseed outsiders or mutate ladders during viewing/deployment.

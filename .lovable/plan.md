@@ -1,0 +1,33 @@
+# NSA league fee charging rules (per club)
+
+## Recommendation
+Put the charging rule **inside the fee itself** (the "Northern Squash Association" row under Fees payable to the club), not in a separate NSA settings screen. Each club already has its own NSA fee row, so each club sets its own rule there. The same rule can then be used for any league fee (RIL, RDL, etc.), not only NSA.
+
+## What the club picks when editing the fee: "How is this fee charged?"
+1. **Fixed annual amount** (today's behaviour): one amount, billed on the due date.
+2. **When joining the league**: billed once when the player is placed in a team or reserve list for that season.
+3. **Per game played**: amount × games played in the season (for example R40 per game), with an optional maximum (cap).
+4. **Games-played brackets**: a small table, for example:
+
+| Games played | Men | Ladies |
+|---|---:|---:|
+| 1–5 | R... | R... |
+| 6–10 | R... | R... |
+| 11+ | R750 | R650 |
+
+Every option allows **separate Men / Ladies amounts** (e.g. Men R750, Ladies R650) and an optional cap.
+
+## Billing
+- Annual invoices get an **"NSA / league fees"** tick option. When chosen, the app calculates each member's amount from the fee's rule and shows a **preview list** (member, games counted, bracket, amount) before anything is billed.
+- Games counted = league games actually played in that league's season (walkovers/unplayed excluded unless the club chooses otherwise).
+- Bills once per member per season; re-running never charges twice, only tops up or shows a difference for approval.
+- The money still flows as today: member pays club, club owes the association.
+
+## Needed from you before building
+- Uitsig's actual brackets (games ranges and amounts for men and ladies).
+- Which games count: league only, or also reserves/subbing; walkovers yes or no.
+- Season dates the games are counted over, and when the invoice is raised (end of season or annually).
+
+## Technical details
+- Extend the fee schedule row with a charging mode, gender amounts, cap and bracket list (additive; existing fees default to Fixed annual, so nothing changes for current clubs).
+- One read-only calculation that both the preview and the billing step use, plus tests per rule (per-game, bracket edges, cap, men/ladies, no double billing).

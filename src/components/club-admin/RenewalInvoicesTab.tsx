@@ -103,6 +103,36 @@ export function RenewalInvoicesTab({ clubId }: Props) {
     }
   };
 
+  const [sendingAll, setSendingAll] = useState(false);
+  const sendAll = async () => {
+    const ids = (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).map(r => r.id);
+    if (!ids.length) return;
+    setSendingAll(true);
+    let sent = 0, failed = 0, skipped = 0;
+    try {
+      for (let i = 0; i < ids.length; i += 20) {
+        const { data, error } = await supabase.functions.invoke("send-renewal-invoices", { body: { ids: ids.slice(i, i + 20) } });
+        if (error) throw error;
+        const r = data as any;
+        sent += r.sent || 0; failed += r.failed || 0; skipped += r.skipped || 0;
+      }
+      toast.success(`Sent ${sent}${failed ? `, ${failed} failed` : ""}${skipped ? `, ${skipped} skipped (no email)` : ""}`);
+    } catch (e: any) {
+      toast.error(e.message || "Send failed");
+    } finally {
+      setSendingAll(false);
+      qc.invalidateQueries({ queryKey: ["renewal-invoices", clubId] });
+    }
+  };
+
+  const sendTest = async (id: string) => {
+    const email = window.prompt("Send a test copy of this invoice to which email? (The member is not charged or emailed.)");
+    if (!email) return;
+    const { data, error } = await supabase.functions.invoke("send-renewal-invoices", { body: { ids: [id], test_email: email } });
+    if (error || !(data as any)?.sent) toast.error("Test email failed");
+    else toast.success(`Test invoice sent to ${email}`);
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r: any) => {
@@ -161,6 +191,26 @@ export function RenewalInvoicesTab({ clubId }: Props) {
                   onClick={() => deleteAll.mutate()}>
                   Delete all pending
                 </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={sendingAll || (rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length === 0}>
+                {sendingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Send all ((rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length)
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Send all pending invoices?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This emails <strong>{(rows as any[]).filter(r => !r.paid && !r.invoice_email_sent_at).length}</strong> invoice(s) and adds each amount to the member's account. Members without an email address are skipped.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={sendAll}>Send all</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -235,6 +285,11 @@ export function RenewalInvoicesTab({ clubId }: Props) {
                             onClick={() => setPreviewId(r.id)}>
                             <Eye className="w-3 h-3" /> Preview
                           </Button>
+                          {!r.paid && !r.invoice_email_sent_at && (
+                            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => sendTest(r.id)}>
+                              Send test
+                            </Button>
+                          )}
                           {!r.paid && !r.invoice_email_sent_at && (
                             <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
                               disabled={sendingId === r.id} onClick={() => sendNow(r.id)}>

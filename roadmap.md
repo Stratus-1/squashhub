@@ -1,7 +1,9 @@
 # Roadmap
 
 - [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.
-- [ ] Finalise Nelspruit reconciliation and import verified missing bank transactions/opening balances — blocked by original September/October bank statements and Sage trial balances at 31 August/31 October 2026; no financial writes made.
+- [x] Import verified September/October original bank statement rows without ledger posting or duplicate income.
+- [ ] Finalise Nelspruit ledger allocations/opening balances — verify split/grouped records and obtain Sage trial balances at 31 August/31 October 2026.
+- [ ] Verify Stitch payout fees separately from per-payment fees; record only confirmed missing fees, without duplicates.
 
 - [x] Issued invoices not yet due must not reduce available-to-spend (gate ignores them until the due date).
 - [x] Add/verify explanatory text in My Account and the dashboard: invoices not yet due are excluded from "available to spend".

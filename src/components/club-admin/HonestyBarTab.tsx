@@ -787,6 +787,16 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
         </div>
       )}
 
+      {form.item_kind === "made_to_order" && (
+        <div>
+          <Label className="text-xs">Cost price per serving (R)</Label>
+          <Input type="number" min={0} step={0.01} value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0.00" />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            What one serving roughly costs you to make. Used on the income statement for cost of sales — leaving it 0 shows those sales as provisional.
+          </p>
+        </div>
+      )}
+
       {form.item_kind === "option" && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-md border p-2.5">
           <div className="sm:col-span-3">

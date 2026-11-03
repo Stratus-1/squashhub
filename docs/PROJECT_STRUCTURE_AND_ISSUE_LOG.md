@@ -4271,3 +4271,9 @@ League fees gain "When allocated to a team" (trigger creates unsent invoice, res
 
 ## 2026-11-02 3rd/4th place play-off
 Structure page "Planned playoffs" gains a 3rd/4th place tick (shown with Semifinal + Final); semifinal losers play before the final, plus 7th/8th when Bottom half too is on. All clubs.
+
+## 2026-11-03 Restaurant (made-to-order) cost price
+Item form gains "Cost price per serving" for made-to-order (restaurant) items; `income_statement_sale_costs` already prices their sales from `cost_price` when there are no stock movements, so entering a cost removes those sales from the provisional/uncosted margin list.
+
+## 2026-11-03 Nelspruit reconstruction: small payments and interest
+Posted UIF R82 (18 Sep, salaries), interest received R216.98 (26 Sep) and R235.16 (28 Oct) via new standalone "Interest received" income heading; linked the already-recorded 23 Oct paint R1,043.97 and cleaning supplies R925.40 entries to their bank lines. 45/125 statement lines now recorded.

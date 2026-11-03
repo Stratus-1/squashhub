@@ -14263,6 +14263,38 @@ export type Database = {
         }
         Relationships: []
       }
+      mobile_platform_admin_inspection_audit: {
+        Row: {
+          action: string
+          admin_user_id: string
+          club_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          club_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_platform_admin_inspection_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       national_body_fees: {
         Row: {
           abbreviation: string | null
@@ -24052,10 +24084,20 @@ export type Database = {
           p_court_id: number
           p_date: string
           p_duration_minutes: number
+          p_guest_name?: string
           p_ignore_booking_id?: string
           p_member_id: string
           p_opponent_member_id?: string
           p_start_time: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_booking_availability: {
+        Args: {
+          p_club_id: string
+          p_date: string
+          p_member_id: string
           p_sync_secret: string
         }
         Returns: Json
@@ -24079,6 +24121,7 @@ export type Database = {
           p_court_id: number
           p_date: string
           p_duration_minutes: number
+          p_guest_name?: string
           p_is_friendly?: boolean
           p_light_fee_split?: string
           p_lights_requested?: boolean
@@ -24153,6 +24196,30 @@ export type Database = {
         Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
         Returns: Json
       }
+      mobile_member_spend_summary: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
+      mobile_platform_admin_club_overview: {
+        Args: {
+          p_admin_user_id: string
+          p_club_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_platform_admin_clubs: {
+        Args: {
+          p_admin_user_id: string
+          p_search?: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_player_club_context: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
       mobile_player_home_payload: {
         Args: {
           p_club_id: string
@@ -24161,6 +24228,10 @@ export type Database = {
           p_sync_secret: string
           p_to?: string
         }
+        Returns: Json
+      }
+      mobile_resolve_auth_user_club_access: {
+        Args: { p_auth_user_id: string; p_email: string; p_sync_secret: string }
         Returns: Json
       }
       mobile_resolve_google_club_access: {

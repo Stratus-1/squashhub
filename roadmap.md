@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Reconcile Nelspruit September/October accountant reports against bank imports and existing ledger; import only verified missing bank rows without posting duplicate income; identify opening-balance blockers.
+- [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.
+- [ ] Finalise Nelspruit reconciliation and import verified missing bank transactions/opening balances — blocked by original September/October bank statements and Sage trial balances at 31 August/31 October 2026; no financial writes made.
 
 - [x] Issued invoices not yet due must not reduce available-to-spend (gate ignores them until the due date).
 - [x] Add/verify explanatory text in My Account and the dashboard: invoices not yet due are excluded from "available to spend".

@@ -15,3 +15,4 @@
 - [x] Refresh pending play-off fixture information after explicit saved setup changes, preserving played games and player bookings.
 - [x] Uitsig hang (2026-11-02): transient issue on Manage Tournaments; recovered on its own. Backend checks healthy, club landing ~1.6s on the live site, admin finance pages slow only on first preview load.
 - [ ] Watch: Google sign-in on a club where the member isn't listed shows a blocking "Is this a new membership application?" popup (GoogleIdentityCheck) — confirm whether Willem should be exempt (2026-11-02)
+- [x] Nelspruit Makro payments reviewed: stay recorded as bar cost of sales (not Stock on hand), tuck-shop stays under Bar — Willem's choice, no ledger changes.

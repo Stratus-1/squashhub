@@ -5,8 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 import { goBookBalance, goBookBalances } from "../../supabase/functions/_shared/gobook-balance";
 
 describe("GoBook balance snapshots", () => {
-  it("keeps separate accounts and excludes other providers", () => {
-    expect(goBookBalances([{ clientId: 158, providerId: 1, balance: 10, accountName: "Lights" }, { clientId: 158, providerId: 1, balance: 20, accountName: "Bookings" }, { clientId: 158, providerId: 2, balance: 900 }], 158, 1).map(a => a.balance)).toEqual([10, 20]);
+  it("returns only Lights and excludes POS, Subscription and other providers", () => {
+    expect(goBookBalances([
+      { clientId: 158, providerId: 1, balance: -25.6, accountName: "Lights Account" },
+      { clientId: 158, providerId: 1, balance: -100, accountName: "POS Account" },
+      { clientId: 158, providerId: 1, balance: 4950, accountName: "Subscription Account" },
+      { clientId: 158, providerId: 2, balance: 900, accountName: "Lights" },
+      { clientId: 159, providerId: 1, balance: 900, accountName: "Lights" },
+    ], 158, 1)).toEqual([{ balance: -25.6, asAt: null, accountName: "Lights Account" }]);
   });
   it("returns only the requested client and provider refresh date", () => {
     expect(goBookBalance([{ clientId: 158, balance: 125.5, asAt: "2026-10-27T10:00:00Z" }, { clientId: 159, balance: 900 }], 158))
@@ -32,7 +38,7 @@ function harness({ owner = true, enabled = true, linked = true, adminRole = fals
     const url = new URL(input);
     if (url.pathname === "/Authentication/Token") return Response.json({ success: true, token: "fake" });
     calls.push(url.pathname + url.search);
-    return Response.json([{ clientId: 158, providerId: 1, balance: 125.5, asAt: "2026-10-27T10:00:00Z" }, { clientId: 159, providerId: 1, balance: 900 }]);
+    return Response.json([{ clientId: 158, providerId: 1, accountName: "Lights Account", balance: 125.5, asAt: "2026-10-27T10:00:00Z" }, { clientId: 158, providerId: 1, accountName: "POS Account", balance: -100 }, { clientId: 158, providerId: 1, accountName: "Subscription Account", balance: 4950 }, { clientId: 159, providerId: 1, accountName: "Lights", balance: 900 }]);
   });
   const admin = {
     auth: { getUser: async () => ({ data: { user: { id: "user" } } }) },
@@ -55,7 +61,9 @@ function harness({ owner = true, enabled = true, linked = true, adminRole = fals
 describe("GoBook authenticated balance action", () => {
   it("uses the saved member link, ignores supplied client IDs, returns only that balance", async () => {
     const h = harness();
-    expect(await (await h.run()).json()).toMatchObject({ state: "available", accounts: [{ balance: 125.5 }] });
+    const result = await (await h.run()).json();
+    expect(result.state).toBe("available");
+    expect(result.accounts).toEqual([{ balance: 125.5, accountName: "Lights Account", asAt: "2026-10-27T10:00:00Z" }]);
     expect(h.calls).toEqual(["/Financials/Balances?clientId=158"]);
   });
   it("rejects another user's member profile", async () => {

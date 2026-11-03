@@ -4,7 +4,7 @@ import { Loader2, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useClubCurrency } from "@/hooks/use-currency";
-import { goBookBalanceTone, memberGoBookBalance } from "@/lib/gobook-member-balance";
+import { goBookBalanceTone, memberGoBookBalance, goBookLightsAccounts } from "@/lib/gobook-member-balance";
 
 type Balance = { state: "available" | "not_linked" | "unavailable"; accounts?: { balance: number; asAt: string | null; accountName: string }[] };
 
@@ -39,7 +39,9 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
         throw error;
       }
       if (data?.error) throw new Error(data.error);
-      return data as Balance;
+      const result = data as Balance;
+      const accounts = goBookLightsAccounts(result.accounts ?? []);
+      return { ...result, accounts, state: result.state === "available" && !accounts.length ? "unavailable" : result.state };
     },
   });
   if (!enabled || !memberId) return null;
@@ -48,13 +50,13 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
       <div className="flex items-center gap-3 min-w-0">
         <Wallet className="h-5 w-5 shrink-0 text-primary" />
         <div className="min-w-0">
-          <p className="font-semibold">GoBook / Court Manager balance</p>
+          <p className="font-semibold">GoBook / Court Manager Lights balance</p>
           <div aria-live="polite">
             {query.isPending ? <span className="text-muted-foreground">Loading balance…</span> :
               query.isError ? <span className="text-destructive">{query.error.message}</span> :
               query.data?.state === "not_linked" ? <span className="text-muted-foreground">GoBook member account not linked</span> :
               query.data?.state !== "available" ? <span className="text-muted-foreground">Balance unavailable from GoBook</span> :
-              <div className="flex flex-wrap gap-x-6 gap-y-2">{query.data.accounts?.map((account, index) => {
+              <div className="flex flex-wrap gap-x-6 gap-y-2">{goBookLightsAccounts(query.data.accounts ?? []).map((account, index) => {
                 const memberValue = memberGoBookBalance(account.balance);
                 const tone = goBookBalanceTone(memberValue);
                 return <div key={`${account.accountName}-${index}`}>

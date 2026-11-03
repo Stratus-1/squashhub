@@ -8,6 +8,11 @@ export function memberGoBookBalance(raw: number): number {
   return raw === 0 ? 0 : -raw;
 }
 
+/** Also filters older cached/server responses before they reach the member UI. */
+export function goBookLightsAccounts<T extends { accountName: string }>(accounts: T[]): T[] {
+  return accounts.filter(account => /^lights(?:\s+account)?$/i.test(account.accountName.trim()));
+}
+
 export type GoBookBalanceTone = "success" | "destructive" | "muted";
 
 export function goBookBalanceTone(memberValue: number): GoBookBalanceTone {

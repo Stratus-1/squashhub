@@ -2,7 +2,8 @@
 
 - [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.
 - [x] Import verified September/October original bank statement rows without ledger posting or duplicate income.
-- [ ] Prepare review-only Nelspruit September/October reconstruction from verified bank controls, proposed missing entries and evidence-based 31 October balances; no August trial balance available. Preserve current records before any later approved postings.
+- [x] Prepare review-only Nelspruit September/October reconstruction: 125 bank movements, 51 allocation candidates, five verified payout equations and scoped existing-ledger snapshot; no ledger postings.
+- [ ] Finalise and approve Nelspruit closing balances/postings — needs grouped allocation review, member opening-history verification, supplier statements, cash/stock counts and asset evidence; no August trial balance required. Snapshot is not a full or tested restore.
 - [x] Verify historical Stitch payout fees separately: five September/October fees total R20.70, already recorded; no duplicate fees added.
 
 - [x] Issued invoices not yet due must not reduce available-to-spend (gate ignores them until the due date).

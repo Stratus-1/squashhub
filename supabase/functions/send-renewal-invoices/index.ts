@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     try {
-      const payNowUrl = club.payment_gateway ? await invoicePayUrl(r.id) : undefined
+      const payNowUrl = club.payment_gateway ? await invoicePayUrl(r.id, club.subdomain) : undefined
       let attachments: { filename: string; content: Uint8Array }[] | undefined
       try {
         const pdfBytes = await buildInvoicePdf({

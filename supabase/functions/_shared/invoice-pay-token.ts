@@ -26,7 +26,10 @@ export async function verifyInvoicePayToken(feePaymentId: string, token: string)
   return diff === 0;
 }
 
-export async function invoicePayUrl(feePaymentId: string) {
-  const base = Deno.env.get("SUPABASE_URL")!;
-  return `${base}/functions/v1/invoice-pay?i=${feePaymentId}&t=${await invoicePayToken(feePaymentId)}`;
+// Email links point at the club's own squashhub.co.za page (not the raw backend URL),
+// because corporate link scanners (e.g. Mimecast) block/blank auto-redirecting backend links.
+// That page shows a "Continue to secure payment" button that opens the function below.
+export async function invoicePayUrl(feePaymentId: string, subdomain?: string | null) {
+  const origin = subdomain ? `https://${subdomain}.squashhub.co.za` : "https://squashhub.co.za";
+  return `${origin}/pay-invoice?i=${feePaymentId}&t=${await invoicePayToken(feePaymentId)}`;
 }

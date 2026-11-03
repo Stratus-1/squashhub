@@ -2444,6 +2444,13 @@
       "when": 1793647969377,
       "tag": "0348_organiser_winner_change_correction",
       "breakpoints": true
+    },
+    {
+      "idx": 349,
+      "version": "7",
+      "when": 1793713961102,
+      "tag": "0349_mobile_booking_policy_and_admin_inspection",
+      "breakpoints": true
     }
   ]
 }

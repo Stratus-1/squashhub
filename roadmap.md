@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Reconcile Nelspruit September/October accountant reports against bank imports and existing ledger; import only verified missing bank rows without posting duplicate income; identify opening-balance blockers.
+
 - [x] Issued invoices not yet due must not reduce available-to-spend (gate ignores them until the due date).
 - [x] Add/verify explanatory text in My Account and the dashboard: invoices not yet due are excluded from "available to spend".
 - [x] Diagnose Uitsig Men's A / Ladies B placement finals missing from Upcoming Fixtures and saved dates/courts.

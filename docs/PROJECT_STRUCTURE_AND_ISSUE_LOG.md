@@ -1,3 +1,7 @@
+## 2026-11-03 — GoBook Lights-only balances
+- Exclude POS and Subscription accounts from the authenticated GoBook balance response and shared My Account/booking display, including older cached responses. Preserve Lights credit signs, club/member ownership and read-only snapshots; no ledger or member balances changed.
+- Focused regression coverage uses the reported Lights R25.60, POS R100 and Subscription R4,950 values and verifies only Lights reaches the response/display selection.
+
 ## 2026-11-02 — Late Uitsig placement finals and saved timetable
 - Saved Men's A / Ladies B third-place selections were dropped by the draw-plan bridge, existing stages bypassed attachment, and mixed-format Swiss filtering hid play-off placeholders. Retain structure flags, append one loser branch per selected category, preserve existing stages/placeholders, use loser labels and show placement rounds in the shared progression bracket.
 - Explicit setup saves refresh pending, unbooked play-off slots from latest saved sessions; placement games precede Finals, bottom categories first. Capacity conflicts fail visibly; no silent success when fixture refresh fails. Unknown-player slots expose no marking or participant-replacement action.

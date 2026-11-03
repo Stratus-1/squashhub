@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { goBookBalanceTone, memberGoBookBalance } from "@/lib/gobook-member-balance";
+import { goBookBalanceTone, memberGoBookBalance, goBookLightsAccounts } from "@/lib/gobook-member-balance";
 
 describe("GoBook member-facing balance display", () => {
+  it("excludes cached POS and Subscription balances while preserving Lights credit", () => {
+    const accounts = goBookLightsAccounts([
+      { accountName: "Lights Account", balance: -25.6 },
+      { accountName: "POS Account", balance: -100 },
+      { accountName: "Subscription Account", balance: 4950 },
+    ]);
+    expect(accounts).toEqual([{ accountName: "Lights Account", balance: -25.6 }]);
+    expect(memberGoBookBalance(accounts[0].balance)).toBe(25.6);
+  });
   it("shows Court Manager credit (negative raw) as a positive member balance", () => {
     expect(memberGoBookBalance(-298.36)).toBe(298.36);
   });

@@ -23,7 +23,8 @@ export function goBookBalance(value: unknown, clientId: number): { balance: numb
 }
 
 export function goBookBalances(value: unknown, clientId: number, providerId: number) {
-  return rows(value).filter(row => Number(row.clientId) === clientId && Number(row.providerId) === providerId)
+  return rows(value).filter(row => Number(row.clientId) === clientId && Number(row.providerId) === providerId
+    && typeof row.accountName === "string" && /^lights(?:\s+account)?$/i.test(row.accountName.trim()))
     .flatMap(row => {
       const result = goBookBalance([row], clientId);
       return result ? [{ ...result, accountName: typeof row.accountName === "string" ? row.accountName : "Court Manager" }] : [];

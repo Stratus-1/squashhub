@@ -2479,6 +2479,13 @@
       "when": 1793774007015,
       "tag": "0353_mobile_player_competition_payload_names",
       "breakpoints": true
+    },
+    {
+      "idx": 354,
+      "version": "7",
+      "when": 1793774089634,
+      "tag": "0354_mobile_resolver_linked_memberships",
+      "breakpoints": true
     }
   ]
 }

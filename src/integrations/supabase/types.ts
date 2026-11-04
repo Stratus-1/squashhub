@@ -21089,6 +21089,10 @@ export type Database = {
         }
         Returns: string
       }
+      _settle_member_renewal_invoices: {
+        Args: { _member: string }
+        Returns: number
+      }
       accept_tournament_invite: {
         Args: {
           p_accept: boolean

@@ -34,9 +34,14 @@ export function parseCaseAction(input: unknown): CaseAction | null {
   return { action: "set_status", ...base, target_status: b.target_status };
 }
 
-/** Hash of the full request (the reply text is hashed, never stored). */
+/**
+ * Hash of the request identity (the reply text is hashed, never stored).
+ * expected_revision is deliberately excluded: a retry of the same key may carry
+ * an advanced revision and must replay the saved receipt. First application
+ * still enforces expected_revision against the latest event in the RPC.
+ */
 export async function requestHash(a: CaseAction): Promise<string> {
-  const canonical = JSON.stringify([a.action, a.event_id, a.expected_revision, a.tenant_scope_ref,
+  const canonical = JSON.stringify([a.action, a.event_id, a.tenant_scope_ref,
     a.action === "reply" ? a.message : a.target_status]);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
   return [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("");

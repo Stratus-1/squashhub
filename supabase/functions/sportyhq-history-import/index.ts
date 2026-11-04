@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
       }
 
       const opponentMemberId =
-        (r.opponent_user_id ? memberByShqId.get(r.opponent_user_id) ?? null : null) ??
+        (r.opponent_user_id ? memberByShqId.get(r.opponent_user_id) : undefined) ??
         (r.opponent_slug
           ? memberBySlug.get(r.opponent_slug) ??
             memberBySlug.get(r.opponent_slug.replace(/-\d+$/, "")) ??

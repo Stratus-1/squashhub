@@ -24244,6 +24244,16 @@ export type Database = {
         }
         Returns: Json
       }
+      mobile_player_home_payload_base: {
+        Args: {
+          p_club_id: string
+          p_from?: string
+          p_member_id: string
+          p_sync_secret: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       mobile_resolve_auth_user_club_access: {
         Args: { p_auth_user_id: string; p_email: string; p_sync_secret: string }
         Returns: Json

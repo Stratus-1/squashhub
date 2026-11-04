@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Player booking cap bypasses stay inside the existing assert/availability RPCs and use the booking member's club-scoped web permission helper; the bypass ends before balance enforcement and never grants eligibility or conflict exceptions, because Firebase must share web policy without a second authority.
 - Explicit play-off setup saves retain supported structure flags, append loser branches without rewriting existing stages, and refresh pending slots through the shared session resolver; placeholder identities and player bookings survive repeat saves. Why: setup, progression and Upcoming must agree without regenerating played draws.
 - Family additions use pending club membership and separate administrator approval/recipient acceptance; activation and fee-payer changes use a private atomic writer, and generic application approval delegates to it. Why: adding or claiming a relative must not bypass club approval or change existing members before consent.
 - Chairman guards deny financial transactions; banking configuration and configured unpaid membership/owned-entry fees use scoped server actions with private transaction/target contexts, preserving identity and consent guards. Why: routine administration must not grant payment/waiver authority.

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Audit and apply Player booking permission-cap parity in the two existing RPCs (0355); verify live definitions/signatures/grants and isolated PostgreSQL regressions without publishing or production-row changes.
+
 - [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.
 - [x] Import verified September/October original bank statement rows without ledger posting or duplicate income.
 - [x] Prepare review-only Nelspruit September/October reconstruction: 125 bank movements, 51 allocation candidates, five verified payout equations and scoped existing-ledger snapshot; no ledger postings.

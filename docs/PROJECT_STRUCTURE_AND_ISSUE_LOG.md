@@ -1064,6 +1064,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-11-04 · Player booking permission-cap parity
+- **Symptom:** Player readiness/availability rejected or hid slots that web-authorized unlimited-booking members could use.
+- **Finding:** Both RPCs enforced caps without `is_club_admin_or_permitted`; readiness classified a proposed peak slot by overlap rather than the web's start-inclusive/end-exclusive start-time rule.
+- **Fix:** Applied `drizzle/migrations/0355_mobile_booking_permission_cap_parity.sql`, with reviewed-live-definition hashes to abort atomically on drift. Resolve `bookings_unlimited` and `bookings_unlimited_non_peak` from the booking member's saved user ID and selected club. The former (including existing admin/full-admin grants) skips daily, peak and adjacency caps; the latter skips them only for off-peak proposed starts, including explicit off-days. Like the web, this actor bypass covers the selected opponent's existing cap checks, never uses the opponent's privilege to authorize the actor, and ends before the unchanged minimum-balance gate.
+- **Guard:** Disposable PostgreSQL suite exercises actual existing web permission/peak helpers and migration: ordinary caps, club/full admin, direct/inherited unlimited permission, off-peak-only, peak boundaries/off-days, selected opponent, foreign club, suspension/manual hold, balance, solo requirement, grid/duration/hours and collisions. Live RPC definition diff and unchanged signatures/grants verified; PUBLIC revoked and anon/authenticated/service_role remain secret-gated. No new tables, auth changes, visitor-fee charging/reminder changes, production-row writes or app publication. Firebase authenticated end-to-end adapter flow not exercised here; readiness remains the final eligibility/balance/second-player authority, while availability retains its existing projection scope.
+
 ### 2026-11-02 · League-permitted staff cannot persist doubles pairs
 - **Symptom:** Production RLS errors on league registration/pair saves leave step-by-step teams without their allocations.
 - **Finding:** Registration access is already repaired by applied 0339. Current pair policies still allow only admins/captains; the UI permits staff with Leagues permission. Existing pair-scope trigger derives club/season from the team and rejects foreign-club players.

@@ -2486,6 +2486,13 @@
       "when": 1793774089634,
       "tag": "0354_mobile_resolver_linked_memberships",
       "breakpoints": true
+    },
+    {
+      "idx": 355,
+      "version": "7",
+      "when": 1793776806681,
+      "tag": "0355_mobile_booking_permission_cap_parity",
+      "breakpoints": true
     }
   ]
 }

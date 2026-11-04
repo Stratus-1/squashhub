@@ -56,10 +56,37 @@ describe("Player native checkout bridge", () => {
     expect((await response.json()).redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
     expect(b.generateLink).toHaveBeenCalledWith({ type: "magiclink", email, options: { redirectTo: `https://riverside.squashhub.co.za${path}` } });
   });
-  it.each([",", "%2c"])("accepts %s-separated fee IDs and an optional description unchanged", async (separator) => {
+  it.each([",", "%2c", "%2C"])("accepts %s-separated fee IDs and an optional description unchanged", async (separator) => {
     const b = bridge();
     const path = `${basePath}${separator}${fee}&description=Club%20fees`;
     expect((await b.send({ redirectPath: path })).status).toBe(200);
+    expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
+  });
+  it("accepts several fee IDs whose comma separators are all uppercase %2C", async () => {
+    const b = bridge();
+    const path = `/mobile-checkout?gateway=stitch&purpose=fee&amount=600.00&fee_ids=${fee}%2C${fee}%2C${fee}`;
+    expect((await b.send({ redirectPath: path })).status).toBe(200);
+    expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
+  });
+  it("accepts fee IDs whose comma separators mix %2c and %2C encodings", async () => {
+    const b = bridge();
+    const path = `/mobile-checkout?gateway=stitch&purpose=fee&amount=600.00&fee_ids=${fee}%2C${fee}%2c${fee}`;
+    expect((await b.send({ redirectPath: path })).status).toBe(200);
+    expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
+  });
+  it("accepts the live Firebase URLSearchParams shape with an encoded description", async () => {
+    const b = bridge();
+    const path = "/mobile-checkout?" + new URLSearchParams({
+      gateway: "stitch",
+      purpose: "fee",
+      amount: "600.00",
+      fee_ids: `${fee},${fee}`,
+      description: "Uitsig membership fees",
+    }).toString();
+    expect(path).toContain("fee_ids=" + fee + "%2C" + fee);
+    const response = await b.send({ redirectPath: path });
+    expect(response.status).toBe(200);
+    expect((await response.json()).redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
     expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
   });
   it.each(["yoco", "stitch", "paynow", "payfast"])("passes the exact %s wallet top-up path to magic-link generation", async (gateway) => {

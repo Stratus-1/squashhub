@@ -3,8 +3,7 @@
 // SquashHub platform-admin check for the IAP email. Fail closed; never logs case content.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3";
-import { parseOperatorEmails } from "../help-center-case-context/context-contract.ts";
-import { httpStatusFor, parseCaseAction, requestHash } from "./contract.ts";
+import { httpStatusFor, parseCaseAction, parseOperatorEmails, requestHash } from "./contract.ts";
 import { sendAppEmail } from "../_shared/send-app-email.ts";
 
 const GOOGLE_KEYS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));

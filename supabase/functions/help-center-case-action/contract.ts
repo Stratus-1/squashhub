@@ -47,3 +47,16 @@ const ERROR_STATUS: Record<string, number> = {
   event_held: 409, stale_revision: 409, idempotency_conflict: 409, status_unchanged: 409,
 };
 export const httpStatusFor = (code: string) => ERROR_STATUS[code] ?? 503;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Identical to help-center-case-context's exact operator allowlist parser (kept local so the function bundles alone). */
+export function parseOperatorEmails(raw: string | undefined): Set<string> {
+  if (!raw) return new Set();
+  try {
+    const values: unknown = JSON.parse(raw);
+    if (!Array.isArray(values) || values.length > 32 || values.some((value) => typeof value !== "string" || !EMAIL_RE.test(value.trim()))) return new Set();
+    return new Set(values.map((value: string) => value.trim().toLowerCase()));
+  } catch {
+    return new Set();
+  }
+}

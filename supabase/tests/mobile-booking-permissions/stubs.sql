@@ -39,7 +39,7 @@ AS $function$
           OR _permission = ANY(cpr.permissions)
         )
     );
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.club_peak_window(_club clubs, _date date, OUT peak_start time without time zone, OUT peak_end time without time zone)
  RETURNS record
@@ -61,5 +61,5 @@ BEGIN
   ELSE
     peak_start := COALESCE(_club.peak_weekday_start, time '16:00'); peak_end := COALESCE(_club.peak_weekday_end, time '19:00');
   END IF;
-END $function$
+END $function$;
 

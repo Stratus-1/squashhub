@@ -251,7 +251,8 @@ Deno.serve(async (req) => {
         _club_id: body.clubId, _club_member_id: body.memberId, _sync_secret: secret,
       });
       if (tabError || !tab?.tab_id || !tab?.token) return json(400, { error: tabError?.message || "Could not open your club tab" });
-      const orderProcess = orderProcessEnabled;
+      const { data: orderProcess, error: recheckError } = await db.rpc("bar_order_process_status", { _club_id: body.clubId });
+      if (recheckError || typeof orderProcess !== "boolean") return json(503, { error: "Could not read the club's bar order setting" });
       const operation = orderProcess
         ? await db.rpc("bar_submit_guest_order", {
           _tab_id: tab.tab_id, _token: tab.token,

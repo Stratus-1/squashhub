@@ -21518,15 +21518,25 @@ export type Database = {
         Returns: string
       }
       bar_accepting_orders: { Args: { _club_id: string }; Returns: boolean }
-      bar_account_charge_preview: {
-        Args: { _club_member_id: string }
-        Returns: {
-          allowance: number
-          bar_gated: boolean
-          current_owing: number
-          shop_gated: boolean
-        }[]
-      }
+      bar_account_charge_preview:
+        | {
+            Args: { _club_member_id: string }
+            Returns: {
+              allowance: number
+              bar_gated: boolean
+              current_owing: number
+              shop_gated: boolean
+            }[]
+          }
+        | {
+            Args: { _club_member_id: string; _sync_secret: string }
+            Returns: {
+              allowance: number
+              bar_gated: boolean
+              current_owing: number
+              shop_gated: boolean
+            }[]
+          }
       bar_admin_remove_zero_tab: {
         Args: { _club_id: string; _tab_id: string }
         Returns: undefined

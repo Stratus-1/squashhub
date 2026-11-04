@@ -24378,7 +24378,11 @@ export type Database = {
         Returns: boolean
       }
       open_my_bar_tab: {
-        Args: { _club_id: string; _club_member_id: string }
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _sync_secret?: string
+        }
         Returns: Json
       }
       org_descendants: {

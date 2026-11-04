@@ -62,12 +62,34 @@ describe("Player native checkout bridge", () => {
     expect((await b.send({ redirectPath: path })).status).toBe(200);
     expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
   });
+  it.each(["yoco", "stitch", "paynow", "payfast"])("passes the exact %s wallet top-up path to magic-link generation", async (gateway) => {
+    const b = bridge();
+    const path = `/mobile-checkout?gateway=${gateway}&purpose=topup&amount=500.00`;
+    const response = await b.send({ redirectPath: path });
+    expect(response.status).toBe(200);
+    expect((await response.json()).redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
+    expect(b.generateLink).toHaveBeenCalledWith({ type: "magiclink", email, options: { redirectTo: `https://riverside.squashhub.co.za${path}` } });
+  });
+  it("accepts a top-up path with an optional description unchanged", async () => {
+    const b = bridge();
+    const path = "/mobile-checkout?gateway=stitch&purpose=topup&amount=250.50&description=Wallet%20top-up";
+    expect((await b.send({ redirectPath: path })).status).toBe(200);
+    expect(b.generateLink.mock.calls[0][0].options.redirectTo).toBe(`https://riverside.squashhub.co.za${path}`);
+  });
   it.each([
     undefined, null, 42, "", "/my-account", `https://evil.example${basePath}`, `//evil.example${basePath}`,
     basePath.replace("yoco", "other"), basePath.replace("purpose=fee", "purpose=topup"),
     basePath.replace("125.00", "125"), basePath.replace("125.00", "125.0"), basePath.replace("125.00", "-125.00"),
     basePath.replace(fee, ""), basePath.replace(fee, "XYZ"), `${basePath}%2C${fee}`,
     `${basePath}&extra=1`, `${basePath}#fragment`, `${basePath}\n`, `${basePath}&description=text#fragment`,
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=" + fee,
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500",
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=-500.00",
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.0",
+    "/mobile-checkout?gateway=yoco&purpose=topup",
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=",
+    "/mobile-checkout?gateway=other&purpose=topup&amount=500.00",
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=" + fee + "&description=x",
   ])("rejects invalid checkout redirect %j without creating a link", async (path) => {
     const b = bridge();
     expect((await b.send({ redirectPath: path })).status).toBe(400);

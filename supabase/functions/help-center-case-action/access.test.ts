@@ -141,4 +141,25 @@ describe("help-center-case-action", () => {
     expect(rpcCalls.find((c) => c.name === "help_center_apply_case_action")!.args.p_target_status).toBe("resolved");
     expect(emails.length).toBe(0);
   });
+
+  test("same-content retry with advanced expected_revision sends the same request hash (replays receipt)", async () => {
+    await call(body({ action: "reply", message: "Synthetic retry" }));
+    await call(body({ action: "reply", message: "Synthetic retry", expected_revision: 7 }));
+    const hashes = rpcCalls.filter((c) => c.name === "help_center_apply_case_action").map((c) => c.args.p_request_hash);
+    expect(hashes.length).toBe(2);
+    expect(hashes[0]).toBe(hashes[1]);
+  });
+
+  test("changed content, target, event or tenant under the same key yields a different hash (conflict)", async () => {
+    const { requestHash } = await import("./contract.ts");
+    const base = { action: "reply" as const, event_id: eventId, expected_revision: 3, tenant_scope_ref: "t", idempotency_key: "idem-key-00000001", message: "a" };
+    const h = await requestHash(base);
+    expect(await requestHash({ ...base, expected_revision: 9 })).toBe(h);
+    expect(await requestHash({ ...base, message: "b" })).not.toBe(h);
+    expect(await requestHash({ ...base, event_id: ticketId })).not.toBe(h);
+    expect(await requestHash({ ...base, tenant_scope_ref: "u" })).not.toBe(h);
+    const st = { ...base, action: "set_status" as const, target_status: "resolved" } as never;
+    expect(await requestHash(st)).not.toBe(h);
+    expect(await requestHash({ ...(st as object), target_status: "closed" } as never)).not.toBe(await requestHash(st));
+  });
 });

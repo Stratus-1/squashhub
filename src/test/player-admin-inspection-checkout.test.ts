@@ -107,7 +107,7 @@ describe("Player native checkout bridge", () => {
     undefined, null, 42, "", "/my-account", `https://evil.example${basePath}`, `//evil.example${basePath}`,
     basePath.replace("yoco", "other"), basePath.replace("purpose=fee", "purpose=topup"),
     basePath.replace("125.00", "125"), basePath.replace("125.00", "125.0"), basePath.replace("125.00", "-125.00"),
-    basePath.replace(fee, ""), basePath.replace(fee, "XYZ"), `${basePath}%2C${fee}`,
+    basePath.replace(fee, ""), basePath.replace(fee, "XYZ"),
     `${basePath}&extra=1`, `${basePath}#fragment`, `${basePath}\n`, `${basePath}&description=text#fragment`,
     "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=" + fee,
     "/mobile-checkout?gateway=yoco&purpose=topup&amount=500",
@@ -117,6 +117,11 @@ describe("Player native checkout bridge", () => {
     "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=",
     "/mobile-checkout?gateway=other&purpose=topup&amount=500.00",
     "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&fee_ids=" + fee + "&description=x",
+    `${basePath}%2D${fee}`,
+    `${basePath}%2c%2c${fee}`,
+    basePath.replace("gateway=yoco", "GATEWAY=yoco"),
+    basePath.replace("purpose=fee", "purpose=FEE"),
+    "/mobile-checkout?gateway=yoco&purpose=topup&amount=500.00&description=Wallet%20top-up#fragment",
   ])("rejects invalid checkout redirect %j without creating a link", async (path) => {
     const b = bridge();
     expect((await b.send({ redirectPath: path })).status).toBe(400);

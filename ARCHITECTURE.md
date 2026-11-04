@@ -32,6 +32,8 @@ SquashHub is a multi-tenant platform for squash clubs and the wider squash ecosy
 
 ## Runtime context
 
+The GCP/Firebase Player API reuses `player-admin-inspection` for one-time authenticated checkout links. After the existing internal-secret, active club membership and linked-login email checks, `payment-checkout` accepts only the configured full-string `/mobile-checkout` fee path and generates a magic link to that club origin. Other destinations retain `/mobile-billing?mobile_token=session`; the root origin is `https://squashhub.co.za`. Existing web checkout owns provider execution; no new payment API, RPC or data authority is introduced.
+
 ```mermaid
 flowchart LR
   Web[Browser or installed PWA] --> Vercel[Vercel React SPA]

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Update and deploy only player-admin-inspection for validated native payment-checkout redirects; 37 handler regressions passed and deployed no-secret requests return 401; no financial writes or web publication. Real GCP authenticated checkout remains untested here.
+
 - [x] Audit and apply Player booking permission-cap parity in the two existing RPCs (0355); verify live definitions/signatures/grants and isolated PostgreSQL regressions without publishing or production-row changes.
 
 - [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Update and deploy only player-admin-inspection for validated native payment-checkout redirects; preserve legacy billing redirects and verify guards without financial writes or web publication.
+
 - [x] Audit and apply Player booking permission-cap parity in the two existing RPCs (0355); verify live definitions/signatures/grants and isolated PostgreSQL regressions without publishing or production-row changes.
 
 - [x] Compare Nelspruit September/October Sage reports with existing ledger and bank imports; deliver preliminary review and identify split bank lines/non-bank adjustments.

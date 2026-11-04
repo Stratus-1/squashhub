@@ -1,6 +1,6 @@
 import type { RoundPlan } from "./swiss-positional";
 
-/** Owner-approved display chart only; never imported by fixture writers. */
+/** Owner-approved Ladies A chart; the decided-game writer uses it (owner approval 4 Nov 2026). */
 export function usesUitsigLadiesAChart(clubId: string | null | undefined, tournamentId: string | null | undefined, group: number, entrants: number, rounds: number): boolean {
   return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19"
     && tournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e"

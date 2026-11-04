@@ -1940,7 +1940,7 @@ function mappedFixtures(tid, d, st, positions) {
     throw new IntegrityError("mapping", issues.join("; "));
   const src = st.mapping.source === "stage_winners" ? d.stages.find((s) => s.id === st.mapping.sourceStageId) : null;
   const unitPos = new Map(st.mapping.units.map((u) => [u.id, u.slots[0]?.position]));
-  const feeder = (u) => src ? `Winner ${stageShort(src.name)}${unitPos.get(u)}` : null;
+  const feeder = (u) => src ? `${st.mapping.losers ? "Loser" : "Winner"} ${stageShort(src.name)}${unitPos.get(u)}` : null;
   return resolveMapping(st.mapping, positions).map((x) => ({
     ...src ? { placeholderA: feeder(x.a), placeholderB: feeder(x.b) } : {},
     tournamentId: tid,
@@ -6476,9 +6476,9 @@ var QuestionSchema = objectType({
   answer: stringType().nullable().optional()
 });
 var ScoringSchema = objectType({
-  mode: enumType(["standard", "time_capped_points"]).nullable().optional(),
-  pointsPerGame: unionType([literalType(11), literalType(15)]).nullable().optional(),
-  bestOf: unionType([literalType(3), literalType(5)]).nullable().optional(),
+  mode: enumType(["standard", "time_capped_points", "first_to_target"]).nullable().optional(),
+  pointsPerGame: numberType().int().min(1).nullable().optional(),
+  bestOf: unionType([literalType(1), literalType(3), literalType(5)]).nullable().optional(),
   playAllGames: booleanType().nullable().optional(),
   winCondition: enumType(["win_by_2", "sudden_death"]).nullable().optional(),
   timeCapMinutes: numberType().int().min(1).nullable().optional()
@@ -6664,7 +6664,8 @@ async function persistStructure(db, tid, spec) {
           throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
         return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
       })() : null;
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, ...st.rrFinish?.enabled ? { rrFinish: st.rrFinish } : {}, qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
+      const storedOrder = Number.isInteger(st.order) ? st.order : Math.max(...d.stages.map((s) => Math.ceil(s.order))) + 1;
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: storedOrder, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, ...st.rrFinish?.enabled ? { rrFinish: st.rrFinish } : {}, qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id;
       ids.stageKind[sk] = st.kind;
@@ -6992,13 +6993,14 @@ function sourcePositions(d, src, matches, orders, used, allowTies = false, crite
   }
   return pools.map((p) => p.result.order);
 }
-function stageWinners(src, matches) {
+function stageWinners(src, matches, losers = false) {
   const rows = matches.filter((x) => x.stage_key === src.id).sort((a, b) => (a.round_number ?? 1) - (b.round_number ?? 1) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
   return rows.map((x, i) => {
     if (!x.winner_member_id)
       throw new IntegrityError("prereq", `${src.name}: game ${i + 1} has no winner yet.`);
     const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
-    return String(a).split("+").includes(x.winner_member_id) ? a : b;
+    const aWon = String(a).split("+").includes(x.winner_member_id);
+    return aWon !== losers ? a : b;
   });
 }
 async function startMappedStage(db, tid, spec, d, st, matches, existing, ownerConfirmed) {
@@ -7018,7 +7020,7 @@ async function startMappedStage(db, tid, spec, d, st, matches, existing, ownerCo
   if (src.kind === "swiss" && Math.max(...done.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1))
     throw new IntegrityError("prereq", `${src.name}: not all Swiss rounds are played yet.`);
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
-  const positions = m.source === "stage_winners" ? [stageWinners(src, matches)] : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
+  const positions = m.source === "stage_winners" ? [stageWinners(src, matches, !!m.losers)] : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
   const fixtures = mappedFixtures(tid, d, st, positions);
   const known = new Set(d.entrants.map((e) => e.id));
   const units = [...new Set(fixtures.flatMap((f) => [f.a, f.b]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));
@@ -7078,6 +7080,17 @@ function scheduleOf(p) {
   return null;
 }
 function buildPlayoffChain(main, version, planned, opts = {}) {
+  const res = buildPlayoffChainCore(main, version, planned, opts);
+  return opts.thirdPlace && !res.reason ? withThirdPlace(res) : res;
+}
+function withThirdPlace(res) {
+  const final = res.stages[res.stages.length - 1];
+  if (!final || final.mapping?.source !== "stage_winners")
+    return { ...res, notes: [...res.notes, "3rd/4th place needs a semifinal before the final."] };
+  const third = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order, mapping: { ...final.mapping, losers: true } };
+  return { ...res, stages: [...res.stages.slice(0, -1), third, { ...final, order: final.order + 1 }] };
+}
+function buildPlayoffChainCore(main, version, planned, opts = {}) {
   const notes = [];
   if (!planned.length)
     return { stages: [], reason: null, notes };
@@ -7128,7 +7141,9 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
   const g = 2 ** (planned.length - 1);
   const pairing = first.plan.pairing ?? "later";
   let games;
-  const q = opts.qualifiers ?? null;
+  const rawQ = opts.qualifiers ?? null;
+  const twoPoolHalves = !!opts.bottomHalf && main.kind !== "swiss" && (main.kind === "pools" ? main.pools ?? 1 : main.kind === "round_robin" ? main.poolMembers?.length ?? 1 : main.kind === "mapped" ? main.mapping?.pools ?? 1 : 1) === 2;
+  const q = rawQ && twoPoolHalves && rawQ.perPool === 2 * g ? { ...rawQ, perPool: g } : rawQ;
   if (q && q.runnersUp > 0)
     return { stages: [], reason: `${first.name}: "best runners-up" can't be mapped automatically yet — set the play-off up when the pools finish, or set best runners-up to 0.`, notes };
   if (q?.perPool && pools > 1 && q.perPool * pools !== 2 * g)
@@ -7172,8 +7187,19 @@ function buildPlayoffChain(main, version, planned, opts = {}) {
     return { stages: [], reason: `${first.name}: "${pairing}" pairing with ${pools} groups can't be mapped automatically — set it up when the main stage finishes.`, notes };
   if (opts.bottomHalf && pools === 1)
     games = [...games, ...seededPairs(2 * g).map(([a, b]) => [[0, a + 2 * g], [0, b + 2 * g]])];
-  else if (opts.bottomHalf)
-    notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list (Swiss or one group).`);
+  else if (opts.bottomHalf && pools === 2) {
+    const top = games.map(([a, b]) => [a, b]);
+    const shift = Math.max(...top.flat().map(([, pos]) => pos));
+    const lower = pairing === "seeded" ? (() => {
+      const order = [];
+      for (let pos = shift + 1;pos <= 2 * shift; pos++)
+        for (let p = 0;p < 2; p++)
+          order.push([p, pos]);
+      return seededPairs(2 * g).map(([a, b]) => [order[a - 1], order[b - 1]]);
+    })() : top.map(([a, b]) => [[a[0], a[1] + shift], [b[0], b[1] + shift]]);
+    games = [...top, ...lower];
+  } else if (opts.bottomHalf)
+    notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list or two pools.`);
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize)
     return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
@@ -7354,7 +7380,7 @@ async function promoteAutoDeferred(db, tid, exec = (fn) => fn(db)) {
         continue;
       const main = [...d.stages].sort((a, b) => b.order - a.order)[0];
       const version = String(later[0].stageKey).replace(/-po\d+$/, "");
-      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })), { bottomHalf: !!d.playoffBottomHalf });
+      const chain = buildPlayoffChain(main, version, later.map((x) => ({ name: x.name, plan: x.plan, stageKey: x.stageKey })), { bottomHalf: !!d.playoffBottomHalf, thirdPlace: !!d.playoffThirdPlace });
       if (chain.reason || !chain.stages.length || chain.stages.some((c) => d.stages.some((y) => y.id === c.id)))
         continue;
       spec = { ...spec, divisions: spec.divisions.map((x) => x !== d ? x : { ...x, stages: [...x.stages, ...chain.stages], deferredStages: [] }) };
@@ -7464,7 +7490,7 @@ function playoffSlotOrder(divs, override) {
 }
 function sortGamesForSlots(games, order, groupOf) {
   const rank = new Map(order.map((id, i) => [groupOf(id), i]));
-  return games.slice().sort((a, b) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) || (a.bracket_position ?? 0) - (b.bracket_position ?? 0));
+  return games.slice().sort((a, b) => (rank.get(Number(a.group_number)) ?? 99) - (rank.get(Number(b.group_number)) ?? 99) || (b.bracket_position ?? 0) - (a.bracket_position ?? 0));
 }
 
 // src/lib/smart-builder/stage-plan.ts
@@ -7570,7 +7596,7 @@ async function loadTimedContext(champId) {
     }
   }
   const rulesMode = [].concat(t.rules ?? [])[0]?.scoring_mode;
-  const fmt = resolveTimedFormat({ plan, labels: t.group_labels ?? {}, rulesMode, matchMinutes: Number(t.match_duration_minutes) || null });
+  const fmt = resolveTimedFormat({ plan, labels: t.group_labels ?? {}, rulesMode, matchMinutes: Number(t.match_duration_minutes) || null, structure: t.beta_lifecycle?.answers?.originalStructure });
   const { bells, minutes } = fmt;
   const entryGroup = new Map;
   for (const e of entries ?? []) {
@@ -7619,10 +7645,21 @@ function resolveTimedFormat(o) {
   const bells = bellsFlags.length > 0 && bellsFlags.every(Boolean);
   const mixed = bellsFlags.some(Boolean) && !bells;
   const sch = plan.scheduling ?? {};
-  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || Number(o.matchMinutes) || 30;
+  const stdEst = Math.max(0, Number(sch.singles) || 0, Number(sch.doubles) || 0) || structureMatchMinutes(o.structure) || Number(o.matchMinutes) || 30;
   const bellMax = Math.max(0, ...bellSlots.map((x) => Number(x) || 0));
   const minutes = bells ? bellMax || Number(o.matchMinutes) || 30 : mixed ? Math.max(stdEst, bellMax) : stdEst;
   return { bells, mixed, minutes };
+}
+function structureMatchMinutes(os) {
+  if (!os)
+    return 0;
+  const durs = os.group_durations ?? {}, pools = os.pool_durations ?? {}, modes = os.league_scoring_modes ?? {};
+  const ids = new Set([...Object.keys(durs), ...Object.keys(pools).map((k) => k.split(":")[0])]);
+  const vals = [...ids].filter((id) => modes[id] !== "time_capped_points").map((id) => {
+    const poolVals = Object.entries(pools).filter(([k]) => k.split(":")[0] === id).map(([, v]) => Number(v) || 0).filter((n) => n > 0);
+    return poolVals.length ? Math.max(...poolVals) : Number(durs[id]) || 0;
+  }).filter((n) => n > 0);
+  return vals.length ? Math.max(...vals) : 0;
 }
 
 // src/lib/smart-builder/playoff-placeholders.ts
@@ -7880,11 +7917,11 @@ var fullSession = (s) => !!(s.schedule?.rule === "fixed" && s.schedule.date && s
 function resolvePlayoffSessions(spec, setupStages = []) {
   const unitOf = (label) => String(label).replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
   const fromSetup = (s, label) => {
-    const rows = setupStages.filter((r) => r?.phase === "playoff" && r.mode === "scheduled" && r.date && r.from && r.to && (r.courtIds ?? []).length && roundKey(r.name) === roundKey(s.name));
+    const rows = setupStages.filter((r) => r?.phase === "playoff" && r.mode === "scheduled" && r.date && r.from && r.to && (r.courtIds ?? []).length && roundKey(r.name) === roundKey(s.mapping?.losers ? "Final" : s.name));
     const r = rows.find((x) => x.unit && unitOf(label) === String(x.unit).split(" › ").join("::")) ?? rows.find((x) => !x.unit);
     return r ? { ...s, schedule: { ...s.schedule, rule: "fixed", date: r.date, timeFrom: r.from, timeTo: r.to, courtIds: r.courtIds.map(Number) } } : null;
   };
-  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => s.order > 0 && s.schedule?.rule === "fixed" && !fullSession(s) ? fromSetup(s, d.label) ?? s : s) })) };
+  spec = { ...spec, divisions: spec.divisions.map((d) => ({ ...d, stages: d.stages.map((s) => s.order > 0 ? fromSetup(s, d.label) ?? s : s) })) };
   const byRound = new Map;
   for (const d of spec.divisions)
     for (const s of d.stages)
@@ -8139,6 +8176,9 @@ function uitsigMensCChart() {
 }
 
 // src/lib/tournaments/swiss-uitsig-ladies-a-chart.ts
+function usesUitsigLadiesAChart(clubId, tournamentId, group, entrants, rounds) {
+  return clubId === "d8397b8a-60d3-4c4b-afee-25dab218bf19" && tournamentId === "f954222a-0f0a-4d8c-ac7b-9c74042cc69e" && group === 5 && entrants === 9 && rounds === 5;
+}
 function uitsigLadiesAChart() {
   const pairs = [
     [[1, 8], [2, 7], [3, 6], [4, 5]],
@@ -8864,8 +8904,9 @@ function projectSwissFixtures(i, playByOnly) {
     const gSlots = Object.fromEntries(Object.entries(slots).filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v]));
     let grid;
     const mensCRemainderChart = usesUitsigMensCRemainderChart(champ.id, gEntries.length, st.rounds, st.rrFinish?.groups);
+    const ladiesAChart = usesUitsigLadiesAChart(champ.club_id, champ.id, gn, gEntries.length, st.rounds ?? 0);
     try {
-      grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...mensCRemainderChart ? { mensCRemainderChart: true } : {}, ...i.partialGeneration ? { partialGeneration: true } : {} });
+      grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...mensCRemainderChart ? { mensCRemainderChart: true } : {}, ...ladiesAChart ? { exactLadiesAChart: true } : {}, ...i.partialGeneration ? { partialGeneration: true } : {} });
     } catch {
       continue;
     }

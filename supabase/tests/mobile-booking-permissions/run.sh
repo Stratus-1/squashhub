@@ -20,6 +20,6 @@ b = s[s.index('CREATE OR REPLACE FUNCTION public.mobile_booking_availability('):
 (tmp / 'baseline.sql').write_text(a + b)
 PYTHON
 "${P[@]}" -f "$D/baseline.sql"
-"${P[@]}" -f "$ROOT/drizzle/migrations/0355_mobile_booking_permission_cap_parity.sql"
+"${P[@]}" -f "${MIGRATION_SQL:-$ROOT/drizzle/migrations/0355_mobile_booking_permission_cap_parity.sql}"
 "${P[@]}" -f "$HERE/test.sql"
 echo 'PLAYER BOOKING PERMISSION TESTS PASSED'

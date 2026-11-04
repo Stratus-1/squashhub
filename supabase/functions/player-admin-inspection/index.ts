@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       : "https://squashhub.co.za";
     let path = "/mobile-billing?mobile_token=session";
     if (body.destination === "payment-checkout") {
-      const checkoutPath = /^\/mobile-checkout\?(?:gateway=(?:yoco|stitch|paynow|payfast)&purpose=fee&amount=\d+\.\d{2}&fee_ids=[0-9a-f-]+(?:(?:%2c|,)[0-9a-f-]+)*(?:&description=[^#]*)?)$/;
+      const checkoutPath = /^\/mobile-checkout\?gateway=(?:yoco|stitch|paynow|payfast)&purpose=(?:fee&amount=\d+\.\d{2}&fee_ids=[0-9a-f-]+(?:(?:%2c|,)[0-9a-f-]+)*|topup&amount=\d+\.\d{2})(?:&description=[^#]*)?$/;
       const match = typeof body.redirectPath === "string" ? checkoutPath.exec(body.redirectPath) : null;
       // Require a full-string match: JavaScript's $ may otherwise allow a trailing newline.
       if (!match || match[0] !== body.redirectPath) return json(400, { error: "Invalid checkout redirectPath" });

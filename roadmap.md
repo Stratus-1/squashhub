@@ -1,6 +1,7 @@
 # Roadmap
 - [ ] Uitsig: record Berni over Jenny 3–0 by forfeit using the existing result flow.
 - [ ] Uitsig: diagnose and correct Kaylee score entry, Frans/Ron round ordering and Kayla Randal fixture/booking access; preserve unrelated draws/results.
+- [ ] Ensure Uitsig organiser Kaylee can edit completed played scores from Past Fixtures through the audited correction flow.
 
 - [x] Update and deploy only player-admin-inspection for validated native payment-checkout redirects; 37 handler regressions passed and deployed no-secret requests return 401; no financial writes or web publication. Real GCP authenticated checkout remains untested here.
 

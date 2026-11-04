@@ -24220,6 +24220,10 @@ export type Database = {
         Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
         Returns: Json
       }
+      mobile_player_competition_payload: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
       mobile_player_home_payload: {
         Args: {
           p_club_id: string

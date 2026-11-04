@@ -1,3 +1,4 @@
 # Edge function rules
 - Access devices may carry an optional `club_devices.min_age` (NULL = unrestricted); device-control enforces it server-side on unlock via `_shared/member-age.ts` (DOB, then SA ID), unknown age is a separate denial from underage, and denials log to access_events; why: one reusable age gate, never a club-specific hard-code.
 - Outstanding-balance plans (`mandate_arrears_plans`) are separate from fee mandates: they finance only `member_outstanding_breakdown().uncovered`, snapshot `covered_fee_ids`, and may share one combined debit, but each component is settled/tracked separately and the plan part drops off when done; why: no double-financing of membership.
+- GCP Player API reaches web data only via secret-gated `mobile_*` RPCs (anon-callable) and the `player-admin-inspection` function for service-role-only admin RPCs; why: the service-role key never leaves the backend and mobile never duplicates web-owned records.

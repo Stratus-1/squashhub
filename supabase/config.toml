@@ -118,3 +118,6 @@ verify_jwt = true
 
 [functions.agm-nominee-notify]
 verify_jwt = false
+
+[functions.player-admin-inspection]
+verify_jwt = false

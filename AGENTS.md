@@ -24,6 +24,7 @@
 <!-- LOVABLE:END -->
 
 ## Architecture rules
+- Native checkout links reuse player-admin-inspection's existing secret/member/email guards and magic-link generation with a full-string checkout-path allowlist; other destinations retain the legacy billing path, because mobile must enter existing web checkout without a second payment authority.
 - Player booking cap bypasses stay inside the existing assert/availability RPCs and use the booking member's club-scoped web permission helper; the bypass ends before balance enforcement and never grants eligibility or conflict exceptions, because Firebase must share web policy without a second authority.
 - Explicit play-off setup saves retain supported structure flags, append loser branches without rewriting existing stages, and refresh pending slots through the shared session resolver; placeholder identities and player bookings survive repeat saves. Why: setup, progression and Upcoming must agree without regenerating played draws.
 - Family additions use pending club membership and separate administrator approval/recipient acceptance; activation and fee-payer changes use a private atomic writer, and generic application approval delegates to it. Why: adding or claiming a relative must not bypass club approval or change existing members before consent.

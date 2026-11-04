@@ -17,6 +17,8 @@ type Body = {
   memberId?: string;
   email?: string;
   search?: string;
+  destination?: string;
+  redirectPath?: string;
 };
 
 Deno.serve(async (req) => {
@@ -83,8 +85,16 @@ Deno.serve(async (req) => {
     const { data: club } = await db.from("clubs").select("subdomain").eq("id", body.clubId).maybeSingle();
     const origin = club?.subdomain
       ? `https://${club.subdomain}.squashhub.co.za`
-      : "https://www.squashhub.co.za";
-    const redirectTo = `${origin}/mobile-billing?mobile_token=session`;
+      : "https://squashhub.co.za";
+    let path = "/mobile-billing?mobile_token=session";
+    if (body.destination === "payment-checkout") {
+      const checkoutPath = /^\/mobile-checkout\?(?:gateway=(?:yoco|stitch|paynow|payfast)&purpose=fee&amount=\d+\.\d{2}&fee_ids=[0-9a-f-]+(?:(?:%2c|,)[0-9a-f-]+)*(?:&description=[^#]*)?)$/;
+      const match = typeof body.redirectPath === "string" ? checkoutPath.exec(body.redirectPath) : null;
+      // Require a full-string match: JavaScript's $ may otherwise allow a trailing newline.
+      if (!match || match[0] !== body.redirectPath) return json(400, { error: "Invalid checkout redirectPath" });
+      path = body.redirectPath;
+    }
+    const redirectTo = `${origin}${path}`;
     const { data: link, error } = await db.auth.admin.generateLink({
       type: "magiclink", email: authUser.user.email, options: { redirectTo },
     });

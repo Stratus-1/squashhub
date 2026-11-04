@@ -1064,6 +1064,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-11-04 · Native payment checkout bridge destination
+- **Symptom:** Player billing links always entered the legacy billing screen rather than the selected-fee native checkout.
+- **Finding:** `player-admin-inspection` ignored destination/redirectPath and used a www fallback origin.
+- **Fix:** For `payment-checkout`, require a full-string match against the requested `/mobile-checkout` gateway/fee/amount/fee_ids pattern and pass that exact path to magic-link redirectTo on the existing club origin. Use the non-www root origin; preserve legacy redirects for every other destination.
+- **Guard:** Handler regressions cover all four gateways, comma encodings, optional descriptions, invalid/absolute/protocol-relative redirects, legacy destinations, root origin, secret denial, inactive/wrong-club membership and linked-email denial. No provider code, tables, RPCs, migrations or financial rows changed; only this function is targeted for deployment.
+
 ### 2026-11-04 · Player booking permission-cap parity
 - **Symptom:** Player readiness/availability rejected or hid slots that web-authorized unlimited-booking members could use.
 - **Finding:** Both RPCs enforced caps without `is_club_admin_or_permitted`; readiness classified a proposed peak slot by overlap rather than the web's start-inclusive/end-exclusive start-time rule.

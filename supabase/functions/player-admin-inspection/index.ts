@@ -3,6 +3,7 @@
 // validated server-side by mobile_internal_secret_ok before any other work.
 // Admin actions re-verify is_platform_admin inside the RPCs (and audit).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -122,6 +123,25 @@ Deno.serve(async (req) => {
       .eq("id", body.clubId).maybeSingle();
     if (!club?.honesty_bar_enabled) return json(403, { error: "The club bar is not enabled" });
 
+    // Match bar-card-pay's selection and credential checks, not every gateway
+    // that could theoretically be enabled. The downstream function rechecks.
+    const onlinePaymentAvailable = async () => {
+      if (club.bar_pay_online_enabled === false) return false;
+      const primary = String(club.payment_gateway || "").toLowerCase();
+      const gateway = ["stitch", "yoco", "payfast"].includes(primary)
+        ? primary : gatewayEnabled(club, "payfast") ? "payfast" : primary;
+      if (!["stitch", "yoco", "payfast"].includes(gateway)) return false;
+      const { data: settings, error } = await db.from("club_secrets")
+        .select("payment_gateway_credentials, payment_gateway_secret_key")
+        .eq("club_id", body.clubId).maybeSingle();
+      if (error || !settings) return false;
+      const creds = (settings.payment_gateway_credentials || {}) as Record<string, string>;
+      if (gateway === "stitch") return !!((creds.client_id || "").trim() && (creds.client_secret || "").trim());
+      if (gateway === "yoco") return !!String(creds.secret_key || settings.payment_gateway_secret_key || "").trim();
+      const pf = resolveGatewayCreds(settings.payment_gateway_credentials, "payfast");
+      return !!((pf.merchant_id || "").trim() && (pf.merchant_key || "").trim());
+    };
+
     if (body.action === "player_bar_data") {
       const { data: qr } = await db.from("qr_short_codes").select("code")
         .eq("club_id", body.clubId).eq("active", true).is("bar_item_id", null)
@@ -153,9 +173,18 @@ Deno.serve(async (req) => {
           })),
         };
       }
-      const configuredGateways = [String(club.payment_gateway || "").toLowerCase()];
-      const barOnlineEnabled = club.bar_pay_online_enabled !== false
-        && configuredGateways.some((value) => ["stitch", "yoco", "payfast"].includes(value));
+      const [orderStatus, preview, barOnlineEnabled] = await Promise.all([
+        db.rpc("bar_order_process_status", { _club_id: body.clubId }),
+        db.rpc("bar_account_charge_preview", { _club_member_id: body.memberId, _sync_secret: secret }),
+        onlinePaymentAvailable(),
+      ]);
+      if (orderStatus.error || typeof orderStatus.data !== "boolean") return json(503, { error: "Could not read the club's bar order setting" });
+      // An unavailable early warning never overrides the authoritative debit gate.
+      const row = !preview.error && Array.isArray(preview.data) ? preview.data[0] : null;
+      const accountChargePreview = row ? {
+        bar_gated: row.bar_gated, shop_gated: row.shop_gated,
+        current_owing: row.current_owing, allowance: row.allowance,
+      } : null;
       return json(200, {
         club: {
           ...menu.club, currency_symbol: club.currency_symbol, currency_code: club.currency_code,
@@ -165,11 +194,12 @@ Deno.serve(async (req) => {
           card_swipe_enabled: club.bar_card_swipe_enabled !== false,
         },
         menu: Array.isArray(menu.menu) ? menu.menu : [],
-        orderProcessEnabled: club.bar_order_process_enabled === true,
+        orderProcessEnabled: orderStatus.data,
         accountTabEnabled: club.bar_account_tab_enabled !== false,
         onlinePaymentEnabled: barOnlineEnabled,
         cardSwipeEnabled: club.bar_card_swipe_enabled !== false,
         activeTab,
+        accountChargePreview,
       });
     }
 
@@ -203,7 +233,8 @@ Deno.serve(async (req) => {
     if (!qr?.code) return json(404, { error: "The club bar menu is not configured" });
 
     if (body.action === "player_bar_order") {
-      const orderProcessEnabled = club.bar_order_process_enabled === true;
+      const { data: orderProcessEnabled, error: modeError } = await db.rpc("bar_order_process_status", { _club_id: body.clubId });
+      if (modeError || typeof orderProcessEnabled !== "boolean") return json(503, { error: "Could not read the club's bar order setting" });
       const accountTabEnabled = club.bar_account_tab_enabled !== false;
       if (!orderProcessEnabled && !accountTabEnabled) {
         return json(403, { error: "This club has disabled both bar order-ahead and member bar tabs" });
@@ -220,8 +251,7 @@ Deno.serve(async (req) => {
         _club_id: body.clubId, _club_member_id: body.memberId, _sync_secret: secret,
       });
       if (tabError || !tab?.tab_id || !tab?.token) return json(400, { error: tabError?.message || "Could not open your club tab" });
-      const { data: orderProcess, error: modeError } = await db.rpc("bar_order_process_status", { _club_id: body.clubId });
-      if (modeError || typeof orderProcess !== "boolean") return json(503, { error: "Could not read the club's bar order setting" });
+      const orderProcess = orderProcessEnabled;
       const operation = orderProcess
         ? await db.rpc("bar_submit_guest_order", {
           _tab_id: tab.tab_id, _token: tab.token,
@@ -238,6 +268,7 @@ Deno.serve(async (req) => {
 
     if (body.action === "player_bar_online_checkout") {
       if (club.bar_pay_online_enabled === false) return json(403, { error: "Online bar payments are disabled by this club" });
+      if (!await onlinePaymentAvailable()) return json(403, { error: "This club has no configured supported online bar gateway enabled" });
       if (club.bar_account_tab_enabled !== false && isUuid(body.tabId)) {
         const { data: tab } = await db.from("bar_guest_tabs")
           .select("id, token, status")
@@ -246,11 +277,6 @@ Deno.serve(async (req) => {
           .in("status", ["open", "closing"]).maybeSingle();
         if (!tab) return json(404, { error: "Your open club tab was not found" });
         if (tab.status !== "open") return json(409, { error: "This tab already has a payment being processed" });
-        const gateway = String(club.payment_gateway || "").toLowerCase();
-        const configured = [gateway];
-        if (!configured.some((value) => ["stitch", "yoco", "payfast"].includes(value))) {
-          return json(403, { error: "This club has no supported online bar gateway enabled" });
-        }
         const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/bar-card-pay`, {
           method: "POST", headers: { apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, "Content-Type": "application/json" },
           body: JSON.stringify({ code: qr.code, tab_id: tab.id, tab_token: tab.token, buyer_name: member.name }),
@@ -265,9 +291,6 @@ Deno.serve(async (req) => {
       if (cleanLines.some((line) => !isUuid(line.bar_item_id) || !Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 50)) {
         return json(400, { error: "One or more bar quantities are invalid" });
       }
-      const gateway = String(club.payment_gateway || "").toLowerCase();
-      const configured = [gateway];
-      if (!configured.some((value) => ["stitch", "yoco", "payfast"].includes(value))) return json(403, { error: "This club has no supported online bar gateway enabled" });
       const { data: menu, error: menuError } = await db.rpc("resolve_qr_short_code", { _code: qr.code });
       if (menuError || !menu?.found || !Array.isArray(menu.menu)) return json(404, { error: "The club menu is unavailable" });
       const validIds = new Set(menu.menu.map((item: any) => String(item.id)));

@@ -6,10 +6,11 @@ import { gatewayEnabled, resolveGatewayCreds } from "../../supabase/functions/_s
 const compiled = ts.transpile(readFileSync("supabase/functions/player-admin-inspection/index.ts", "utf8").replace(/^import .*;\s*$/gm, ""), { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None });
 const clubId = "11111111-1111-4111-8111-111111111111";
 const memberId = "22222222-2222-4222-8222-222222222222";
+const itemId = "33333333-3333-4333-8333-333333333333";
 function bridge(club: Record<string, unknown> = {}, credentials: Record<string, unknown> = {}, options: { order?: boolean; error?: boolean; previewError?: boolean; email?: string; status?: string; secret?: boolean } = {}) {
   const rpc = vi.fn(async (name: string) => {
     if (name === "mobile_internal_secret_ok") return { data: options.secret !== false };
-    if (name === "resolve_qr_short_code") return { data: { found: true, bar_enabled: true, club: {}, menu: [] } };
+    if (name === "resolve_qr_short_code") return { data: { found: true, bar_enabled: true, club: {}, menu: [{id:itemId}] } };
     if (name === "bar_order_process_status") return { data: options.order ?? false, error: options.error ? {} : null };
     if (name === "bar_account_charge_preview") return { data: [{ bar_gated: true, shop_gated: false, current_owing: 750, allowance: 1050, private_field: "excluded" }], error: options.previewError ? {} : null };
     return { data: null };
@@ -19,20 +20,36 @@ function bridge(club: Record<string, unknown> = {}, credentials: Record<string, 
       maybeSingle: async () => ({ data: table === "club_members" ? { id: memberId, user_id: "login", status: options.status ?? "active" }
         : table === "clubs" ? { honesty_bar_enabled: true, bar_order_process_enabled: true, ...club }
         : table === "qr_short_codes" ? { code: "menu" }
-        : table === "club_secrets" ? { payment_gateway_credentials: credentials } : null }) };
+        : table === "club_secrets" ? { payment_gateway_credentials: credentials }
+        : table === "bar_guest_tabs" ? { id: memberId, token:"owned-tab-token", status:"open" } : null }) };
     return query;
   });
   let handler: ((r: Request) => Promise<Response>) | undefined;
-  new Function("Deno", "createClient", "gatewayEnabled", "resolveGatewayCreds", compiled)(
+  const fetchPayment = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sale_id:itemId,redirect_url:"https://payments.example.test" })));
+  new Function("Deno", "createClient", "gatewayEnabled", "resolveGatewayCreds", "fetch", compiled)(
     { env: { get: () => "runtime" }, serve: (h: typeof handler) => { handler = h; } },
-    () => ({ rpc, from, auth: { admin: { getUserById: async () => ({ data: { user: { email: options.email ?? "member@example.test" } } }) } } }), gatewayEnabled, resolveGatewayCreds);
-  const send = async (action = "player_bar_data") => {
+    () => ({ rpc, from, auth: { admin: { getUserById: async () => ({ data: { user: { email: options.email ?? "member@example.test" } } }) } } }), gatewayEnabled, resolveGatewayCreds, fetchPayment);
+  const send = async (action = "player_bar_data", extra: Record<string,unknown> = {}) => {
     if (!handler) throw new Error("No handler");
-    return handler(new Request("https://bridge.example.test", { method: "POST", headers: { "x-squashhub-internal-secret": "s".repeat(32) }, body: JSON.stringify({ action, clubId, memberId, email: "member@example.test" }) }));
+    return handler(new Request("https://bridge.example.test", { method: "POST", headers: { "x-squashhub-internal-secret": "s".repeat(32) }, body: JSON.stringify({ action, clubId, memberId, email: "member@example.test",...extra }) }));
   };
-  return { send, rpc, from };
+  return { send, rpc, from, fetchPayment };
 }
 describe("Player Bar settings parity", () => {
+  it.each([false,true])("PayFast fallback delegates %s tab-mode checkout to existing processor", async (tab) => {
+    const b = bridge({payment_gateway:"paynow",payment_gateways:["payfast"]},{__gateways:{payfast:{merchant_id:"id",merchant_key:"key"}}});
+    const response = await b.send("player_bar_online_checkout",tab ? {tabId:memberId} : {lines:[{bar_item_id:itemId,quantity:1}]});
+    expect(response.status).toBe(200);
+    expect((await response.json()).saleId).toBe(itemId);
+    expect(b.fetchPayment).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(b.fetchPayment.mock.calls[0][1].body);
+    expect(tab ? body.tab_id : body.operator_member_id).toBe(memberId);
+  });
+  it.each([false,true])("unsupported gateway blocks %s tab-mode checkout before payment", async (tab) => {
+    const b = bridge({payment_gateway:"paynow",payment_gateways:["yoco"]},{secret_key:"key"});
+    expect((await b.send("player_bar_online_checkout",tab ? {tabId:memberId} : {lines:[{bar_item_id:itemId,quantity:1}]})).status).toBe(403);
+    expect(b.fetchPayment).not.toHaveBeenCalled();
+  });
   it.each([false, true])("uses authoritative order status %s rather than the raw switch", async (order) => {
     const b = bridge({}, {}, { order });
     expect((await (await b.send()).json()).orderProcessEnabled).toBe(order);

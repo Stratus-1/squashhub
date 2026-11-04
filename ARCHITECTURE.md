@@ -32,6 +32,8 @@ SquashHub is a multi-tenant platform for squash clubs and the wider squash ecosy
 
 ## Runtime context
 
+Firebase Player Bar calls remain routed through `player-admin-inspection` after internal-secret, active club/member and exact linked-email checks. Menu and order writes remain in existing web RPCs; availability reads `bar_order_process_status`. Online eligibility mirrors `bar-card-pay` primary selection, its PayFast fallback and credential checks. `accountChargePreview` contains only `bar_gated`, `shop_gated`, `current_owing`, and `allowance` for the verified member. The service-role-only two-argument preview validates the internal secret; the authenticated one-argument web wrapper retains own-member/bar-admin/staff authorization. Existing triggers remain the debit authority.
+
 The GCP/Firebase Player API reuses `player-admin-inspection` for one-time authenticated checkout links. After the existing internal-secret, active club membership and linked-login email checks, `payment-checkout` accepts only the configured full-string `/mobile-checkout` fee path and generates a magic link to that club origin. Other destinations retain `/mobile-billing?mobile_token=session`; the root origin is `https://squashhub.co.za`. Existing web checkout owns provider execution; no new payment API, RPC or data authority is introduced.
 
 ```mermaid

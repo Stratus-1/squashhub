@@ -1,4 +1,8 @@
 # Roadmap
+- [x] Uitsig: Berni over Jenny 3–0 forfeit recorded and verified in results/standings; Kaylee’s own Past Fixtures correction preview verified.
+- [x] Uitsig: Frans R4 already completed (Past Fixtures), R5 upcoming; Frans/Ron is saved R3. No dates or draw changed.
+- [ ] Uitsig: score-entry incident needs exact failing match/error; Kayla booking failure needs authorised session or screen/error (session mint unavailable). Her next fixture waits for outstanding Ladies A R2, so no speculative opponents generated.
+- [ ] Bar bridge parity: update only player-admin-inspection and bar_account_charge_preview, additive migration, focused tests and deploy; no browser login or unrelated publication.
 
 - [x] Update and deploy only player-admin-inspection for validated native payment-checkout redirects; 37 handler regressions passed and deployed no-secret requests return 401; no financial writes or web publication. Real GCP authenticated checkout remains untested here.
 

@@ -14,7 +14,6 @@ import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { buildSwissProgression, buildProposedSwissGrid } from "@/lib/tournaments/swiss-progression-view";
 import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
 import { rrFinishIssues, type RrFinish } from "./swiss-rr-finish";
-import { usesUitsigLadiesAChart } from "./swiss-uitsig-ladies-a-chart";
 
 /** Uitsig Club Champs 2026 Men's C (18 players, 5 rounds, 3 RR groups) follows the owner-approved position chart. */
 export function usesUitsigMensCRemainderChart(tournamentId: string | null | undefined, entrants: number, rounds: number | null | undefined, rrGroups: number | null | undefined): boolean {
@@ -136,10 +135,7 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
     // Same owner-approved Uitsig Men's C position chart the Progression page uses (incl. its approved
     // intentional repeats), so the writer never stalls on a "repeat" the owner already accepted.
     const mensCRemainderChart = usesUitsigMensCRemainderChart(champ.id, gEntries.length, st.rounds, st.rrFinish?.groups);
-    // Owner-approved Ladies A fixed-position chart (winner takes the better slot): a game is decided once
-    // both of its slots are filled by confirmed results, exactly as the Progression page shows it.
-    const ladiesAChart = usesUitsigLadiesAChart(champ.club_id, champ.id, gn, gEntries.length, st.rounds ?? 0);
-    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...(mensCRemainderChart ? { mensCRemainderChart: true } : {}), ...(ladiesAChart ? { exactLadiesAChart: true } : {}), ...(i.partialGeneration ? { partialGeneration: true } : {}) }); } catch { continue; }
+    try { grid = buildProposedSwissGrid(model, { schedule: st.schedule ?? null, slots: gSlots, appliedPlayBy, noRepeats, ...(mensCRemainderChart ? { mensCRemainderChart: true } : {}), ...(i.partialGeneration ? { partialGeneration: true } : {}) }); } catch { continue; }
     if (grid.issues.length) continue;
     // Per game: skip a pairing once either player already has a saved game in that round.
     const inRound = (round: number, id: string) => gm.some((m) => Number(m.round_number) === round && (m.player_a_member_id === id || m.player_b_member_id === id));

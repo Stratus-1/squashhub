@@ -2493,6 +2493,13 @@
       "when": 1793776806681,
       "tag": "0355_mobile_booking_permission_cap_parity",
       "breakpoints": true
+    },
+    {
+      "idx": 356,
+      "version": "7",
+      "when": 1793813725683,
+      "tag": "0356_mobile_member_finance_eft_details",
+      "breakpoints": true
     }
   ]
 }

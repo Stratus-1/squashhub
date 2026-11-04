@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const { code, bar_item_id, quantity = 1, buyer_name = null, return_url = null } = body || {};
+    const operatorMemberId = typeof body?.operator_member_id === "string" ? body.operator_member_id : null;
 
     // Tab-settlement mode: pay a whole open guest tab online by card.
     const tabId = body?.tab_id ? String(body.tab_id) : null;
@@ -104,7 +105,14 @@ Deno.serve(async (req) => {
     }
 
     const { data: club } = await admin
-      .from("clubs").select("id, name, subdomain, payment_gateway, payment_gateways").eq("id", qr.club_id).maybeSingle();
+      .from("clubs").select("id, name, subdomain, honesty_bar_enabled, bar_pay_online_enabled, payment_gateway, payment_gateways").eq("id", qr.club_id).maybeSingle();
+    if (!club?.honesty_bar_enabled) return json({ error: "The club bar is not enabled" });
+    if (club.bar_pay_online_enabled === false) return json({ error: "Online bar payments are disabled for this club" });
+    if (operatorMemberId) {
+      const { data: member } = await admin.from("club_members")
+        .select("id, club_id, status").eq("id", operatorMemberId).eq("club_id", club.id).maybeSingle();
+      if (!member || member.status !== "active") return json({ error: "Member is not active at this club" });
+    }
     const primary = String(club?.payment_gateway || "").toLowerCase();
     const gateway = ["stitch", "yoco", "payfast"].includes(primary)
       ? primary
@@ -156,6 +164,7 @@ Deno.serve(async (req) => {
             visitor_name: payerName || null,
             note: "Scan-to-pay (QR) · card checkout",
             payment_status: "pending",
+            operator_member_id: operatorMemberId,
           };
         }))
         .select("id");

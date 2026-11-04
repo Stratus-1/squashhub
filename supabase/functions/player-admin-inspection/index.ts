@@ -22,6 +22,7 @@ type Body = {
   lines?: Array<{ bar_item_id?: string; quantity?: number }>;
   requestId?: string;
   saleId?: string;
+  tabId?: string;
   cancelled?: boolean;
 };
 
@@ -143,6 +144,7 @@ Deno.serve(async (req) => {
           .in("payment_status", ["on_tab", "pending"])
           .order("created_at", { ascending: true });
         activeTab = {
+          id: tab.id,
           status: tab.status,
           total: (sales || []).reduce((sum, row) => sum + Number(row.total || 0), 0),
           lines: (sales || []).map((row: any) => ({
@@ -151,20 +153,21 @@ Deno.serve(async (req) => {
           })),
         };
       }
-      const configuredGateways = [club.payment_gateway, ...(Array.isArray(club.payment_gateways) ? club.payment_gateways : [])]
-        .map((value) => String(value || "").toLowerCase());
+      const configuredGateways = [String(club.payment_gateway || "").toLowerCase()];
+      const barOnlineEnabled = club.bar_pay_online_enabled !== false
+        && configuredGateways.some((value) => ["stitch", "yoco", "payfast"].includes(value));
       return json(200, {
         club: {
           ...menu.club, currency_symbol: club.currency_symbol, currency_code: club.currency_code,
           bar_enabled: club.honesty_bar_enabled === true,
           account_tab_enabled: club.bar_account_tab_enabled !== false,
-          pay_online_enabled: club.bar_pay_online_enabled !== false && configuredGateways.some((value) => ["stitch", "yoco", "payfast"].includes(value)),
+          pay_online_enabled: barOnlineEnabled,
           card_swipe_enabled: club.bar_card_swipe_enabled !== false,
         },
         menu: Array.isArray(menu.menu) ? menu.menu : [],
         orderProcessEnabled: club.bar_order_process_enabled === true,
         accountTabEnabled: club.bar_account_tab_enabled !== false,
-        onlinePaymentEnabled: club.bar_pay_online_enabled !== false,
+        onlinePaymentEnabled: barOnlineEnabled,
         cardSwipeEnabled: club.bar_card_swipe_enabled !== false,
         activeTab,
       });
@@ -235,6 +238,27 @@ Deno.serve(async (req) => {
 
     if (body.action === "player_bar_online_checkout") {
       if (club.bar_pay_online_enabled === false) return json(403, { error: "Online bar payments are disabled by this club" });
+      if (club.bar_account_tab_enabled !== false && isUuid(body.tabId)) {
+        const { data: tab } = await db.from("bar_guest_tabs")
+          .select("id, token, status")
+          .eq("id", body.tabId).eq("club_id", body.clubId)
+          .eq("club_member_id", body.memberId).eq("opened_source", "in_app")
+          .in("status", ["open", "closing"]).maybeSingle();
+        if (!tab) return json(404, { error: "Your open club tab was not found" });
+        if (tab.status !== "open") return json(409, { error: "This tab already has a payment being processed" });
+        const gateway = String(club.payment_gateway || "").toLowerCase();
+        const configured = [gateway];
+        if (!configured.some((value) => ["stitch", "yoco", "payfast"].includes(value))) {
+          return json(403, { error: "This club has no supported online bar gateway enabled" });
+        }
+        const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/bar-card-pay`, {
+          method: "POST", headers: { apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, "Content-Type": "application/json" },
+          body: JSON.stringify({ code: qr.code, tab_id: tab.id, tab_token: tab.token, buyer_name: member.name }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.redirect_url || !payload?.sale_id) return json(response.status || 400, { error: payload?.error || "Could not start the club tab payment" });
+        return json(200, { saleId: payload.sale_id, checkoutUrl: payload.redirect_url, code: qr.code });
+      }
       const lines = Array.isArray(body.lines) ? body.lines : [];
       if (!lines.length || lines.length > 30) return json(400, { error: "Choose one or more bar items" });
       const cleanLines = lines.map((line) => ({ bar_item_id: String(line.bar_item_id || ""), quantity: Number(line.quantity) }));
@@ -242,7 +266,7 @@ Deno.serve(async (req) => {
         return json(400, { error: "One or more bar quantities are invalid" });
       }
       const gateway = String(club.payment_gateway || "").toLowerCase();
-      const configured = [gateway, ...(Array.isArray(club.payment_gateways) ? club.payment_gateways : [])].map((value) => String(value || "").toLowerCase());
+      const configured = [gateway];
       if (!configured.some((value) => ["stitch", "yoco", "payfast"].includes(value))) return json(403, { error: "This club has no supported online bar gateway enabled" });
       const { data: menu, error: menuError } = await db.rpc("resolve_qr_short_code", { _code: qr.code });
       if (menuError || !menu?.found || !Array.isArray(menu.menu)) return json(404, { error: "The club menu is unavailable" });

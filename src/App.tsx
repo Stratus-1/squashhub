@@ -81,6 +81,7 @@ const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
 const TournamentGroupAction = lazy(() => import("./pages/TournamentGroupAction"));
 
 const MobileBillingBridge = lazy(() => import("./pages/MobileBillingBridge"));
+const MobileCheckout = lazy(() => import("./pages/MobileCheckout"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Feed = lazy(() => import("./pages/Feed"));
 const Availability = lazy(() => import("./pages/Availability"));
@@ -416,6 +417,7 @@ function AppRoutes() {
   const routeLocation = backgroundLocation || location;
   const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
   const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
+  const isMobileCheckout = routeLocation.pathname === "/mobile-checkout";
 
   // Marketing / public-facing routes keep the dark navy+amber brand theme.
   // The in-app experience now defaults to DARK; users can opt into light
@@ -494,13 +496,14 @@ function AppRoutes() {
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
     if (p.startsWith("/courts-display/")) return false;
+    if (isMobileCheckout) return false;
     if (isTvRoute) return false;
     if (isAdminRoute) return false;
     return true;
   })();
 
   // Desktop sidebar shell only for authenticated, non-admin, non-TV routes
-  const shellEnabled = !!user && !isAdminRoute && !isTvRoute;
+  const shellEnabled = !!user && !isAdminRoute && !isTvRoute && !isMobileCheckout;
   const routeFallback = (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -509,7 +512,7 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
-      {user && !isAdminRoute && <ClubBrandedBackground />}
+      {user && !isAdminRoute && !isMobileCheckout && <ClubBrandedBackground />}
       {/* No blocking announcements: mem://style/interstitial-elements */}
       <DesktopShell enabled={shellEnabled}>
         <Suspense fallback={routeFallback}>
@@ -541,6 +544,7 @@ function AppRoutes() {
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/mobile-billing" element={<MobileBillingBridge />} />
+        <Route path="/mobile-checkout" element={<MobileCheckout />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/activate" element={<ActivateAccount />} />
         <Route path="/set-password" element={<SetPassword />} />
@@ -663,24 +667,24 @@ function AppRoutes() {
         </Suspense>
       </DesktopShell>
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
-      {user && !isTvRoute && <OfflineBanner />}
-      {user && !isTvRoute && <LiveSessionBanner />}
-      {user && !isTvRoute && <ViewingAsBanner />}
-      {user && <PushNotificationPrompt />}
-      {user && !isTvRoute && <InstallPrompt />}
-      {!isTvRoute && <UpdatePrompt />}
+      {user && !isAdminRoute && !isTvRoute && !isMobileCheckout && <MobileOnlyBottomNav />}
+      {user && !isTvRoute && !isMobileCheckout && <OfflineBanner />}
+      {user && !isTvRoute && !isMobileCheckout && <LiveSessionBanner />}
+      {user && !isTvRoute && !isMobileCheckout && <ViewingAsBanner />}
+      {user && !isMobileCheckout && <PushNotificationPrompt />}
+      {user && !isTvRoute && !isMobileCheckout && <InstallPrompt />}
+      {!isTvRoute && !isMobileCheckout && <UpdatePrompt />}
       {user && <NotificationListener />}
-      {user && <NotificationActionModal />}
+      {user && !isMobileCheckout && <NotificationActionModal />}
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
-      {user && <DelegationRequestDialog />}
-      {user && <GoogleIdentityCheck />}
+      {user && !isMobileCheckout && <DelegationRequestDialog />}
+      {user && !isMobileCheckout && <GoogleIdentityCheck />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
-      <FeedbackFab />
+      {!isMobileCheckout && <FeedbackFab />}
       {/* Mobile-only floating Super-Admin shortcut (desktop has it in the header) */}
-      {user && !isAdminRoute && !isTvRoute && (
+      {user && !isAdminRoute && !isTvRoute && !isMobileCheckout && (
         <div className="md:hidden fixed top-2 right-2 z-50">
           <SuperAdminMenu />
         </div>

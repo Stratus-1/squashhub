@@ -10176,6 +10176,51 @@ export type Database = {
           },
         ]
       }
+      help_center_case_actions: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          event_id: string
+          expected_revision: number
+          id: number
+          idempotency_key: string
+          message_id: string | null
+          request_hash: string
+          result_revision: number
+          result_status: string
+          ticket_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          event_id: string
+          expected_revision: number
+          id?: number
+          idempotency_key: string
+          message_id?: string | null
+          request_hash: string
+          result_revision: number
+          result_status: string
+          ticket_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          event_id?: string
+          expected_revision?: number
+          id?: number
+          idempotency_key?: string
+          message_id?: string | null
+          request_hash?: string
+          result_revision?: number
+          result_status?: string
+          ticket_id?: string
+        }
+        Relationships: []
+      }
       help_center_feed_private: {
         Row: {
           created_at: string
@@ -23510,6 +23555,19 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      help_center_apply_case_action: {
+        Args: {
+          p_action: string
+          p_actor_user_id: string
+          p_event_id: string
+          p_expected_revision: number
+          p_idempotency_key: string
+          p_message?: string
+          p_request_hash: string
+          p_target_status?: string
+        }
+        Returns: Json
+      }
       help_center_case_context_messages: {
         Args: { p_ticket: string }
         Returns: {
@@ -23582,6 +23640,10 @@ export type Database = {
       }
       help_center_outbox_wake: { Args: never; Returns: undefined }
       help_center_pilot_enqueue: { Args: never; Returns: Json }
+      help_center_resolve_platform_operator: {
+        Args: { p_email: string }
+        Returns: string
+      }
       help_center_set_delivery_mode: {
         Args: { p_mode: string }
         Returns: string

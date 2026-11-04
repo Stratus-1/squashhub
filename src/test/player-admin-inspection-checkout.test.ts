@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import ts from "typescript";

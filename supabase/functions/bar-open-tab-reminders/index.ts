@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   for (const s of settings ?? []) {
     const { data: club } = await admin.from("clubs").select("name, subdomain").eq("id", s.club_id).maybeSingle();
     const clubName = club?.name ?? "your club";
-    const link = club?.subdomain ? `https://${club.subdomain}.squashhub.co.za/bar` : "https://squashhub.co.za/bar";
+    const link = club?.subdomain ? `https://${club.subdomain}.squashhub.co.za/honesty-bar` : "https://squashhub.co.za/honesty-bar";
     const { data: tabs } = await admin
       .from("bar_guest_tabs")
       .select("id, club_member_id, guest_name, guest_phone, opened_at")

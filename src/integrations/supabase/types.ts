@@ -10235,6 +10235,81 @@ export type Database = {
           },
         ]
       }
+      gobook_lights_topups: {
+        Row: {
+          amount: number
+          cancellation_reason: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          created_by: string
+          gobook_client_id: number
+          gobook_payment_id: number | null
+          gobook_status: string | null
+          id: string
+          last_error: string | null
+          method: string
+          reference: string
+          reversal_journal_ref: string | null
+          status: string
+          transfer_journal_ref: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          cancellation_reason?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          created_by: string
+          gobook_client_id: number
+          gobook_payment_id?: number | null
+          gobook_status?: string | null
+          id?: string
+          last_error?: string | null
+          method: string
+          reference: string
+          reversal_journal_ref?: string | null
+          status?: string
+          transfer_journal_ref?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cancellation_reason?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          created_by?: string
+          gobook_client_id?: number
+          gobook_payment_id?: number | null
+          gobook_status?: string | null
+          id?: string
+          last_error?: string | null
+          method?: string
+          reference?: string
+          reversal_journal_ref?: string | null
+          status?: string
+          transfer_journal_ref?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gobook_lights_topups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gobook_lights_topups_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       help_center_case_actions: {
         Row: {
           action: string

@@ -29,7 +29,8 @@
 
 ## Open tasks
 - [x] Reclassify Bamanye Ntonjane's 27 October R23/R20 as direct bar sales, removing member credits without changing bank receipts.
-- [ ] Audit similar Nelspruit direct bar payments incorrectly credited to member accounts; match existing sales before any further corrections, never invent item purchases.
+- [x] Audit Nelspruit member credits against recorded bar charges and linked direct-sales references: no exact-reference duplicates; Francois, Gareth, Gerrie van Niekerk, Deidre and Andre have corresponding bar debits.
+- [ ] Confirm before correcting ambiguous candidates: John Cussons R75 (25 Sep, labelled bar payment but no bar debit); Zach Wiid R20 (26 Oct, separate paid R20 direct sale 31 seconds later with different reference); Ruaan Naude R100 (3 Nov, separate paid R20 sale). Payment purpose/provider references do not establish duplication; requires Willem or receipt confirmation.
 - [x] Review support ticket re member balances (CSIR, 29 Oct): added As-at date report + export to Member Balances dialog
 - [x] Replied to and closed only the completed CSIR member-balances support ticket; verified saved reply and Closed status in the signed-in inbox.
 - [x] Investigated Zach Wiid's Nelspruit R75 top-up Unauthorized ticket: active linked account, sign-in at 08:11 UTC, prior successful top-ups, no new payment session. Rejection occurs during sign-in validation before Stitch; exact failed-session cause is unconfirmed. Payment tickets remain open; no payment/code changes.

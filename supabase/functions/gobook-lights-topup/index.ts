@@ -45,31 +45,39 @@ async function queryPayment(token: string, q: string) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-async function postTransfer(row: any): Promise<string> {
-  if (row.transfer_journal_ref) return row.transfer_journal_ref;
-  const ref = crypto.randomUUID();
-  const lines = lightsTransferLines(Number(row.amount)).map((l) => ({
-    ...l, club_id: row.club_id, club_member_id: row.club_member_id, journal_ref: ref,
-    description: `${l.description} (${row.reference})`,
-  }));
-  const { error } = await admin.from("club_journal_entries").insert(lines);
+// Statement line "Court lights top-up sent to GoBook": the existing journal trigger posts
+// debtors Dr / light_fees_income Cr, so the member's paid top-up nets to zero.
+async function postTransfer(row: any): Promise<void> {
+  if (row.transfer_journal_ref) return;
+  const { data: tx, error } = await admin.from("member_credit_transactions").insert({
+    club_id: row.club_id, club_member_id: row.club_member_id, amount: Number(row.amount),
+    type: "credit", method: "system", status: "confirmed", confirmed_at: new Date().toISOString(),
+    description: `Court lights top-up sent to GoBook (${row.reference})`, reference: row.reference,
+  }).select("id").single();
   if (error) throw new Error(`Could not record transfer: ${error.message}`);
-  await admin.from("gobook_lights_topups").update({ transfer_journal_ref: ref }).eq("id", row.id);
-  return ref;
+  await admin.from("gobook_lights_topups").update({ transfer_journal_ref: tx.id }).eq("id", row.id);
 }
 
 async function reverseTransfer(row: any) {
   if (!row.transfer_journal_ref || row.reversal_journal_ref) return;
+  const desc = `GoBook rejected court lights top-up (${row.reference}) - returned to account`;
+  const { data: tx, error } = await admin.from("member_credit_transactions").insert({
+    club_id: row.club_id, club_member_id: row.club_member_id, amount: Number(row.amount),
+    type: "debit", method: "system", status: "confirmed", confirmed_at: new Date().toISOString(),
+    description: desc, reference: `${row.reference}-R`,
+  }).select("id").single();
+  if (error) throw new Error(`Could not reverse transfer: ${error.message}`);
+  const { data: orig } = await admin.from("club_journal_entries").select("journal_ref")
+    .eq("transaction_id", row.transfer_journal_ref).limit(1).maybeSingle();
   const ref = crypto.randomUUID();
   const lines = lightsTransferLines(Number(row.amount)).map((l) => ({
-    account: l.account, debit: l.credit, credit: l.debit,
-    club_id: row.club_id, club_member_id: row.club_member_id, journal_ref: ref,
-    reverses_journal_ref: row.transfer_journal_ref,
-    description: `GoBook rejected Lights top-up (${row.reference}) — returned to account`,
+    account: l.account, debit: l.credit, credit: l.debit, club_id: row.club_id,
+    club_member_id: row.club_member_id, journal_ref: ref, transaction_id: tx.id,
+    reverses_journal_ref: orig?.journal_ref ?? null, description: desc,
   }));
-  const { error } = await admin.from("club_journal_entries").insert(lines);
-  if (error) throw new Error(`Could not reverse transfer: ${error.message}`);
-  await admin.from("gobook_lights_topups").update({ reversal_journal_ref: ref }).eq("id", row.id);
+  const { error: jErr } = await admin.from("club_journal_entries").insert(lines);
+  if (jErr) throw new Error(`Could not reverse journal: ${jErr.message}`);
+  await admin.from("gobook_lights_topups").update({ reversal_journal_ref: tx.id }).eq("id", row.id);
 }
 
 async function applyStatus(row: any, payment: any) {

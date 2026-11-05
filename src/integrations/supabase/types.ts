@@ -558,6 +558,32 @@ export type Database = {
           },
         ]
       }
+      agm_nominator_old_tokens: {
+        Row: {
+          nominator_id: string
+          replaced_at: string
+          token_hash: string
+        }
+        Insert: {
+          nominator_id: string
+          replaced_at?: string
+          token_hash: string
+        }
+        Update: {
+          nominator_id?: string
+          replaced_at?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agm_nominator_old_tokens_nominator_id_fkey"
+            columns: ["nominator_id"]
+            isOneToOne: false
+            referencedRelation: "agm_nominators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agm_nominators: {
         Row: {
           ballot_id: string

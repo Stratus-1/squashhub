@@ -18,6 +18,16 @@ export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch", "paynow", "pay
 export const isSupportedGateway = (g: string | null | undefined): g is GatewayId =>
   !!g && (SUPPORTED_GATEWAYS as string[]).includes(g);
 
+function throwCheckoutError(data: unknown, error: { message?: string; context?: unknown } | null, fallback: string) {
+  const responseError = data && typeof data === "object" && "error" in data ? data.error : undefined;
+  const status = error?.context instanceof Response ? error.context.status : undefined;
+  const message = typeof responseError === "string" ? responseError : error?.message;
+  if (status === 401 || message?.trim().toLowerCase() === "unauthorized") {
+    throw new Error("Please log in again to try your payment.");
+  }
+  if (error || responseError) throw new Error(message || fallback);
+}
+
 // Paynow pending-session helpers (localStorage, same pattern as Yoco/Stitch)
 const PAYNOW_PENDING_KEY = "sh.paynow.pending";
 export function rememberPendingPaynowSession(sessionId: string, returnPath: string) {
@@ -83,8 +93,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         description: opts.description, return_url,
       },
     });
-    if (error) throw new Error(error.message || "Could not start Yoco checkout");
-    if ((data as any)?.error) throw new Error((data as any).error);
+    throwCheckoutError(data, error, "Could not start Yoco checkout");
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Yoco did not return a redirect URL");
     rememberPendingYocoSession((data as any).session_id, opts.returnPath);
@@ -107,8 +116,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         ...(opts.pay_scope ? { pay_scope: opts.pay_scope } : {}),
       },
     });
-    if (error) throw new Error(error.message || "Could not start Stitch checkout");
-    if ((data as any)?.error) throw new Error((data as any).error);
+    throwCheckoutError(data, error, "Could not start Stitch checkout");
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Stitch did not return a redirect URL");
     rememberPendingStitchSession((data as any).session_id, opts.returnPath);
@@ -128,8 +136,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         description: opts.description, return_url,
       },
     });
-    if (error) throw new Error(error.message || "Could not start Paynow checkout");
-    if ((data as any)?.error) throw new Error((data as any).error);
+    throwCheckoutError(data, error, "Could not start Paynow checkout");
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Paynow did not return a redirect URL");
     rememberPendingPaynowSession((data as any).session_id, opts.returnPath);
@@ -149,8 +156,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         description: opts.description, return_url,
       },
     });
-    if (error) throw new Error(error.message || "Could not start PayFast checkout");
-    if ((data as any)?.error) throw new Error((data as any).error);
+    throwCheckoutError(data, error, "Could not start PayFast checkout");
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("PayFast did not return a redirect URL");
     rememberPendingPayfastSession((data as any).session_id, opts.returnPath);

@@ -1,3 +1,6 @@
+## 2026-11-05 — Clear once-off payment sign-in rejection
+- Replace Unauthorized/HTTP 401 checkout errors with a request to log in again in the shared once-off payment dispatcher. Ownership, provider and other failures remain distinct; no auth settings, automatic retries, recurring mandate handlers or financial writes changed.
+
 ## 2026-11-04 — Firebase Player Bar club-settings parity
 - Bridge reads order availability from bar_order_process_status, retaining the post-tab-open recheck and bar_submit_guest_order enforcement. Online advertisement and both checkout paths mirror bar-card-pay's supported primary gateway or PayFast-only fallback, credentials and online switch. Existing menu, member/email/club, tab ownership/status, payment verification and order idempotency paths remain authoritative.
 - Migration 0358 adds a service-role-only secret-validated bar_account_charge_preview(uuid,text) overload; authenticated one-argument calls retain own-member/bar-admin/staff checks (NULL identity denied). Return projection is limited to bar_gated, shop_gated, current_owing, allowance. No ledger/stock/payment rows changed.

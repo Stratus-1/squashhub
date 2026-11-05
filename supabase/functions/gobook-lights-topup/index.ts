@@ -174,10 +174,9 @@ Deno.serve(async (req) => {
       if (!g || Number(g.shortfall) > 0) {
         return json({ error: "Not enough available on your account. Choose card or EFT instead." }, 400);
       }
-    } else if (g && Number(g.current_owing) > 0.009) {
-      // A card/EFT top-up would first settle outstanding club fees, leaving the Lights unpaid.
-      return json({ error: "Please settle your outstanding account balance first, then top up your Lights." }, 400);
     }
+    // Card/EFT: fresh money earmarked for Lights; the matching transfer nets it to zero, so an
+    // outstanding balance never blocks it (renewal auto-settlement excludes these amounts).
 
     const id = crypto.randomUUID();
     const { data: row, error } = await admin.from("gobook_lights_topups").insert({

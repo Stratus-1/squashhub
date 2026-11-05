@@ -414,6 +414,29 @@ export function ScheduleMatchDialog({
       await supabase.functions
         .invoke("gobook-api", { body: { action: "sync_core_day", club_id: bookingClubId, booking_date: date } })
         .catch(() => null);
+      // Reschedule: move the fixture onto the new booking so the old Club
+      // Champs slot is released straight away (never left double-booked).
+      if (match && !result?.alreadyBooked) {
+        const { data: fresh } = await supabase
+          .from("bookings")
+          .select("id")
+          .eq("club_id", bookingClubId)
+          .eq("court_id", court)
+          .eq("date", date)
+          .eq("start_time", `${start}:00`)
+          .eq("status", "active")
+          .eq("source", "gobook")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        const newId = (fresh as any[])?.[0]?.id;
+        if (newId) {
+          const { error: linkErr } = await rpcExt("link_booking_to_champ_match", { p_match_id: match.id, p_booking_id: newId });
+          if (!linkErr) {
+            toast.success("Fixture moved to your new booking — the old Club Champs slot has been released.");
+            invalidateAll();
+          }
+        }
+      }
       qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });

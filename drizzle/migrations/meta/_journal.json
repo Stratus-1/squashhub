@@ -2591,6 +2591,13 @@
       "when": 1793875562134,
       "tag": "0369_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 370,
+      "version": "7",
+      "when": 1793878058643,
+      "tag": "0370_relink_champ_match_frees_old_slot",
+      "breakpoints": true
     }
   ]
 }

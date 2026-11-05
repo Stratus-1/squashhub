@@ -28,6 +28,8 @@
 - [x] Nelspruit Makro payments reviewed: stay recorded as bar cost of sales (not Stock on hand), tuck-shop stays under Bar — Willem's choice, no ledger changes.
 
 ## Open tasks
+- [x] Reclassify Bamanye Ntonjane's 27 October R23/R20 as direct bar sales, removing member credits without changing bank receipts.
+- [ ] Audit similar Nelspruit direct bar payments incorrectly credited to member accounts; match existing sales before any further corrections, never invent item purchases.
 - [x] Review support ticket re member balances (CSIR, 29 Oct): added As-at date report + export to Member Balances dialog
 - [x] Replied to and closed only the completed CSIR member-balances support ticket; verified saved reply and Closed status in the signed-in inbox.
 - [x] Investigated Zach Wiid's Nelspruit R75 top-up Unauthorized ticket: active linked account, sign-in at 08:11 UTC, prior successful top-ups, no new payment session. Rejection occurs during sign-in validation before Stitch; exact failed-session cause is unconfirmed. Payment tickets remain open; no payment/code changes.

@@ -1414,7 +1414,7 @@ export default function BarCounter() {
               <DialogHeader>
                 <DialogTitle>Top up {activeTab.guest_name}'s account</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Swipe the card at the bar, then confirm. It reduces what the member owes (or puts their account in credit) and settles outstanding fees first — the same as an online top-up.
+                  Take cash, swipe the card, or let the member pay online, then confirm. It reduces what the member owes (or puts their account in credit) and settles outstanding fees first — the same as an online top-up.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -1427,10 +1427,29 @@ export default function BarCounter() {
                   />
                 </div>
                 <div className="grid gap-2 grid-cols-1">
-                  <Button className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("card")}>
-                    <CreditCard className="w-4 h-4" /> Swipe at bar
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">Top-ups are card only — cash is not accepted.</p>
+                  {board.cash_enabled && (
+                    <Button variant="outline" className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("cash")}>
+                      <Banknote className="w-4 h-4" /> Paid cash
+                    </Button>
+                  )}
+                  {board.card_enabled && (
+                    <Button className="h-11 gap-2" disabled={topUpBusy} onClick={() => confirmTopUp("card")}>
+                      <CreditCard className="w-4 h-4" /> Swipe at bar
+                    </Button>
+                  )}
+                  <div className="rounded-lg border p-3 space-y-2 text-center">
+                    <p className="text-xs font-medium flex items-center justify-center gap-1"><Smartphone className="w-3.5 h-3.5" /> Pay online on own phone</p>
+                    {Number(topUpAmount) > 0 ? (
+                      <>
+                        <div className="inline-block rounded bg-background p-2 border">
+                          <QRCodeSVG value={`${window.location.origin}/my-account?topup=${(Math.round(Number(topUpAmount) * 100) / 100).toFixed(2)}`} size={160} />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">Member scans, signs in and pays by card. It shows on their account automatically — nothing to confirm here.</p>
+                      </>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">Enter the amount to show a QR code.</p>
+                    )}
+                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Double-clicks are safe — each confirmation is recorded once.

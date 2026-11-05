@@ -2598,6 +2598,13 @@
       "when": 1793878058643,
       "tag": "0370_relink_champ_match_frees_old_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 371,
+      "version": "7",
+      "when": 1793878399072,
+      "tag": "0371_bar_open_tab_reminders",
+      "breakpoints": true
     }
   ]
 }

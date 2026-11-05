@@ -168,12 +168,15 @@ Deno.serve(async (req) => {
     const clientId = Number(member.gobook_client_id);
     if (!Number.isInteger(clientId) || clientId <= 0) return json({ error: "Your GoBook account is not linked" }, 400);
 
+    const { data: gate } = await admin.rpc("member_account_gate", { _club_member_id: memberId, _extra: amount });
+    const g = Array.isArray(gate) ? gate[0] : gate;
     if (method === "account") {
-      const { data: gate } = await admin.rpc("member_account_gate", { _club_member_id: memberId, _extra: amount });
-      const g = Array.isArray(gate) ? gate[0] : gate;
       if (!g || Number(g.shortfall) > 0) {
         return json({ error: "Not enough available on your account. Choose card or EFT instead." }, 400);
       }
+    } else if (g && Number(g.current_owing) > 0.009) {
+      // A card/EFT top-up would first settle outstanding club fees, leaving the Lights unpaid.
+      return json({ error: "Please settle your outstanding account balance first, then top up your Lights." }, 400);
     }
 
     const id = crypto.randomUUID();

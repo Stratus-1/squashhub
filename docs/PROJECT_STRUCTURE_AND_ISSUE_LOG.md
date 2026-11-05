@@ -4326,3 +4326,4 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Symptom: Kasavan Reddy showed two peak bookings; GoBook had rejected the second ("Daily booking quota has been reached") and given the slot to Lucian du Plessis.
 - Cause: `gobook-api` sync only skipped statuses C/X; status `R` (Rejected) was mirrored as active. Also sync kept the old member link when a GoBook slot changed booker.
 - Fix: skip `R` rows (stale mirrors then cancel); member links kept only while the booker name is unchanged (`gobook-api`, `gobook-sync`); test in `src/test/gobook-legacy-identity.test.ts`.
+- Follow-up: SquashHub's peak/daily caps exempted `source='gobook'` rows, so GoBook-club bookings were never checked. `gobook-api` `book` now runs `_shared/booking-caps.ts` (daily + peak, bookings_unlimited / non-peak bypasses) against all the member's active bookings before calling GoBook. Test: `src/test/gobook-booking-caps.test.ts`.

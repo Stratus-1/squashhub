@@ -82,9 +82,10 @@ export default function PlayerProfile() {
 
       // Decide which side the viewed player is on by member ID first (shared logins/family
       // accounts can put the same user ID on either side), then by user ID.
-      const isSideA = (m: any) => playerMemberId
-        ? m.player_a_member_id === playerMemberId
-        : m.player_a === id;
+      const isSideA = (m: any) =>
+        (playerMemberId && (m.player_a_member_id || m.player_b_member_id))
+          ? m.player_a_member_id === playerMemberId
+          : m.player_a === id;
       const opponentIds = [...new Set((matches || []).map((m: any) => (isSideA(m) ? m.player_b : m.player_a)).filter(Boolean))] as string[];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
@@ -96,7 +97,6 @@ export default function PlayerProfile() {
       return (matches || []).map((m: any) => {
         const sideA = isSideA(m);
         const opponentId = sideA ? m.player_b : m.player_a;
-        const opponentMemberId = sideA ? m.player_b_member_id : m.player_a_member_id;
         let sets_text: string | null = null;
         if (m.game_scores) {
           try {
@@ -115,9 +115,9 @@ export default function PlayerProfile() {
         return {
           ...m,
           opponent_name: nameMap.get(opponentId) || "Unknown",
-          is_win: m.winner_member_id && playerMemberId
-            ? m.winner_member_id === playerMemberId
-            : m.winner_id ? m.winner_id !== opponentId || (opponentMemberId == null && m.winner_id === id) : false,
+          is_win: m.winner_member_id
+            ? m.winner_member_id === (sideA ? m.player_a_member_id : m.player_b_member_id)
+            : !!m.winner_id && m.winner_id === (sideA ? m.player_a : m.player_b),
           sets_text,
         };
       });

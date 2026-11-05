@@ -4335,3 +4335,9 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Ticket cf10acbb asked whether Member Balances can be reported over a selected period and printed.
 - Added an "As at" date picker to the Member Balances dialog in FinanceTab.tsx; balances are computed from journal entries up to the selected date (entry created_at is the effective transaction date, noon Johannesburg). Empty = today, unchanged behaviour.
 - Excel/PDF export titles and filenames now include the as-at date. Verified in preview signed in as CSIR admin: as at 2026-10-01 shows 1 member (R935) vs 2 members (R1,185) today.
+
+### 2026-11-05 — John Cussons direct bar receipt removed from member statement
+- Symptom: the 25 September R75 direct bar receipt incorrectly credited John's member account.
+- Finding: Willem confirmed it was a direct bar sale; Zach Wiid's separate R20 payment was correct because he had first been billed for the item.
+- Fix: reclassified only John's exact R75 debtors leg to bar_income and removed member linkage from both legs; retained the existing bank receipt/date/value and appended before/after ledger audit.
+- Guard: exact club, journal, member, row IDs and amounts checked; Zach's payment untouched. No extra bank receipt, stock change or payment created.

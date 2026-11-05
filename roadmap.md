@@ -29,3 +29,5 @@
 
 ## Open tasks
 - [x] Review support ticket re member balances (CSIR, 29 Oct): added As-at date report + export to Member Balances dialog
+- [ ] Reply to and close the completed CSIR member-balances support ticket, as approved by Willem.
+- [ ] Investigate Zach Wiid's Nelspruit R75 top-up Unauthorized support ticket; preserve financial records and payment authority.

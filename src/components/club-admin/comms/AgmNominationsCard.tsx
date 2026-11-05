@@ -59,7 +59,7 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
         meta: { purpose: "agm_nominations", ballot_id: ballot.id },
         content: { email: {
           subject: `${ballot.title} — you have been nominated`,
-          body: `<p>Dear {{first_name}},</p><p>You have been nominated for the committee. Please accept or decline before <strong>${fmt(ballot.nominations_close_at)}</strong>: <a href="{{nomination_link}}">Respond to your nomination</a></p><p>This new link replaces any earlier nomination link.</p>`,
+          body: `<p>Dear {{first_name}},</p><p>You have been nominated for the committee. Please accept or decline before <strong>${fmt(ballot.nominations_close_at)}</strong>: <a href="{{nomination_link}}">Respond to your nomination</a></p><p>Your earlier nomination link also still works.</p>`,
         } },
       });
     },

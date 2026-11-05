@@ -58,7 +58,7 @@ export default function AgmNominate() {
       <Card className="max-w-xl mx-auto p-6 text-center space-y-2">
         <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
         <h1 className="text-lg font-semibold">This nomination link is not valid</h1>
-        <p className="text-xs text-muted-foreground">It may have been replaced by a newer link. Please contact the club.</p>
+        <p className="text-xs text-muted-foreground">Please open the link from your own nomination email, or contact the club for a new one.</p>
       </Card>
     </div>
   );

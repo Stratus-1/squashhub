@@ -757,7 +757,7 @@ Deno.serve(async (req) => {
         // an upsert otherwise clashes with its own active mirror before conflict
         // resolution; falling back to the occupying row can steal another ID.
         const { data: mirror, error: mirrorError } = await admin.from("bookings")
-          .select("id, user_id, opponent_id, club_member_id, opponent_member_id")
+          .select("id, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
           .eq("club_id", clubId).eq("source", "gobook").eq("external_id", externalId)
           .maybeSingle();
         if (mirrorError) throw mirrorError;
@@ -768,7 +768,10 @@ Deno.serve(async (req) => {
           if (fixtureError) throw fixtureError;
           if (fixture) { synced++; continue; }
         }
-        const owned = mirror && [mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean);
+        // A GoBook booking can be handed to another person under the same ID;
+        // keep earlier links only while the booker is unchanged.
+        const sameBooker = mirror && normalizeName(String(mirror.external_booker_name ?? "")) === normalizeName(String(bookerName ?? ""));
+        const owned = mirror && sameBooker && [mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean);
         const payload = mirror ? {
           ...rowPayload, id: mirror.id,
           ...(owned ? {

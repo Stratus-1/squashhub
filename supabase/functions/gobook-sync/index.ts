@@ -445,7 +445,7 @@ async function syncClub(
 
       // Resolve stable external identity, including cancelled mirrors.
       const { data: mirror, error: mirrorError } = await admin.from("bookings")
-        .select("id, user_id, opponent_id, club_member_id, opponent_member_id")
+        .select("id, user_id, opponent_id, club_member_id, opponent_member_id, external_booker_name")
         .eq("club_id", clubId).eq("source", "gobook").eq("external_id", external)
         .maybeSingle();
       if (mirrorError) throw mirrorError;
@@ -454,7 +454,8 @@ async function syncClub(
           .select("booking_id").eq("booking_id", mirror.id).limit(1).maybeSingle();
         if (fixtureError) throw fixtureError;
         if (fixture) { result.synced++; continue; }
-        if ([mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean)) {
+        const sameBooker = String(mirror.external_booker_name ?? "").trim().toLowerCase() === s.bookerName.trim().toLowerCase();
+        if (sameBooker && [mirror.user_id, mirror.opponent_id, mirror.club_member_id, mirror.opponent_member_id].some(Boolean)) {
           Object.assign(row, {
             user_id: mirror.user_id, club_member_id: mirror.club_member_id,
             opponent_id: mirror.opponent_id, opponent_member_id: mirror.opponent_member_id,

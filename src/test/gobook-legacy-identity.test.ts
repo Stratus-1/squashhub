@@ -13,7 +13,7 @@ const compiled = ts.transpileModule(`async function sync() { ${source.slice(star
 
 it("legacy refresh retains cancelled provider identity and never overwrites an occupying hold", async () => {
   const rows: any[] = [
-    { id: "canonical", external_id: "20261020-1-18", status: "cancelled", club_member_id: "player", court_id: 27, date: "2026-10-20", start_time: "18:00:00" },
+    { id: "canonical", external_id: "20261020-1-18", status: "cancelled", club_member_id: "player", external_booker_name: "Club Championships", court_id: 27, date: "2026-10-20", start_time: "18:00:00" },
     { id: "occupying", external_id: "other-id", status: "active", court_id: 27, date: "2026-10-20", start_time: "18:00:00" },
   ];
   const admin = { from(table: string) {
@@ -44,4 +44,24 @@ it("legacy refresh retains cancelled provider identity and never overwrites an o
   await vm.runInContext("sync()", ctx);
   expect(rows[0]).toMatchObject({ id: "canonical", status: "active", club_member_id: "player" });
   expect(result.synced).toBe(1);
+});
+it("a GoBook slot handed to another person drops the earlier member link", async () => {
+  const rows: any[] = [{ id: "m", external_id: "20261105-3-18", status: "active", club_member_id: "kasavan", user_id: "u1", external_booker_name: "Kasavan Reddy", court_id: 27, date: "2026-11-05", start_time: "18:00:00" }];
+  const admin = { from(table: string) {
+    const filters: Record<string, unknown> = {}; let patch: any;
+    const q: any = { select: () => q, limit: () => q, maybeSingle: () => q,
+      eq: (k: string, v: unknown) => { filters[k] = v; return q; },
+      update: (v: unknown) => { patch = v; return q; }, insert: () => { throw new Error("no insert"); },
+      then(resolve: (v: unknown) => unknown) {
+        if (table === "club_champs_matches") return Promise.resolve({ data: null }).then(resolve);
+        const m = rows.filter(r => Object.entries(filters).every(([k,v]) => k === "club_id" || k === "source" || r[k] === v));
+        if (patch) m.forEach(r => Object.assign(r, patch));
+        return Promise.resolve({ data: m[0] ?? null }).then(resolve);
+      } };
+    return q;
+  } };
+  const ctx = vm.createContext({ admin, result: { synced: 0 }, clubId: "c", dateStr: "2026-11-05", dateKey: () => "20261105", courtMap: new Map([[3,27]]), nameMap: new Map([["lucian du plessis", { id: "lucian", user_id: "u2" }]]), slots: [{ free: false, bookerName: "Lucian du Plessis", courtNumber: 3, startHour: 18 }], console });
+  vm.runInContext(compiled, ctx);
+  await vm.runInContext("sync()", ctx);
+  expect(rows[0]).toMatchObject({ club_member_id: "lucian", external_booker_name: "Lucian du Plessis" });
 });

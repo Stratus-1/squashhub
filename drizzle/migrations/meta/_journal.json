@@ -2605,6 +2605,13 @@
       "when": 1793878399072,
       "tag": "0371_bar_open_tab_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 372,
+      "version": "7",
+      "when": 1793883373854,
+      "tag": "0372_renewal_settlement_skips_lights_topups",
+      "breakpoints": true
     }
   ]
 }

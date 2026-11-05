@@ -2612,6 +2612,13 @@
       "when": 1793883373854,
       "tag": "0372_renewal_settlement_skips_lights_topups",
       "breakpoints": true
+    },
+    {
+      "idx": 373,
+      "version": "7",
+      "when": 1793897992089,
+      "tag": "0373_bar_counter_topup_cash",
+      "breakpoints": true
     }
   ]
 }

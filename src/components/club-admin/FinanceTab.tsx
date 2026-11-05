@@ -1857,8 +1857,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             </div>
             {(() => {
               const memberMap = new Map<string, { debtors: number; credits: number }>();
+              const asAt = balancesAsAt || null;
               (journalEntries || []).forEach((e: any) => {
                 if (!e.club_member_id) return;
+                if (asAt && new Date(e.created_at).toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }) > asAt) return;
                 const row = memberMap.get(e.club_member_id) || { debtors: 0, credits: 0 };
                 if (e.account === "debtors") {
                   row.debtors += Number(e.debit || 0) - Number(e.credit || 0);

@@ -821,6 +821,28 @@ Deno.serve(async (req) => {
       const bookingDate = String(payload.booking_date ?? "").slice(0, 10);
       let providerConsultantId: number | null = null;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
+      // Apply the club's SquashHub daily/peak limits BEFORE sending to GoBook.
+      if (payload.club_member_id && payload.start_time && payload.end_time) {
+        const { data: capMember } = await admin.from("club_members").select("id, user_id").eq("id", String(payload.club_member_id)).eq("club_id", clubId).maybeSingle();
+        if (capMember) {
+          const { data: capClub } = await admin.from("clubs").select("peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, peak_day_overrides, max_bookings_per_day, max_peak_bookings_per_day").eq("id", clubId).maybeSingle();
+          const { data: mine } = await admin.from("bookings").select("start_time, end_time, source, external_id, external_booker_name")
+            .eq("club_id", clubId).eq("date", bookingDate).eq("status", "active")
+            .or(`club_member_id.eq.${capMember.id},opponent_member_id.eq.${capMember.id}`);
+          const existing = (mine ?? []).filter((b: any) => b.source !== "club_event"
+            && !/^(champ|sbs):/.test(String(b.external_id ?? ""))
+            && !/^club championship/i.test(String(b.external_booker_name ?? "").trim()));
+          const perm = async (p: string) => capMember.user_id
+            ? !!(await admin.rpc("is_club_admin_or_permitted", { _user_id: capMember.user_id, _club_id: clubId, _permission: p })).data
+            : false;
+          const capError = capClub ? checkBookingCaps({
+            club: capClub as any, date: bookingDate,
+            start: String(payload.start_time).slice(0, 5), end: String(payload.end_time).slice(0, 5),
+            existing, unlimited: await perm("bookings_unlimited"), unlimitedNonPeak: await perm("bookings_unlimited_non_peak"),
+          }) : null;
+          if (capError) return json({ error: capError }, 400);
+        }
+      }
       if (!ids.length && payload.court_id && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate) && payload.start_time) {
         const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
         const providerServiceId = Number(club?.gobook_service_id ?? 0);

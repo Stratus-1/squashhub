@@ -1947,7 +1947,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement("a");
-                          a.href = url; a.download = `member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.csv`;
+                          a.href = url; a.download = `member-balances-${balancesFilter}-as-at-${balancesAsAt || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" })}.csv`;
                           document.body.appendChild(a); a.click(); a.remove();
                           setTimeout(() => URL.revokeObjectURL(url), 30000);
                         }}>
@@ -1959,7 +1959,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           const { default: autoTable } = await import("jspdf-autotable");
                           const doc = new jsPDF();
                           doc.setFontSize(14);
-                          doc.text(`${club?.name ?? "Club"} — Member Balances (${balancesFilter})`, 14, 16);
+                          const asAtLabel = balancesAsAt || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+                          doc.text(`${club?.name ?? "Club"} — Member Balances (${balancesFilter}) as at ${asAtLabel}`, 14, 16);
                           doc.setFontSize(9);
                           doc.text(`Generated ${new Date().toLocaleString("en-ZA")} · ${rows.length} members`, 14, 22);
                           const fmt = (n: number) => `R ${Math.abs(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${n < -0.01 ? " Cr" : ""}`;
@@ -1973,7 +1974,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                             footStyles: { fillColor: [30, 58, 95] },
                             columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
                           });
-                          doc.save(`member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.pdf`);
+                          doc.save(`member-balances-${balancesFilter}-as-at-${asAtLabel}.pdf`);
                         }}>
                         <FileText className="w-3 h-3 mr-1" /> PDF
                       </Button>

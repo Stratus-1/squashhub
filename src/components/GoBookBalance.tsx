@@ -4,11 +4,12 @@ import { Loader2, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { GoBookLightsTopUp } from "@/components/GoBookLightsTopUp";
 import { goBookBalanceTone, memberGoBookBalance, goBookLightsAccounts } from "@/lib/gobook-member-balance";
 
 type Balance = { state: "available" | "not_linked" | "unavailable"; accounts?: { balance: number; asAt: string | null; accountName: string }[] };
 
-export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; memberId?: string | null }) {
+export function GoBookBalance({ clubId, memberId, onStartTopUp }: { clubId?: string | null; memberId?: string | null; onStartTopUp?: (amount: number, method: "card" | "eft") => void }) {
   const { format } = useClubCurrency();
   const settings = useQuery({
     queryKey: ["gobook-balance-settings", clubId],
@@ -71,6 +72,9 @@ export function GoBookBalance({ clubId, memberId }: { clubId?: string | null; me
       <Button variant="ghost" size="icon" disabled={query.isFetching} onClick={() => void query.refetch()} aria-label="Refresh GoBook balance" title="Refresh GoBook balance">
         {query.isFetching ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="h-4 w-4" />}
       </Button>
+      {query.data?.state === "available" && clubId && (
+        <GoBookLightsTopUp clubId={clubId} memberId={memberId} onStartTopUp={onStartTopUp} />
+      )}
     </section>
   );
 }

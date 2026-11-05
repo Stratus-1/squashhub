@@ -2577,6 +2577,20 @@
       "when": 1793860770598,
       "tag": "0367_restrict_event_invitation_link_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 368,
+      "version": "7",
+      "when": 1793875461427,
+      "tag": "0368_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 369,
+      "version": "7",
+      "when": 1793875562134,
+      "tag": "0369_migration",
+      "breakpoints": true
     }
   ]
 }

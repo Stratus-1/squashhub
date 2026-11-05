@@ -813,7 +813,7 @@ export default function MyAccount() {
         subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
 
-      {!isPayingForOther && <GoBookBalance clubId={club?.id} memberId={activeMember?.id} />}
+      {!isPayingForOther && <GoBookBalance clubId={club?.id} memberId={activeMember?.id} onStartTopUp={(amt, m) => { setTopUpAmount(amt.toFixed(2)); setTopUpMethod(m); setTopUpOpen(true); }} />}
 
       {/* Pay-for switcher — accounts the user has been granted delegate access to */}
       {(managedDelegations || []).length > 0 && (

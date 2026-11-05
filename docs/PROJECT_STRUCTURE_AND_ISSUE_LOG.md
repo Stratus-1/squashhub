@@ -4341,3 +4341,5 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Finding: Willem confirmed it was a direct bar sale; Zach Wiid's separate R20 payment was correct because he had first been billed for the item.
 - Fix: reclassified only John's exact R75 debtors leg to bar_income and removed member linkage from both legs; retained the existing bank receipt/date/value and appended before/after ledger audit.
 - Guard: exact club, journal, member, row IDs and amounts checked; Zach's payment untouched. No extra bank receipt, stock change or payment created.
+
+- 2026-11-05 — Lights top-up confirm button stuck disabled (Uitsig, Gerhard Fourie): `GoBookLightsTopUp` selected non-existent `club_members.first_name/last_name`, so the member query failed and GoBook name/client ID showed "—". Now selects `name`; server-side `gobook-lights-topup` was unaffected.

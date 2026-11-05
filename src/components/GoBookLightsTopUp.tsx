@@ -48,7 +48,7 @@ export function GoBookLightsTopUp({ clubId, memberId, onStartTopUp }: {
     queryFn: async () => {
       const [{ data: club }, { data: member }] = await Promise.all([
         supabase.from("clubs").select("name").eq("id", clubId).maybeSingle(),
-        supabase.from("club_members").select("gobook_client_id, gobook_client_name, first_name, last_name").eq("id", memberId).maybeSingle(),
+        supabase.from("club_members").select("gobook_client_id, gobook_client_name, name").eq("id", memberId).maybeSingle(),
       ]);
       return { club, member: member as any };
     },
@@ -89,7 +89,7 @@ export function GoBookLightsTopUp({ clubId, memberId, onStartTopUp }: {
   const n = Number(amount);
   const amountOk = Number.isFinite(n) && n >= 10 && n <= 10000;
   const m = info.data?.member;
-  const goBookName = m?.gobook_client_name || [m?.first_name, m?.last_name].filter(Boolean).join(" ");
+  const goBookName = m?.gobook_client_name || (m?.name ?? "");
 
   return (
     <div className="w-full">

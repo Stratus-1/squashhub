@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Fix social-event email links to the invited club and allow secure accept/decline without login, scoped to the invited occurrence.
 - [x] Uitsig: Berni over Jenny 3–0 forfeit recorded and verified in results/standings; Kaylee’s own Past Fixtures correction preview verified.
 - [x] Uitsig: Frans R4 already completed (Past Fixtures), R5 upcoming; Frans/Ron is saved R3. No dates or draw changed.
 - [ ] Uitsig: score-entry incident needs exact failing match/error; Kayla booking failure needs authorised session or screen/error (session mint unavailable). Her next fixture waits for outstanding Ladies A R2, so no speculative opponents generated.

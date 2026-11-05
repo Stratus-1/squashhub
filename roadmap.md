@@ -28,4 +28,4 @@
 - [x] Nelspruit Makro payments reviewed: stay recorded as bar cost of sales (not Stock on hand), tuck-shop stays under Bar — Willem's choice, no ledger changes.
 
 ## Open tasks
-- [ ] Review support ticket re member balances (reported 5 Nov 2026)
+- [x] Review support ticket re member balances (CSIR, 29 Oct): added As-at date report + export to Member Balances dialog

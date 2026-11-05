@@ -212,6 +212,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [balancesFilter, setBalancesFilter] = useState<"outstanding" | "credit" | "all">("outstanding");
   const [balancesSearch, setBalancesSearch] = useState("");
+  // Point-in-time report: empty = today (all entries). Entry created_at is the
+  // effective transaction date (noon Johannesburg), so compare its SA date.
+  const [balancesAsAt, setBalancesAsAt] = useState("");
 
   // Member searchable dropdowns (shared pattern for statement, tx, bill)
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
@@ -1835,11 +1838,29 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 onChange={(e) => setBalancesSearch(e.target.value)}
                 className="h-8 text-xs flex-1 min-w-[160px]"
               />
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="balances-as-at" className="text-[10px] text-muted-foreground whitespace-nowrap">As at</Label>
+                <Input
+                  id="balances-as-at"
+                  type="date"
+                  value={balancesAsAt}
+                  max={new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" })}
+                  onChange={(e) => setBalancesAsAt(e.target.value)}
+                  className="h-8 text-xs w-[140px]"
+                />
+                {balancesAsAt && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setBalancesAsAt("")}>
+                    Today
+                  </Button>
+                )}
+              </div>
             </div>
             {(() => {
               const memberMap = new Map<string, { debtors: number; credits: number }>();
+              const asAt = balancesAsAt || null;
               (journalEntries || []).forEach((e: any) => {
                 if (!e.club_member_id) return;
+                if (asAt && new Date(e.created_at).toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }) > asAt) return;
                 const row = memberMap.get(e.club_member_id) || { debtors: 0, credits: 0 };
                 if (e.account === "debtors") {
                   row.debtors += Number(e.debit || 0) - Number(e.credit || 0);
@@ -1926,7 +1947,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement("a");
-                          a.href = url; a.download = `member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.csv`;
+                          a.href = url; a.download = `member-balances-${balancesFilter}-as-at-${balancesAsAt || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" })}.csv`;
                           document.body.appendChild(a); a.click(); a.remove();
                           setTimeout(() => URL.revokeObjectURL(url), 30000);
                         }}>
@@ -1938,7 +1959,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           const { default: autoTable } = await import("jspdf-autotable");
                           const doc = new jsPDF();
                           doc.setFontSize(14);
-                          doc.text(`${club?.name ?? "Club"} — Member Balances (${balancesFilter})`, 14, 16);
+                          const asAtLabel = balancesAsAt || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+                          doc.text(`${club?.name ?? "Club"} — Member Balances (${balancesFilter}) as at ${asAtLabel}`, 14, 16);
                           doc.setFontSize(9);
                           doc.text(`Generated ${new Date().toLocaleString("en-ZA")} · ${rows.length} members`, 14, 22);
                           const fmt = (n: number) => `R ${Math.abs(n).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${n < -0.01 ? " Cr" : ""}`;
@@ -1952,7 +1974,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                             footStyles: { fillColor: [30, 58, 95] },
                             columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } },
                           });
-                          doc.save(`member-balances-${balancesFilter}-${new Date().toISOString().slice(0, 10)}.pdf`);
+                          doc.save(`member-balances-${balancesFilter}-as-at-${asAtLabel}.pdf`);
                         }}>
                         <FileText className="w-3 h-3 mr-1" /> PDF
                       </Button>

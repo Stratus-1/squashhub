@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { sendAppEmail } from '../_shared/send-app-email.ts'
+import { eventInvitationTarget, eventInvitationUrl } from '../_shared/event-invite.ts'
 import { DRAW_CTA_LABEL, champIdFromUrl, drawCtaCopy, tournamentDestinationUrl, tournamentFallbackUrl } from '../_shared/match-day-cta.ts'
 
 /**
@@ -863,6 +864,32 @@ Deno.serve(async (req) => {
 
     const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     let link = absoluteUrl(siteUrl, notifUrl);
+    const eventTarget = eventInvitationTarget(type, notifUrl, data);
+    if (eventTarget) {
+      // Resolve the exact invited member rather than a shared login's first club.
+      let memberId = String(data?.club_member_id || "");
+      let eventClubId = explicitClubId;
+      if (data?.outbox_id) {
+        const { data: queued } = await supabaseAdmin.from("email_outbox").select("club_member_id,club_id").eq("id", data.outbox_id).maybeSingle();
+        memberId = queued?.club_member_id || "";
+        eventClubId = queued?.club_id || null;
+      }
+      if (!eventClubId) {
+        const { data: event } = await supabaseAdmin.from("club_events").select("club_id").eq("id", eventTarget.eventId).maybeSingle();
+        eventClubId = event?.club_id || null;
+      }
+      if (!memberId && targetUserId && eventClubId) {
+        const { data: members } = await supabaseAdmin.from("club_members").select("id").eq("user_id", targetUserId).eq("club_id", eventClubId);
+        if (members?.length === 1) memberId = members[0].id;
+      }
+      if (!memberId || !eventClubId) throw new Error("Event invitation recipient unavailable");
+      const { data: invitation, error: invitationError } = await supabaseAdmin.rpc("issue_event_invitation_link", {
+        p_event_id: eventTarget.eventId, p_instance_id: eventTarget.instanceId,
+        p_club_member_id: memberId, p_club_id: eventClubId,
+      });
+      if (invitationError || !invitation?.token) throw new Error("Event invitation unavailable");
+      link = eventInvitationUrl(invitation.subdomain, invitation.token);
+    }
 
     // Round-draw emails: the button opens the SAME permanent destination the
     // tournament's Match Day QR encodes, with the standard supporting copy.
@@ -928,7 +955,7 @@ Deno.serve(async (req) => {
         ? DRAW_CTA_LABEL
         : type === "tournament_invite" || type === "tournament_partner_invite"
           ? "Accept / Register"
-          : "Open in SquashHub";
+          : eventTarget ? "Accept / Decline" : "Open in SquashHub";
 
       const clubLogoUrl = clubBrand.logoUrl;
       const clubNameForHeader = clubBrand.name || "Club logo";
@@ -986,7 +1013,7 @@ Deno.serve(async (req) => {
       subject,
       text: body,
       url: link,
-      ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
+      ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : eventTarget ? "Accept / Decline" : "Open in SquashHub",
       secondaryUrl: entryTournamentCta || undefined,
       secondaryLabel: "View tournament & score match",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),

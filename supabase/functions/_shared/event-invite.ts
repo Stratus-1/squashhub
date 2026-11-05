@@ -1,6 +1,6 @@
 /** Only social-event invitation messages receive public RSVP capability links. */
 export function eventInvitationTarget(type: string, url: string, data?: Record<string, unknown> | null) {
-  if (!["event", "event_invite", "event_reminder"].includes(type) && data?.kind !== "event_instance_reminder") return null;
+  if (!["event", "event_invite", "event_reminder"].includes(type) && data?.kind !== "event_instance_reminder" && !(type === "booking" && data?.event_id)) return null;
   const match = /^\/events\/([0-9a-f-]{36})(?:\?([^#]*))?$/i.exec(url);
   const eventId = String(data?.event_id || match?.[1] || "");
   const instanceId = String(data?.instance_id || new URLSearchParams(match?.[2] || "").get("instance") || "");

@@ -20,6 +20,7 @@
 //
 // Setup actions are club-admin only; read/booking actions are open to any
 // authenticated member of the club.
+import { checkBookingCaps } from "../_shared/booking-caps.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { goBookBalances } from "../_shared/gobook-balance.ts";
 

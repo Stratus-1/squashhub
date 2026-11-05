@@ -9927,6 +9927,65 @@ export type Database = {
         }
         Relationships: []
       }
+      event_invitation_links: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          event_id: string
+          expires_at: string
+          instance_id: string | null
+          token_hash: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          event_id: string
+          expires_at: string
+          instance_id?: string | null
+          token_hash: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          event_id?: string
+          expires_at?: string
+          instance_id?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_invitation_links_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invitation_links_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invitation_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invitation_links_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "club_event_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_ids: {
         Row: {
           created_at: string
@@ -23068,6 +23127,10 @@ export type Database = {
           registration_id: string
         }[]
       }
+      event_invitation_reply: {
+        Args: { p_response?: string; p_subdomain?: string; p_token: string }
+        Returns: Json
+      }
       existing_member_signup_status: {
         Args: { _club_id: string; _email: string }
         Returns: string
@@ -23766,6 +23829,15 @@ export type Database = {
       }
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
+      issue_event_invitation_link: {
+        Args: {
+          p_club_id: string
+          p_club_member_id: string
+          p_event_id: string
+          p_instance_id: string
+        }
+        Returns: Json
+      }
       issue_member_activation_token: {
         Args: {
           _campaign_id?: string

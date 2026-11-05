@@ -2563,6 +2563,13 @@
       "when": 1793830338745,
       "tag": "0365_settle_renewal_invoices_from_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 366,
+      "version": "7",
+      "when": 1793860646164,
+      "tag": "0366_public_event_invitation_reply",
+      "breakpoints": true
     }
   ]
 }

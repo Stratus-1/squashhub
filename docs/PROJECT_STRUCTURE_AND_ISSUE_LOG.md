@@ -4343,3 +4343,5 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Guard: exact club, journal, member, row IDs and amounts checked; Zach's payment untouched. No extra bank receipt, stock change or payment created.
 
 - 2026-11-05 — Lights top-up confirm button stuck disabled (Uitsig, Gerhard Fourie): `GoBookLightsTopUp` selected non-existent `club_members.first_name/last_name`, so the member query failed and GoBook name/client ID showed "—". Now selects `name`; server-side `gobook-lights-topup` was unaffected.
+
+- 2026-11-05: GoBook Lights top-up stuck on "Sending to GoBook" — GoBook returns 400 "Payment not found" for unknown references; `queryPayment` now treats that as not-yet-sent. Ryno Coetzee R500 (SH-L-E6E94682FA48) delivered, GoBook payment 43314.

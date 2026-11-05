@@ -715,6 +715,7 @@ Deno.serve(async (req) => {
         const endTime = hhmm(row.endTime ?? row.end_time);
         if (!court || !startTime || !endTime) { skipped++; continue; }
         const externalId = `gobook:${bookingId}`;
+        if (bookingId === 3669408) console.log("TEMP_DIAG_3669408", JSON.stringify(Object.fromEntries(Object.entries(row).filter(([, v]) => typeof v !== "object"))));
         // clientName arrives as "1004; M 2nd LEAGUE"; pcMappingText is the readable part.
         const rawName = String(row.pcMappingText ?? row.clientName ?? "").trim();
         const rawBooker = (rawName.includes(";") ? rawName.split(";").slice(1).join(";") : rawName).trim() || null;

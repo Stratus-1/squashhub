@@ -86,6 +86,35 @@ export function MemberDebitSwitches({ clubId }: { clubId: string }) {
           );
         })}
       </div>
+      <div className="rounded-md border p-2 space-y-2">
+        <div>
+          <p className="text-xs font-medium">Open tab reminders</p>
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            Just after midnight, anyone whose tab is still open from the previous day gets a message asking them to close it.
+            Choose how it is sent (all off = no reminders).
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {([["whatsapp", "WhatsApp"], ["sms", "SMS"], ["email", "Email"]] as const).map(([k, name]) => {
+            const col = `open_tab_reminder_${k}`;
+            return (
+              <div key={k} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                <span className="text-xs">{name}</span>
+                <Switch
+                  checked={settings?.[col] ?? false}
+                  aria-label={`Open tab reminder by ${name}`}
+                  onCheckedChange={async (on) => {
+                    const { error } = await db.from("club_bar_settings").upsert({ club_id: clubId, [col]: on }, { onConflict: "club_id" });
+                    if (error) return toast.error(error.message);
+                    toast.success(on ? `Open tab reminders will be sent by ${name}` : `No more ${name} open tab reminders`);
+                    qc.invalidateQueries({ queryKey: ["bar-costing-settings", clubId] });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

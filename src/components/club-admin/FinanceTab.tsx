@@ -212,6 +212,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [balancesFilter, setBalancesFilter] = useState<"outstanding" | "credit" | "all">("outstanding");
   const [balancesSearch, setBalancesSearch] = useState("");
+  // Point-in-time report: empty = today (all entries). Entry created_at is the
+  // effective transaction date (noon Johannesburg), so compare its SA date.
+  const [balancesAsAt, setBalancesAsAt] = useState("");
 
   // Member searchable dropdowns (shared pattern for statement, tx, bill)
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
@@ -1835,6 +1838,22 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 onChange={(e) => setBalancesSearch(e.target.value)}
                 className="h-8 text-xs flex-1 min-w-[160px]"
               />
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="balances-as-at" className="text-[10px] text-muted-foreground whitespace-nowrap">As at</Label>
+                <Input
+                  id="balances-as-at"
+                  type="date"
+                  value={balancesAsAt}
+                  max={new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" })}
+                  onChange={(e) => setBalancesAsAt(e.target.value)}
+                  className="h-8 text-xs w-[140px]"
+                />
+                {balancesAsAt && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setBalancesAsAt("")}>
+                    Today
+                  </Button>
+                )}
+              </div>
             </div>
             {(() => {
               const memberMap = new Map<string, { debtors: number; credits: number }>();

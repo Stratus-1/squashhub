@@ -41,6 +41,8 @@ async function queryPayment(token: string, q: string) {
   });
   if (res.status === 204 || res.status === 404) return null;
   const text = await res.text();
+  // GoBook answers an unknown reference with 400 "Payment not found" — that means "not sent yet".
+  if (res.status === 400 && /payment not found/i.test(text)) return null;
   if (!res.ok) throw new Error(`GoBook payment query failed (${res.status}): ${text.slice(0, 200)}`);
   try { return JSON.parse(text); } catch { return null; }
 }

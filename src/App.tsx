@@ -44,6 +44,7 @@ const Updates = lazy(() => import("./pages/Updates"));
 const Events = lazy(() => import("./pages/Events"));
 const Tournaments = lazy(() => import("./pages/Tournaments"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
+const EventInvite = lazy(() => import("./pages/EventInvite"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -532,6 +533,8 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<CapabilityRoute capability="events"><Events /></CapabilityRoute>} />
         <Route path="/events/:id" element={<CapabilityRoute capability="events"><EventDetail /></CapabilityRoute>} />
+        <Route path="/event-invite/:token" element={<EventInvite />} />
+        <Route path="/c/:subdomain/event-invite/:token" element={<EventInvite />} />
         <Route path="/tournaments" element={<CapabilityRoute capability="tournaments"><Tournaments /></CapabilityRoute>} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

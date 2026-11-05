@@ -1884,6 +1884,47 @@ export type Database = {
           },
         ]
       }
+      bar_open_tab_reminders: {
+        Row: {
+          channel: string
+          club_id: string
+          created_at: string
+          error: string | null
+          id: string
+          reminder_date: string
+          status: string
+          tab_id: string
+        }
+        Insert: {
+          channel: string
+          club_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          reminder_date: string
+          status?: string
+          tab_id: string
+        }
+        Update: {
+          channel?: string
+          club_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          reminder_date?: string
+          status?: string
+          tab_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_open_tab_reminders_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "bar_guest_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_order_events: {
         Row: {
           action: string
@@ -5039,6 +5080,9 @@ export type Database = {
           costing_enabled_by: string | null
           created_at: string
           online_tips_ready: boolean
+          open_tab_reminder_email: boolean
+          open_tab_reminder_sms: boolean
+          open_tab_reminder_whatsapp: boolean
           shop_allow_member_debit: boolean
           staff_normal_opening: string
           staff_payday: number | null
@@ -5055,6 +5099,9 @@ export type Database = {
           costing_enabled_by?: string | null
           created_at?: string
           online_tips_ready?: boolean
+          open_tab_reminder_email?: boolean
+          open_tab_reminder_sms?: boolean
+          open_tab_reminder_whatsapp?: boolean
           shop_allow_member_debit?: boolean
           staff_normal_opening?: string
           staff_payday?: number | null
@@ -5071,6 +5118,9 @@ export type Database = {
           costing_enabled_by?: string | null
           created_at?: string
           online_tips_ready?: boolean
+          open_tab_reminder_email?: boolean
+          open_tab_reminder_sms?: boolean
+          open_tab_reminder_whatsapp?: boolean
           shop_allow_member_debit?: boolean
           staff_normal_opening?: string
           staff_payday?: number | null

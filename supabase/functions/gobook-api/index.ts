@@ -700,7 +700,8 @@ Deno.serve(async (req) => {
         if (String(row?.bookingDate ?? "").slice(0, 10) !== date) return false;
         if (row?.cancelled) return false;
         const status = String(row?.status ?? "").toUpperCase();
-        return status !== "C" && status !== "X";
+        // R = Rejected by GoBook (e.g. "Daily booking quota has been reached").
+        return status !== "C" && status !== "X" && status !== "R";
       });
       const memberRows = (await admin.from("club_members").select("id, user_id, name, gobook_client_id").eq("club_id", clubId).eq("status", "active")).data ?? [];
       const seen = new Set<string>();
@@ -715,7 +716,6 @@ Deno.serve(async (req) => {
         const endTime = hhmm(row.endTime ?? row.end_time);
         if (!court || !startTime || !endTime) { skipped++; continue; }
         const externalId = `gobook:${bookingId}`;
-        if (bookingId === 3669408) console.log("TEMP_DIAG_3669408", JSON.stringify(Object.fromEntries(Object.entries(row).filter(([, v]) => typeof v !== "object"))));
         // clientName arrives as "1004; M 2nd LEAGUE"; pcMappingText is the readable part.
         const rawName = String(row.pcMappingText ?? row.clientName ?? "").trim();
         const rawBooker = (rawName.includes(";") ? rawName.split(";").slice(1).join(";") : rawName).trim() || null;

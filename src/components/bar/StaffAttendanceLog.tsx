@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface Attendance { id: string; name: string; start: string; end: string | null; hours: number | null; kind: string; split_tips: boolean; tip_sharing_mode?: "own" | "hours" | "equal"; reason: string | null; paid?: boolean }
 const local = (s: string) => new Date(Date.parse(s) + 7_200_000).toISOString().slice(0, 16);
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" });
-export function StaffAttendanceLog({ clubId }: { clubId: string }) {
+export function StaffAttendanceLog({ clubId, focusName }: { clubId: string; focusName?: string }) {
   const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const [row, setRow] = useState<Attendance | null>(null);
@@ -35,13 +35,26 @@ export function StaffAttendanceLog({ clubId }: { clubId: string }) {
       toast.success("Attendance correction saved");
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save attendance"); } finally { setBusy(false); }
   }
-  const visible = history ? data : data.filter(a => !a.paid);
+  const visible = (history ? data : data.filter(a => !a.paid)).filter(a => !focusName || a.name === focusName);
   const [openPerson, setOpenPerson] = useState<string | null>(null);
   const byPerson = useMemo(() => {
     const m = new Map<string, Attendance[]>();
     for (const a of visible) { const arr = m.get(a.name); if (arr) arr.push(a); else m.set(a.name, [a]); }
     return [...m.entries()];
   }, [visible]);
+  const rowsTable = (rows: Attendance[]) => <table className="w-full text-xs"><tbody>{rows.map(a => <tr key={a.id} className="border-b last:border-0">
+    <td className="py-1">{a.kind === "special" ? "Special" : "Normal"}{a.split_tips ? a.tip_sharing_mode === "equal" ? " · Equal tips" : " · Tips by hours" : a.kind === "special" ? " · Own tips" : ""}</td>
+    <td className="whitespace-nowrap px-2">{when(a.start)}</td>
+    <td className="whitespace-nowrap px-2">{a.end ? when(a.end) : "Open · review before pay"}</td>
+    <td className="text-right tabular-nums">{a.hours == null ? "—" : Number(a.hours).toFixed(2)}</td>
+    <td className="text-right">{a.paid ? "Paid" : canChange ? <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Edit times</Button> : null}</td>
+  </tr>)}</tbody></table>;
+  const editDialog = <Dialog open={Boolean(row)} onOpenChange={o => { if (!o && !busy) setRow(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Correct hours · {row?.name}</DialogTitle><DialogDescription>Johannesburg time · unpaid, unallocated attendance only</DialogDescription></DialogHeader><Label htmlFor="attendance-start">From</Label><Input id="attendance-start" type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /><Label htmlFor="attendance-end">To</Label><Input id="attendance-end" type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /><Label htmlFor="attendance-reason">Reason</Label><Input id="attendance-reason" value={reason} onChange={e => setReason(e.target.value)} /><Button disabled={busy || !start || !end || !reason.trim()} onClick={save}>Save correction</Button></DialogContent></Dialog>;
+  if (focusName) return <div className="space-y-2">
+    <div className="flex items-center gap-2"><p className="text-xs text-muted-foreground">{history ? "All shifts" : "Shifts since last payout"}</p><Button size="sm" variant="outline" className="ml-auto" onClick={() => setHistory(v => !v)}>{history ? "Current period" : "History"}</Button></div>
+    {isLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : error ? <p role="alert" className="text-xs text-destructive">Could not load attendance.</p> : !visible.length ? <p className="text-xs text-muted-foreground">No logged working hours.</p> : <div className="overflow-x-auto">{rowsTable(visible)}</div>}
+    {editDialog}
+  </div>;
   return <section className="space-y-2">
     <CollapsibleSection
       defaultOpen={false}
@@ -62,19 +75,20 @@ export function StaffAttendanceLog({ clubId }: { clubId: string }) {
               <td className="text-right"><ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform inline-block ${open ? "rotate-180" : ""}`} /></td>
             </tr>
             {open && <tr className="border-b last:border-0"><td colSpan={4} className="py-1 pl-4">
-              <table className="w-full text-xs"><tbody>{rows.map(a => <tr key={a.id} className="border-b last:border-0">
+              {rowsTable(rows)}
+              {false && <table className="w-full text-xs"><tbody>{rows.map(a => <tr key={a.id} className="border-b last:border-0">
                 <td className="py-1">{a.kind === "special" ? "Special" : "Normal"}{a.split_tips ? a.tip_sharing_mode === "equal" ? " · Equal tips" : " · Tips by hours" : a.kind === "special" ? " · Own tips" : ""}</td>
                 <td className="whitespace-nowrap px-2">{when(a.start)}</td>
                 <td className="whitespace-nowrap px-2">{a.end ? when(a.end) : "Open · review before pay"}</td>
                 <td className="text-right tabular-nums">{a.hours == null ? "—" : Number(a.hours).toFixed(2)}</td>
                 <td className="text-right">{a.paid ? "Paid" : canChange ? <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Correct</Button> : null}</td>
-              </tr>)}</tbody></table>
+              </tr>)}</tbody></table>}
             </td></tr>}
           </Fragment>
         );
       })}</tbody></table></div>}
     </CollapsibleSection>
     {Number(review.data?.unallocated_tips ?? 0) > 0 && <div className="border rounded-md p-3 space-y-2 text-xs"><p className="text-destructive">R{Number(review.data?.unallocated_tips).toFixed(2)} shared tips await working-hours review.</p><Button size="sm" disabled={busy} onClick={async () => { setBusy(true); try { const { error } = await supabase.rpc("bar_review_shift_tips" as any, { _club_id: clubId }); if (error) throw error; await Promise.all(["bar-shared-tip-review", "bar-staff-pay", "bar-staff-tips", "income-statement"].map(k => qc.invalidateQueries({ queryKey: [k] }))); toast.success("Shared tips reviewed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not review tips"); } finally { setBusy(false); } }}>Allocate reviewed tips</Button></div>}
-    <Dialog open={Boolean(row)} onOpenChange={o => { if (!o && !busy) setRow(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Correct hours · {row?.name}</DialogTitle><DialogDescription>Johannesburg time · unpaid, unallocated attendance only</DialogDescription></DialogHeader><Label htmlFor="attendance-start">Paid start</Label><Input id="attendance-start" type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /><Label htmlFor="attendance-end">End</Label><Input id="attendance-end" type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /><Label htmlFor="attendance-reason">Reason</Label><Input id="attendance-reason" value={reason} onChange={e => setReason(e.target.value)} /><Button disabled={busy || !start || !end || !reason.trim()} onClick={save}>Save correction</Button></DialogContent></Dialog>
+    {editDialog}
   </section>;
 }

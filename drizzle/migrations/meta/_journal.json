@@ -2647,6 +2647,13 @@
       "when": 1793952169722,
       "tag": "0377_bar_add_missed_staff_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 378,
+      "version": "7",
+      "when": 1793953701417,
+      "tag": "0378_set_club_sla_payment_method",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { isPayrollAmountInput, payrollAmount, payrollLineError, payrollLinePayable, suggestedPay, editPayrollReview, type PayrollReview, type PayBasis } from "@/lib/bar/payroll";
 import { StaffAttendanceLog } from "@/components/bar/StaffAttendanceLog";
+import { TipTransferDialog } from "@/components/bar/TipTransferDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { downloadPayrollReport } from "@/lib/bar/payroll-report";
 
 const basisLabel = (b?: PayBasis | string | null) => b === "hourly" ? "Per hour" : b === "shift" ? "Per shift" : "Monthly salary";
@@ -39,6 +41,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   const [lineEdits, setLineEdits] = useState<Record<string, PayrollReview> | null>(null);
   const [previewMonthEnd, setPreviewMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [hoursFor, setHoursFor] = useState<string | null>(null);
+  const [moveFrom, setMoveFrom] = useState<StaffPay | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["bar-staff-pay", clubId],
@@ -196,11 +200,11 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
                       placeholder="0.00" disabled={!canChange || busy}
                       onChange={e => { if (isPayrollAmountInput(e.target.value)) setSalaryEdits(prev => ({ ...prev, [person.id]: e.target.value })); }} />
                   </td>
-                  <td className="text-right tabular-nums px-1">{basis === "hourly" ? `${Number(person.hours ?? 0).toFixed(2)} h` : basis === "shift" ? person.shifts : "—"}</td>
+                  <td className="text-right tabular-nums px-1">{basis === "monthly" ? "—" : <button type="button" className="underline decoration-dotted underline-offset-2 hover:text-primary" title="View and edit shift times" onClick={() => setHoursFor(person.name)}>{basis === "hourly" ? `${Number(person.hours ?? 0).toFixed(2)} h` : person.shifts}</button>}</td>
                   <td className="text-right tabular-nums px-1">{money(suggestedPay(basis, amountNow, amountNow, person.shifts, amountNow, Number(person.hours ?? 0)))}</td>
                   <td className="text-right tabular-nums px-1">{money(person.earned)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.paid)}</td>
-                  <td className="text-right tabular-nums px-1">{money(person.remaining)}</td>
+                  <td className="text-right tabular-nums px-1">{money(person.remaining)}{canChange && Number(person.remaining) > 0 && <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => setMoveFrom(person)}>Move</Button>}</td>
                   <td className="text-right"><Button size="sm" variant="outline" disabled={!canChange || busy || !dirty} onClick={() => saveSalary(person)}>Save</Button></td>
                 </tr>
               );
@@ -211,6 +215,8 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
       </Card>
 
       <StaffAttendanceLog clubId={clubId} />
+      <Dialog open={Boolean(hoursFor)} onOpenChange={o => { if (!o) setHoursFor(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Shifts · {hoursFor}</DialogTitle><DialogDescription>Edit From–To times per date (Johannesburg time). A reason is required and kept.</DialogDescription></DialogHeader>{hoursFor && <StaffAttendanceLog clubId={clubId} focusName={hoursFor} />}</DialogContent></Dialog>
+      <TipTransferDialog clubId={clubId} from={moveFrom} staff={data?.staff ?? []} onClose={() => setMoveFrom(null)} />
       <Button variant="outline" disabled={busy || !data} onClick={() => { setLineEdits(null); setPreviewMonthEnd(v => !v); }}>{previewMonthEnd ? "Close month-end preview" : "Run month end — preview"}</Button>
 
       {run && (

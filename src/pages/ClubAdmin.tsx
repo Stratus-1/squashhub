@@ -160,7 +160,10 @@ export default function ClubAdmin() {
 
 
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "features");
+  // Phones without an explicit tab open on the Operations / Setup menu instead
+  // of the Features page; desktop keeps the sidebar plus the Features default.
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab")
+    || (typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches ? "" : "features"));
   useEffect(() => {
     const t = searchParams.get("tab");
     if (t) setActiveTab(t === "champs_beta" ? "champs" : t);
@@ -352,6 +355,13 @@ export default function ClubAdmin() {
               </span>
               <ChevronsUpDown className="size-4 text-muted-foreground" />
             </Button>
+          </section>
+        )}
+
+        {!activeTabMeta && (
+          <section className="md:hidden">
+            <ClubAdminNavigation operations={navigationItems(shownOps)} setup={navigationItems(shownSetup, true)} activeTab={activeTab}
+              onSelect={setActiveTab} />
           </section>
         )}
 

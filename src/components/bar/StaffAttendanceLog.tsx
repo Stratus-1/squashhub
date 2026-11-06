@@ -76,13 +76,6 @@ export function StaffAttendanceLog({ clubId, focusName }: { clubId: string; focu
             </tr>
             {open && <tr className="border-b last:border-0"><td colSpan={4} className="py-1 pl-4">
               {rowsTable(rows)}
-              {false && <table className="w-full text-xs"><tbody>{rows.map(a => <tr key={a.id} className="border-b last:border-0">
-                <td className="py-1">{a.kind === "special" ? "Special" : "Normal"}{a.split_tips ? a.tip_sharing_mode === "equal" ? " · Equal tips" : " · Tips by hours" : a.kind === "special" ? " · Own tips" : ""}</td>
-                <td className="whitespace-nowrap px-2">{when(a.start)}</td>
-                <td className="whitespace-nowrap px-2">{a.end ? when(a.end) : "Open · review before pay"}</td>
-                <td className="text-right tabular-nums">{a.hours == null ? "—" : Number(a.hours).toFixed(2)}</td>
-                <td className="text-right">{a.paid ? "Paid" : canChange ? <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Correct</Button> : null}</td>
-              </tr>)}</tbody></table>}
             </td></tr>}
           </Fragment>
         );

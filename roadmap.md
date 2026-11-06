@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Select an existing outstanding Riverside tournament game for a YouTube Watch live pilot; preserve fixtures/results and wait for the viewing link before attaching a stream.
 - [x] Fix social-event email links to the invited club and allow secure accept/decline without login, scoped to the invited occurrence; 39 focused checks and synthetic signed-out phone/desktop flows passed, email function deployed. Old emails cannot be changed; real delivered-email check remains unverified.
 - [x] Uitsig: Berni over Jenny 3–0 forfeit recorded and verified in results/standings; Kaylee’s own Past Fixtures correction preview verified.
 - [x] Uitsig: Frans R4 already completed (Past Fixtures), R5 upcoming; Frans/Ron is saved R3. No dates or draw changed.

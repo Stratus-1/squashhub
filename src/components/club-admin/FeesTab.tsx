@@ -668,7 +668,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           )}
 
           {/* Payable to / Payment details (league/national/other — not registration or league_affiliation, since affiliation is treated like membership/association income) */}
-          {feeType !== "membership" && feeType !== "registration" && feeType !== "league_affiliation" && (
+          {feeType !== "membership" && feeType !== "registration" && feeType !== "league_affiliation" && feeType !== "league" && (
             <>
               <div className="space-y-1">
                 <Label>Payable To</Label>

@@ -1066,7 +1066,7 @@ export default function Bookings() {
         profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
       }
 
-      const combined: Array<{ id: string; name: string; rank: number | null; email: string | null; memberId: string }> = [];
+      const combined: Array<{ id: string; name: string; rank: number | null; email: string | null; memberId: string; userId: string | null }> = [];
       const seen = new Set<string>();
 
       // Family members can share one login; each must still be pickable.
@@ -1087,6 +1087,9 @@ export default function Bookings() {
           rank: m.ladder_position ?? null,
           email: profile?.email || m.email || null,
           memberId: m.id,
+          // Picker keys may be roster ids for shared family logins; the
+          // login-id columns (opponent_id) must only ever receive this.
+          userId: m.user_id || null,
         });
       }
 
@@ -1362,7 +1365,7 @@ export default function Bookings() {
               date: dateStr,
               start_time: bookingDialog.time + ":00",
               end_time: endTime + ":00",
-              opponent_id: bookingDialog.opponentId || null,
+              opponent_id: opponent?.userId || null,
               opponent_member_id: opponent?.memberId || null,
               is_friendly: bookingDialog.isFriendly,
             },
@@ -1370,7 +1373,7 @@ export default function Bookings() {
               ? {
                   challenge: {
                     id: challengeId,
-                    opponent_id: bookingDialog.opponentId,
+                    opponent_id: opponent?.userId || null,
                     challenger_member_id: activeMember?.id || null,
                     opponent_member_id: opponent?.memberId || null,
                     proposed_date: dateStr,
@@ -1400,9 +1403,11 @@ export default function Bookings() {
         return;
       }
 
-      const opponentMemberId = bookingDialog.opponentId
-        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.memberId || null
+      const pickedOpponent = bookingDialog.opponentId
+        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
+      const opponentMemberId = pickedOpponent?.memberId || null;
+      const opponentUserId: string | null = pickedOpponent?.userId || null;
       let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
 
       if (usingGobook) {
@@ -1456,7 +1461,7 @@ export default function Bookings() {
         date: dateStr,
         startTime: bookingDialog.time + ":00",
         endTime: endTime + ":00",
-        opponentId: bookingDialog.opponentId || null,
+        opponentId: opponentUserId,
         isFriendly: bookingDialog.isFriendly,
         guestName: bookingDialog.guestName || null,
         clubMemberId: activeMember?.id || null,
@@ -1519,7 +1524,7 @@ export default function Bookings() {
             targets: [
               { userId: user?.id || null, phone: (me as any)?.phone || null },
               ...(opponent
-                ? [{ userId: (opponent as any).id || null, phone: (opponent as any).phone || null }]
+                ? [{ userId: (opponent as any).userId || null, phone: (opponent as any).phone || null }]
                 : []),
             ],
           });
@@ -1535,7 +1540,7 @@ export default function Bookings() {
       if (bookingDialog.opponentId && !bookingDialog.isFriendly) {
         try {
           const challenge = await createChallenge.mutateAsync({
-            opponentId: bookingDialog.opponentId,
+            opponentId: opponentUserId,
             proposedDate: dateStr,
             challengerMemberId: activeMember?.id || null,
             opponentMemberId: opponentMemberId || null,
@@ -1582,6 +1587,9 @@ export default function Bookings() {
       if (likelyNetwork && user?.id && bookingDialog) {
         const needsChallenge = !!bookingDialog.opponentId && !bookingDialog.isFriendly;
         const challengeId = needsChallenge ? crypto.randomUUID() : null;
+        const fallbackOpponent: any = bookingDialog.opponentId
+          ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
+          : null;
 
         enqueueOutbox({
           id: crypto.randomUUID(),
@@ -1597,15 +1605,17 @@ export default function Bookings() {
               date: dateStr,
               start_time: bookingDialog.time + ":00",
               end_time: endTime + ":00",
-              opponent_id: bookingDialog.opponentId || null,
+              opponent_id: fallbackOpponent?.userId || null,
+              opponent_member_id: fallbackOpponent?.memberId || null,
               is_friendly: bookingDialog.isFriendly,
             },
             ...(needsChallenge && bookingDialog.opponentId
               ? {
                   challenge: {
                     id: challengeId,
-                    opponent_id: bookingDialog.opponentId,
+                    opponent_id: fallbackOpponent?.userId || null,
                     challenger_member_id: activeMember?.id || null,
+                    opponent_member_id: fallbackOpponent?.memberId || null,
                     proposed_date: dateStr,
                   },
                 }

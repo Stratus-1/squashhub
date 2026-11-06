@@ -6894,6 +6894,38 @@ export type Database = {
           },
         ]
       }
+      club_gateway_payout_settings: {
+        Row: {
+          club_id: string
+          fee_per_payout: number
+          payouts_per_month: number
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          fee_per_payout?: number
+          payouts_per_month?: number
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          fee_per_payout?: number
+          payouts_per_month?: number
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_gateway_payout_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_gl_accounts: {
         Row: {
           base_account: Database["public"]["Enums"]["gl_account"] | null
@@ -24988,6 +25020,7 @@ export type Database = {
         }
         Returns: number
       }
+      post_gateway_payout_fees: { Args: { _on?: string }; Returns: number }
       post_journal: {
         Args: {
           p_club_id: string

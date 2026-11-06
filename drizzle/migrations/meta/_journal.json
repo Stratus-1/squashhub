@@ -2626,6 +2626,13 @@
       "when": 1793907628257,
       "tag": "0374_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 375,
+      "version": "7",
+      "when": 1793950864276,
+      "tag": "0375_bar_member_account_tips_vest_immediately",
+      "breakpoints": true
     }
   ]
 }

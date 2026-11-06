@@ -2640,6 +2640,13 @@
       "when": 1793951781899,
       "tag": "0376_bar_tip_transfers",
       "breakpoints": true
+    },
+    {
+      "idx": 377,
+      "version": "7",
+      "when": 1793952169722,
+      "tag": "0377_bar_add_missed_staff_shift",
+      "breakpoints": true
     }
   ]
 }

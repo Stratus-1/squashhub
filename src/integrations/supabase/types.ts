@@ -21857,6 +21857,16 @@ export type Database = {
               shop_gated: boolean
             }[]
           }
+      bar_add_staff_attendance: {
+        Args: {
+          _club_id: string
+          _end: string
+          _reason: string
+          _staff: string
+          _start: string
+        }
+        Returns: string
+      }
       bar_admin_remove_zero_tab: {
         Args: { _club_id: string; _tab_id: string }
         Returns: undefined

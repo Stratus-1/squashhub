@@ -2661,6 +2661,13 @@
       "when": 1793955231876,
       "tag": "0379_club_association_fee_due_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 380,
+      "version": "7",
+      "when": 1793966513288,
+      "tag": "0380_banking_permission_can_configure_banking",
+      "breakpoints": true
     }
   ]
 }

@@ -163,10 +163,11 @@ export function BillingFrequencyCard({
       // Payment method remains an independent preference and is never rewritten
       // merely because the billing frequency changed.
       if (payMethod !== currentPay) {
-        await updateClub.mutateAsync({
-          id: club.id,
-          sla_payment_method: payMethod,
-        } as any);
+        const { error: pmError } = await (supabase as any).rpc("set_club_sla_payment_method", {
+          _club_id: club.id,
+          _method: payMethod,
+        });
+        if (pmError) throw pmError;
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["my-club"] }),

@@ -84,6 +84,20 @@ export function AffiliationBillingCard({ clubId }: { clubId: string }) {
     enabled: !!clubId,
   });
 
+  const { data: dueOverrides = [] } = useQuery({
+    queryKey: ["club-association-fee-due-dates", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_association_fee_due_dates")
+        .select("fee_item_id, due_month, due_day")
+        .eq("club_id", clubId)
+        .eq("season_year", season);
+      if (error) throw error;
+      return (data || []) as unknown as { fee_item_id: string; due_month: number; due_day: number }[];
+    },
+    enabled: !!clubId,
+  });
+  const [editDue, setEditDue] = useState<StatementRow | null>(null);
+
   const associationTenantId = statement[0]?.association_tenant_id || null;
   const associationName = statement[0]?.association_name || "association";
 
@@ -174,7 +188,22 @@ export function AffiliationBillingCard({ clubId }: { clubId: string }) {
                     {r.units_pending > 0 ? `${r.units_pending} · ${money(Number(r.total_pending))}` : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {r.due_month && r.due_day ? `${r.due_day} ${SHORT_MONTHS[r.due_month - 1]}` : "—"}
+                    {(() => {
+                      const o = dueOverrides.find((d) => d.fee_item_id === r.fee_item_id);
+                      const m = o?.due_month ?? r.due_month;
+                      const d = o?.due_day ?? r.due_day;
+                      return (
+                        <button
+                          type="button"
+                          className="text-primary hover:underline"
+                          title="Set the club's own due date"
+                          onClick={() => setEditDue(r)}
+                        >
+                          {m && d ? `${d} ${SHORT_MONTHS[m - 1]}` : "Set date"}
+                          {o ? " (club)" : ""}
+                        </button>
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}
@@ -211,6 +240,20 @@ export function AffiliationBillingCard({ clubId }: { clubId: string }) {
             ))}
           </div>
         </>
+      )}
+
+      {editDue && (
+        <DueDateDialog
+          clubId={clubId}
+          season={season}
+          row={editDue}
+          current={dueOverrides.find((d) => d.fee_item_id === editDue.fee_item_id) || null}
+          onClose={() => setEditDue(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["club-association-fee-due-dates", clubId, season] });
+            setEditDue(null);
+          }}
+        />
       )}
 
       {payOpen && associationTenantId && (
@@ -351,6 +394,76 @@ function RecordPaymentDialog({
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save payment"}</Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+function DueDateDialog({
+  clubId, season, row, current, onClose, onSaved,
+}: {
+  clubId: string;
+  season: number;
+  row: StatementRow;
+  current: { due_month: number; due_day: number } | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [month, setMonth] = useState<number>(current?.due_month ?? row.due_month ?? 1);
+  const [day, setDay] = useState<number>(current?.due_day ?? row.due_day ?? 1);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await fromExt("club_association_fee_due_dates").upsert(
+      { club_id: clubId, fee_item_id: row.fee_item_id, season_year: season, due_month: month, due_day: day, updated_by: u.user?.id ?? null, updated_at: new Date().toISOString() },
+      { onConflict: "club_id,fee_item_id,season_year" },
+    );
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Due date saved");
+    onSaved();
+  };
+
+  const reset = async () => {
+    setSaving(true);
+    const { error } = await fromExt("club_association_fee_due_dates").delete()
+      .eq("club_id", clubId).eq("fee_item_id", row.fee_item_id).eq("season_year", season);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Using the association's date again");
+    onSaved();
+  };
+
+  const selectCls = "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm";
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Due date — {row.label} ({season})</DialogTitle></DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          Association's date: {row.due_month && row.due_day ? `${row.due_day} ${SHORT_MONTHS[row.due_month - 1]}` : "none"}.
+          The club's own date only changes what you see here.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Day</Label>
+            <select className={selectCls} value={day} onChange={(e) => setDay(Number(e.target.value))}>
+              {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Month</Label>
+            <select className={selectCls} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+              {SHORT_MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-between gap-2 pt-2">
+          {current ? <Button variant="outline" size="sm" disabled={saving} onClick={reset}>Use association date</Button> : <span />}
+          <Button size="sm" disabled={saving} onClick={save}>Save</Button>
         </div>
       </DialogContent>
     </Dialog>

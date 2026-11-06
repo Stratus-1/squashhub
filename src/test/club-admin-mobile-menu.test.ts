@@ -11,9 +11,9 @@ describe("Club Admin opens on the menu on phones", () => {
   });
 
   it("never replaces the empty 'show the menu' tab with a workspace", () => {
-    const guard = src.match(/if \(([^)]*)\) \{\s*setActiveTab\(visibleTabs\[0\]\.value\);/);
+    const guard = src.match(/if \((.*?)\) \{\s*setActiveTab\(visibleTabs\[0\]\.value\);/s);
     expect(guard, "auto-switch guard found").toBeTruthy();
-    expect(guard![1]).toContain("activeTab");
+    expect(guard![1].trim().startsWith("activeTab &&")).toBe(true);
   });
 
   it("renders the workspace menu when no tab is selected", () => {

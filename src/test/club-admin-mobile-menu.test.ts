@@ -8,8 +8,9 @@ const lines = src.split("\n");
 
 describe("Club Admin opens on the menu on phones", () => {
   it("defaults to no workspace on phones and keeps Features on desktop", () => {
-    const init = lines.find(l => l.includes("useState(() => searchParams.get(\"tab\")"));
-    expect(init, "activeTab initializer found").toBeTruthy();
+    const at = lines.findIndex(l => l.includes('useState(() => searchParams.get("tab")'));
+    expect(at, "activeTab initializer found").toBeGreaterThan(-1);
+    const init = lines.slice(at, at + 2).join(" ");
     expect(init).toContain("max-width: 767px");
     expect(init).toContain('? "" : "features"');
   });

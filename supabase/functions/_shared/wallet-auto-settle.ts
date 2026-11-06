@@ -11,6 +11,31 @@
 // call time, and settlement is driven by the payment provider's once-off
 // finalisation which itself is guarded against double-processing.
 
+/**
+ * Sum of recent card/EFT GoBook Lights top-ups that this payment may be
+ * funding: still waiting for payment, released for sending, or sent within
+ * the last few minutes (i.e. released by the payment being settled now).
+ */
+export async function earmarkedLightsAmount(admin: any, clubMemberId: string): Promise<number> {
+  const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const releasedSince = Date.now() - 15 * 60 * 1000;
+  const { data, error } = await admin
+    .from("gobook_lights_topups")
+    .select("amount, status, updated_at")
+    .eq("club_member_id", clubMemberId)
+    .in("method", ["card", "eft"])
+    .in("status", ["awaiting_payment", "ready", "submitting", "submitted", "posted"])
+    .gte("created_at", since);
+  if (error) throw error;
+  let total = 0;
+  for (const r of data || []) {
+    const pending = ["awaiting_payment", "ready", "submitting"].includes(String(r.status));
+    const justSent = !pending && new Date(r.updated_at).getTime() >= releasedSince;
+    if (pending || justSent) total += Number(r.amount) || 0;
+  }
+  return total;
+}
+
 export async function autoSettleFeesFromTopup(
   admin: any,
   opts: {
@@ -39,6 +64,20 @@ export async function autoSettleFeesFromTopup(
     if (buffer > 0) remaining = Math.max(0, remaining - buffer);
   } catch (e) {
     console.error("auto-settle: club buffer lookup failed, settling full amount:", e);
+  }
+  if (remaining <= 0) return;
+
+  // Card/EFT money paid for a GoBook Lights top-up travels through this same
+  // wallet top-up, but it is earmarked for Lights and is sent to GoBook (with a
+  // matching statement debit). It must never also settle club fees, otherwise
+  // fee rows show paid while the debtor balance still owes them.
+  try {
+    remaining = Math.max(0, remaining - (await earmarkedLightsAmount(admin, clubMemberId)));
+  } catch (e) {
+    // Fail safe: if we cannot tell, leave the money as balance rather than
+    // risk marking fees paid with Lights money.
+    console.error("auto-settle: lights earmark lookup failed, skipping:", e);
+    return;
   }
   if (remaining <= 0) return;
 

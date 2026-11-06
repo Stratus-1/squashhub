@@ -7725,6 +7725,41 @@ export type Database = {
           },
         ]
       }
+      club_payment_gateway_fees: {
+        Row: {
+          club_id: string
+          fee_pct: number
+          method: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          club_id: string
+          fee_pct: number
+          method: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          fee_pct?: number
+          method?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_payment_gateway_fees_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_permission_roles: {
         Row: {
           club_id: string
@@ -8958,6 +8993,7 @@ export type Database = {
           annual_billing_requested_by: string | null
           auto_number_existing_onboarding: boolean
           bar_account_tab_enabled: boolean
+          bar_card_provider: string | null
           bar_card_swipe_enabled: boolean
           bar_cash_enabled: boolean
           bar_order_process_enabled: boolean
@@ -9124,6 +9160,7 @@ export type Database = {
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
           bar_account_tab_enabled?: boolean
+          bar_card_provider?: string | null
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
           bar_order_process_enabled?: boolean
@@ -9290,6 +9327,7 @@ export type Database = {
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
           bar_account_tab_enabled?: boolean
+          bar_card_provider?: string | null
           bar_card_swipe_enabled?: boolean
           bar_cash_enabled?: boolean
           bar_order_process_enabled?: boolean
@@ -15729,6 +15767,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_gateway_fee_defaults: {
+        Row: {
+          fee_pct: number
+          label: string
+          method: string
+          provider: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          fee_pct: number
+          label: string
+          method: string
+          provider: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          fee_pct?: number
+          label?: string
+          method?: string
+          provider?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       paynow_payment_sessions: {
         Row: {

@@ -260,7 +260,8 @@ export default function ClubAdmin() {
   );
 
   // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)
-  if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
+  // An empty tab means "show the menu", so it must never be replaced by a workspace.
+  if (activeTab && visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
     setActiveTab(visibleTabs[0].value);
   }
 

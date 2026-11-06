@@ -3059,6 +3059,67 @@ export type Database = {
           },
         ]
       }
+      bar_tip_transfers: {
+        Row: {
+          amount: number
+          club_id: string
+          created_at: string
+          created_by: string
+          from_staff_id: string
+          from_staff_name: string
+          id: string
+          reason: string
+          to_staff_id: string
+          to_staff_name: string
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          created_at?: string
+          created_by: string
+          from_staff_id: string
+          from_staff_name: string
+          id?: string
+          reason: string
+          to_staff_id: string
+          to_staff_name: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          from_staff_id?: string
+          from_staff_name?: string
+          id?: string
+          reason?: string
+          to_staff_id?: string
+          to_staff_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tip_transfers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tip_transfers_from_staff_id_fkey"
+            columns: ["from_staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tip_transfers_to_staff_id_fkey"
+            columns: ["to_staff_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_tips: {
         Row: {
           amount: number
@@ -22578,6 +22639,16 @@ export type Database = {
         Returns: Json
       }
       bar_tip_config: { Args: { _club_id: string }; Returns: Json }
+      bar_transfer_staff_tips: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _from: string
+          _reason: string
+          _to: string
+        }
+        Returns: string
+      }
       bar_treasurer_allow_tab_today: {
         Args: { _reason?: string; _tab_id: string }
         Returns: undefined

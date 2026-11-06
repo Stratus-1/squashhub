@@ -2689,6 +2689,13 @@
       "when": 1793967545637,
       "tag": "0383_gateway_payout_fees_fix_and_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 384,
+      "version": "7",
+      "when": 1793967689678,
+      "tag": "0384_bar_counter_topup_card_fee",
+      "breakpoints": true
     }
   ]
 }

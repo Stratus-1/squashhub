@@ -2682,6 +2682,13 @@
       "when": 1793967524193,
       "tag": "0382_gateway_payout_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 383,
+      "version": "7",
+      "when": 1793967545637,
+      "tag": "0383_gateway_payout_fees_fix_and_schedule",
+      "breakpoints": true
     }
   ]
 }

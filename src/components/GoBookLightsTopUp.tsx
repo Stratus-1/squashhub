@@ -94,8 +94,12 @@ export function GoBookLightsTopUp({ clubId, memberId, onStartTopUp }: {
   return (
     <div className="w-full">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setStep(1); setOpen(true); }}>
-          <Lightbulb className="h-3.5 w-3.5" /> Top up your Lights account
+        <Button
+          size="default"
+          className="gap-2 font-semibold bg-accent text-accent-foreground hover:bg-accent/90 shadow-md ring-2 ring-accent/40"
+          onClick={() => { setStep(1); setOpen(true); }}
+        >
+          <Lightbulb className="h-4 w-4" /> Top up your Lights account
         </Button>
       </div>
       {!!recent.data?.length && (

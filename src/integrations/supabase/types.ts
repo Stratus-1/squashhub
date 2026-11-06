@@ -25333,6 +25333,10 @@ export type Database = {
         Args: { _billing_option: string; _club_id: string }
         Returns: string
       }
+      set_club_sla_payment_method: {
+        Args: { _club_id: string; _method: string }
+        Returns: string
+      }
       set_club_subscription_baseline: {
         Args: {
           _actor_name?: string

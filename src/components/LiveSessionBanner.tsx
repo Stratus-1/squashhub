@@ -149,7 +149,8 @@ export function LiveSessionBanner() {
 
   // If there's an active session without a matching current booking (orphan), still show it
   const orphanSession = !activeSession && activeSessions.length > 0 ? activeSessions[0] : null;
-  const displaySession = activeSession || orphanSession;
+  // Clubs without lights integration (e.g. Nelspruit) never show a lights session.
+  const displaySession = lightsIntegrationEnabled ? (activeSession || orphanSession) : null;
   const promptKey = displaySession ? `session:${displaySession.id}` : currentBooking ? `booking:${currentBooking.id}` : null;
 
   // Nothing to show — must have lights integration OR door access to render

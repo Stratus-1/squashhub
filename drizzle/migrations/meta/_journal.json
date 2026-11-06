@@ -2654,6 +2654,13 @@
       "when": 1793953701417,
       "tag": "0378_set_club_sla_payment_method",
       "breakpoints": true
+    },
+    {
+      "idx": 379,
+      "version": "7",
+      "when": 1793955231876,
+      "tag": "0379_club_association_fee_due_dates",
+      "breakpoints": true
     }
   ]
 }

@@ -4542,6 +4542,47 @@ export type Database = {
           },
         ]
       }
+      club_association_fee_due_dates: {
+        Row: {
+          club_id: string
+          due_day: number
+          due_month: number
+          fee_item_id: string
+          id: string
+          season_year: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          club_id: string
+          due_day: number
+          due_month: number
+          fee_item_id: string
+          id?: string
+          season_year: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          due_day?: number
+          due_month?: number
+          fee_item_id?: string
+          id?: string
+          season_year?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_fee_due_dates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_association_invoice_lines: {
         Row: {
           amount: number

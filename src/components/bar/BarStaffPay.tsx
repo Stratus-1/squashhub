@@ -41,7 +41,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
   const [lineEdits, setLineEdits] = useState<Record<string, PayrollReview> | null>(null);
   const [previewMonthEnd, setPreviewMonthEnd] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [hoursFor, setHoursFor] = useState<string | null>(null);
+  const [hoursFor, setHoursFor] = useState<{ id: string; name: string } | null>(null);
   const [moveFrom, setMoveFrom] = useState<StaffPay | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -200,7 +200,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
                       placeholder="0.00" disabled={!canChange || busy}
                       onChange={e => { if (isPayrollAmountInput(e.target.value)) setSalaryEdits(prev => ({ ...prev, [person.id]: e.target.value })); }} />
                   </td>
-                  <td className="text-right tabular-nums px-1">{basis === "monthly" ? "—" : <button type="button" className="underline decoration-dotted underline-offset-2 hover:text-primary" title="View and edit shift times" onClick={() => setHoursFor(person.name)}>{basis === "hourly" ? `${Number(person.hours ?? 0).toFixed(2)} h` : person.shifts}</button>}</td>
+                  <td className="text-right tabular-nums px-1">{basis === "monthly" ? "—" : <button type="button" className="underline decoration-dotted underline-offset-2 hover:text-primary" title="View and edit shift times" onClick={() => setHoursFor({ id: person.id, name: person.name })}>{basis === "hourly" ? `${Number(person.hours ?? 0).toFixed(2)} h` : person.shifts}</button>}</td>
                   <td className="text-right tabular-nums px-1">{money(suggestedPay(basis, amountNow, amountNow, person.shifts, amountNow, Number(person.hours ?? 0)))}</td>
                   <td className="text-right tabular-nums px-1">{money(person.earned)}</td>
                   <td className="text-right tabular-nums px-1">{money(person.paid)}</td>
@@ -215,7 +215,7 @@ export function BarStaffPay({ clubId }: { clubId: string }) {
       </Card>
 
       <StaffAttendanceLog clubId={clubId} />
-      <Dialog open={Boolean(hoursFor)} onOpenChange={o => { if (!o) setHoursFor(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Shifts · {hoursFor}</DialogTitle><DialogDescription>Edit From–To times per date (Johannesburg time). A reason is required and kept.</DialogDescription></DialogHeader>{hoursFor && <StaffAttendanceLog clubId={clubId} focusName={hoursFor} />}</DialogContent></Dialog>
+      <Dialog open={Boolean(hoursFor)} onOpenChange={o => { if (!o) setHoursFor(null); }}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Shifts · {hoursFor?.name}</DialogTitle><DialogDescription>Edit From–To times per date (Johannesburg time). A reason is required and kept.</DialogDescription></DialogHeader>{hoursFor && <StaffAttendanceLog clubId={clubId} focusName={hoursFor.name} focusStaffId={hoursFor.id} />}</DialogContent></Dialog>
       <TipTransferDialog clubId={clubId} from={moveFrom} staff={data?.staff ?? []} onClose={() => setMoveFrom(null)} />
       <Button variant="outline" disabled={busy || !data} onClick={() => { setLineEdits(null); setPreviewMonthEnd(v => !v); }}>{previewMonthEnd ? "Close month-end preview" : "Run month end — preview"}</Button>
 

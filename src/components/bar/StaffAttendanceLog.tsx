@@ -12,12 +12,13 @@ import { toast } from "sonner";
 interface Attendance { id: string; name: string; start: string; end: string | null; hours: number | null; kind: string; split_tips: boolean; tip_sharing_mode?: "own" | "hours" | "equal"; reason: string | null; paid?: boolean }
 const local = (s: string) => new Date(Date.parse(s) + 7_200_000).toISOString().slice(0, 16);
 const when = (s: string) => new Date(s).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" });
-export function StaffAttendanceLog({ clubId, focusName }: { clubId: string; focusName?: string }) {
+export function StaffAttendanceLog({ clubId, focusName, focusStaffId }: { clubId: string; focusName?: string; focusStaffId?: string }) {
   const { canChange } = useFinancialAccess(clubId);
   const qc = useQueryClient();
   const [row, setRow] = useState<Attendance | null>(null);
   const [start, setStart] = useState(""); const [end, setEnd] = useState(""); const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState(false);
+  const [adding, setAdding] = useState(false);
   const review = useQuery({ queryKey: ["bar-shared-tip-review", clubId], queryFn: async () => {
     const { data, error } = await supabase.rpc("bar_work_shift_status" as any, { _club_id: clubId, _token: null });
     if (error) throw error; return data as unknown as { unallocated_tips: number };
@@ -27,12 +28,15 @@ export function StaffAttendanceLog({ clubId, focusName }: { clubId: string; focu
     if (error) throw error; return data as unknown as Attendance[];
   }});
   async function save() {
-    if (!row) return; setBusy(true);
+    if (!row && !adding) return; setBusy(true);
     try {
-      const { error } = await supabase.rpc("bar_correct_staff_attendance" as any, { _id: row.id, _start: new Date(`${start}+02:00`).toISOString(), _end: new Date(`${end}+02:00`).toISOString(), _reason: reason });
-      if (error) throw error; setRow(null);
+      const times = { _start: new Date(`${start}+02:00`).toISOString(), _end: new Date(`${end}+02:00`).toISOString(), _reason: reason };
+      const { error } = adding
+        ? await supabase.rpc("bar_add_staff_attendance" as any, { _club_id: clubId, _staff: focusStaffId, ...times })
+        : await supabase.rpc("bar_correct_staff_attendance" as any, { _id: row!.id, ...times });
+      if (error) throw error; setRow(null); setAdding(false);
       await Promise.all(["bar-attendance-log", "bar-staff-pay", "bar-shared-tip-review"].map(k => qc.invalidateQueries({ queryKey: [k, clubId] })));
-      toast.success("Attendance correction saved");
+      toast.success(adding ? "Shift added" : "Attendance correction saved");
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not save attendance"); } finally { setBusy(false); }
   }
   const visible = (history ? data : data.filter(a => !a.paid)).filter(a => !focusName || a.name === focusName);
@@ -49,9 +53,9 @@ export function StaffAttendanceLog({ clubId, focusName }: { clubId: string; focu
     <td className="text-right tabular-nums">{a.hours == null ? "—" : Number(a.hours).toFixed(2)}</td>
     <td className="text-right">{a.paid ? "Paid" : canChange ? <Button size="sm" variant="outline" onClick={() => { setRow(a); setStart(local(a.start)); setEnd(a.end ? local(a.end) : ""); setReason(""); }}>Edit times</Button> : null}</td>
   </tr>)}</tbody></table>;
-  const editDialog = <Dialog open={Boolean(row)} onOpenChange={o => { if (!o && !busy) setRow(null); }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Correct hours · {row?.name}</DialogTitle><DialogDescription>Johannesburg time · unpaid, unallocated attendance only</DialogDescription></DialogHeader><Label htmlFor="attendance-start">From</Label><Input id="attendance-start" type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /><Label htmlFor="attendance-end">To</Label><Input id="attendance-end" type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /><Label htmlFor="attendance-reason">Reason</Label><Input id="attendance-reason" value={reason} onChange={e => setReason(e.target.value)} /><Button disabled={busy || !start || !end || !reason.trim()} onClick={save}>Save correction</Button></DialogContent></Dialog>;
+  const editDialog = <Dialog open={Boolean(row) || adding} onOpenChange={o => { if (!o && !busy) { setRow(null); setAdding(false); } }}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{adding ? `Add missed shift · ${focusName}` : `Correct hours · ${row?.name}`}</DialogTitle><DialogDescription>Johannesburg time · {adding ? "for a shift that was not opened on the counter" : "unpaid, unallocated attendance only"}</DialogDescription></DialogHeader><Label htmlFor="attendance-start">From</Label><Input id="attendance-start" type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /><Label htmlFor="attendance-end">To</Label><Input id="attendance-end" type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /><Label htmlFor="attendance-reason">Reason</Label><Input id="attendance-reason" value={reason} onChange={e => setReason(e.target.value)} /><Button disabled={busy || !start || !end || !reason.trim()} onClick={save}>{adding ? "Add shift" : "Save correction"}</Button></DialogContent></Dialog>;
   if (focusName) return <div className="space-y-2">
-    <div className="flex items-center gap-2"><p className="text-xs text-muted-foreground">{history ? "All shifts" : "Shifts since last payout"}</p><Button size="sm" variant="outline" className="ml-auto" onClick={() => setHistory(v => !v)}>{history ? "Current period" : "History"}</Button></div>
+    <div className="flex items-center gap-2"><p className="text-xs text-muted-foreground">{history ? "All shifts" : "Shifts since last payout"}</p>{canChange && focusStaffId && <Button size="sm" className="ml-auto" onClick={() => { setRow(null); setStart(""); setEnd(""); setReason(""); setAdding(true); }}>Add shift</Button>}<Button size="sm" variant="outline" className={canChange && focusStaffId ? "" : "ml-auto"} onClick={() => setHistory(v => !v)}>{history ? "Current period" : "History"}</Button></div>
     {isLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : error ? <p role="alert" className="text-xs text-destructive">Could not load attendance.</p> : !visible.length ? <p className="text-xs text-muted-foreground">No logged working hours.</p> : <div className="overflow-x-auto">{rowsTable(visible)}</div>}
     {editDialog}
   </div>;

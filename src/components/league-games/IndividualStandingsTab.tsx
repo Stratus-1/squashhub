@@ -80,6 +80,28 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // "position" (default): compare players/pairs who played the same team position;
   // "overall": one accumulated list across all positions.
   const [viewMode, setViewMode] = useState<"position" | "overall">("position");
+  // Doubles: show only the official (original) pairs by default; reserve combos hidden.
+  const [originalOnly, setOriginalOnly] = useState<boolean>(true);
+
+  const { data: officialPairs = [] } = useQuery({
+    queryKey: ["individual-standings-pairs", clubId],
+    enabled: !!clubId && !!isDoubles,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("league_team_pairs")
+        .select("player_one_member_id, player_two_member_id, effective_from, effective_to, is_active")
+        .eq("club_id", clubId);
+      if (error) throw error;
+      return (data || []) as Array<{
+        player_one_member_id: string | null;
+        player_two_member_id: string | null;
+        effective_from: string | null;
+        effective_to: string | null;
+        is_active: boolean | null;
+      }>;
+    },
+  });
 
   // Fetch club members (for name + ladder + member-number → player-code mapping)
   const { data: members = [] } = useQuery({
@@ -113,7 +135,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // Also derives a team_code → league number map from league_rounds so we can
   // filter by "League 1", "League 2", etc. (groups Men/Ladies/Mixed of same rank).
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["individual-standings", assocIdToUse, associationId, seasonYear, myCodes.join(","), selectedLeagueNum],
+    queryKey: ["individual-standings", assocIdToUse, associationId, seasonYear, myCodes.join(","), selectedLeagueNum, isDoubles && originalOnly, officialPairs.length, members.length],
     enabled: !!assocIdToUse && myCodes.length > 0,
     staleTime: 30 * 1000,
     queryFn: async () => {
@@ -182,13 +204,39 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         rubbers.push(...(rs || []));
       }
 
-      const fxById = new Map<string, { home: string; away: string }>();
+      const fxById = new Map<string, { home: string; away: string; date: string }>();
       ours.forEach((f: any) => {
         fxById.set(f.id, {
           home: (f.home_team_code || "").toUpperCase(),
           away: (f.away_team_code || "").toUpperCase(),
+          date: String(f.fixture_date || "").slice(0, 10),
         });
       });
+
+      // Official pair check: member ids resolved from codes or names.
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      const idByCode = new Map<string, string>();
+      const idByName = new Map<string, string>();
+      members.forEach((m) => {
+        if (m.club_member_number) idByCode.set(m.club_member_number.toUpperCase(), m.id);
+        if (m.name) idByName.set(norm(m.name), m.id);
+      });
+      const isOfficialPair = (code: string | null, name: string | null, date: string) => {
+        const codes = (code || "").split(/\s*[&/,]\s*/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+        const names = (name || "").split(/\s*&\s*/).map(norm).filter(Boolean);
+        const ids = new Set<string>();
+        codes.forEach((c) => idByCode.get(c) && ids.add(idByCode.get(c)!));
+        names.forEach((n) => idByName.get(n) && ids.add(idByName.get(n)!));
+        if (ids.size < 2) return false;
+        return officialPairs.some((p) => {
+          if (!p.player_one_member_id || !p.player_two_member_id) return false;
+          if (!ids.has(p.player_one_member_id) || !ids.has(p.player_two_member_id)) return false;
+          if (p.effective_from && date && date < p.effective_from.slice(0, 10)) return false;
+          if (p.effective_to && date && date >= p.effective_to.slice(0, 10)) return false;
+          return true;
+        });
+      };
+      const filterOriginal = !!isDoubles && originalOnly;
 
       const agg = new Map<string, PlayerRow>();
       for (const r of rubbers) {
@@ -219,6 +267,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             .sort()
             .join(" & ");
           if (!code && !nameKey) return;
+          if (filterOriginal && !isOfficialPair(code, name, fx.date)) return;
           if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
           const baseKey = code ? code.toUpperCase() : `NAME:${nameKey}`;
           // Key by player + position so per-position stats never mix; position
@@ -394,6 +443,18 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             ))}
           </SelectContent>
         </Select>
+
+        {isDoubles && (
+          <Select value={originalOnly ? "original" : "all"} onValueChange={(v) => setOriginalOnly(v === "original")}>
+            <SelectTrigger className="h-8 w-[200px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="original">Original pairs only</SelectItem>
+              <SelectItem value="all">All pairs (incl. reserves)</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
         <Button
           size="sm"

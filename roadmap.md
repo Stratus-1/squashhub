@@ -39,8 +39,8 @@
 - [ ] Verify Zach's payment after signing out and back in; requires his fresh retry/error evidence, without initiating a real payment on his behalf.
 
 ## Uitsig bank reconciliation corrections (7 Nov)
-- [ ] Post confident bank corrections (duplicate Lights EFT, missing bank fees, Marizel second R300, Bernard/Jenny payments, 20 Oct electricity/stock/cleaning payments, rounding).
-- [ ] Joker Draw tickets: bar item "Joker Draw Sales" (no cost) and record PayFast ticket sales with actual fees.
-- [ ] Bring in GoBook Lights Account PayFast payments from the schedule.
-- [ ] Move the opening bank balance to the bank statement's earliest date/balance (16 Oct, R53,585.41) — Willem's instruction.
-- [ ] Remaining items need Willem: Squasha Teers R11,045, Berdina R1,200/R100, Brett Funds owed R100, Izak R870, Michelle/Clay R800, PayFast statement before 2 Nov.
+- [x] Post confident bank corrections (duplicate Lights EFT, missing bank fees, Marizel second R300, Bernard/Jenny payments, 20 Oct electricity/stock/cleaning payments, rounding).
+- [x] Joker Draw tickets: bar item "Joker Draw Sales" (no cost) and record PayFast ticket sales with actual fees.
+- [x] Bring in GoBook Lights Account PayFast payments from the schedule.
+- [x] Move the opening bank balance to the bank statement's earliest date/balance (16 Oct, R53,585.41) — Willem's instruction.
+- [ ] Remaining items need Willem: PayFast statement 1 Sep–2 Nov (≈R19,613 GoBook Lights/older balance), Squasha Teers R11,045, Berdina R1,200/R100 vs R47, Brett Funds owed R100, Izak R870, Michelle/Clay R800, Yoco 16–17 Oct vs R1,400 Champs fees, Marizel second R300 (wages or overpayment).

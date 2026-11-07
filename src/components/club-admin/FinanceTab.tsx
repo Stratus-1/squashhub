@@ -16,6 +16,7 @@ import { useSearchParams } from "react-router-dom";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
 import { postMemberCorrection, CORRECTION_UP_KEY, CORRECTION_DOWN_KEY } from "@/lib/finance/member-outstanding";
+import { findPossibleDuplicates } from "@/lib/finance/duplicate-transaction";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -177,6 +178,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [txSubmitting, setTxSubmitting] = useState(false);
   const [txRecurring, setTxRecurring] = useState(false);
   const [txProof, setTxProof] = useState<File | null>(null);
+  // Possible duplicate shown before recording; `sig` ties the warning to the exact entry.
+  const [txDup, setTxDup] = useState<{ sig: string; lines: { description: string }[] } | null>(null);
   const openJournalProof = async (ref: string) => {
     const { data, error } = await (sbClient as any).from("club_journal_attachments")
       .select("storage_path").eq("club_id", clubId).eq("journal_ref", ref).order("created_at", { ascending: false }).limit(1);
@@ -514,6 +517,17 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     // Determine the money account based on payment method
     const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";
 
+    // Same amount, same day, same bank/cash account already in the books? Warn once;
+    // a second click on the unchanged entry records it anyway.
+    const dupSig = `${txDirection}|${moneyAccount}|${amount.toFixed(2)}|${txDate}`;
+    if (txDup?.sig !== dupSig) {
+      const hits = findPossibleDuplicates(journalEntries || [], { moneyAccount, direction: txDirection, amount, date: txDate });
+      if (hits.length) {
+        setTxDup({ sig: dupSig, lines: hits.slice(0, 3).map((h) => ({ description: String(h.description || "No description") })) });
+        return;
+      }
+    }
+
     // Income: Debit money account, Credit the selected income account
     // Expense: Debit the selected expense account, Credit money account
     const debitAccount = txDirection === "income" ? moneyAccount : effectiveTxAccount;
@@ -574,6 +588,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         else toast.success(`Recorded. Next ${FREQUENCY_LABEL[txFrequency].toLowerCase()} occurrence on ${nextDueDate(txDate, txFrequency)} will wait for finance approval.`);
       } else toast.success("Transaction recorded");
       setTxRecurring(false);
+      setTxDup(null);
       setTxOpen(false);
       setTxDescription("");
       setTxAmount("");
@@ -1539,9 +1554,32 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               {txProof && <p className="text-[11px] text-muted-foreground">{txProof.name}</p>}
             </div>
             </div>
-            <Button className="w-full shrink-0" onClick={handleRecordTransaction} disabled={txSubmitting}>
-              {txSubmitting ? "Recording..." : "Record Transaction"}
-            </Button>
+            {(() => {
+              const amt = parseFloat(txAmount);
+              const sig = `${txDirection}|${txMethod === "cash" ? "cash" : "bank_current"}|${Number.isFinite(amt) ? amt.toFixed(2) : ""}|${txDate}`;
+              const dupActive = !!txDup && txDup.sig === sig;
+              return (
+                <>
+                  {dupActive && (
+                    <div role="alert" className="shrink-0 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs space-y-1">
+                      <p className="flex items-center gap-1.5 font-semibold text-destructive">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Possible duplicate
+                      </p>
+                      <p className="text-foreground">
+                        R{amt.toFixed(2)} {txDirection === "income" ? "received" : "paid"} on {txDate} is already in the books:
+                      </p>
+                      <ul className="list-disc pl-4 text-foreground">
+                        {txDup!.lines.map((l, i) => <li key={i}>{l.description}</li>)}
+                      </ul>
+                      <p className="text-muted-foreground">Check the bank statement. If this is a separate payment, click Record anyway.</p>
+                    </div>
+                  )}
+                  <Button className="w-full shrink-0" onClick={handleRecordTransaction} disabled={txSubmitting}>
+                    {txSubmitting ? "Recording..." : dupActive ? "Record anyway" : "Record Transaction"}
+                  </Button>
+                </>
+              );
+            })()}
         </DialogContent>
       </Dialog>
 

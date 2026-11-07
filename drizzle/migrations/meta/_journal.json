@@ -2696,6 +2696,13 @@
       "when": 1793967689678,
       "tag": "0384_bar_counter_topup_card_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 385,
+      "version": "7",
+      "when": 1794054248316,
+      "tag": "0385_gateway_fee_fixed_vat_and_actual_fee",
+      "breakpoints": true
     }
   ]
 }

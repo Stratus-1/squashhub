@@ -37,3 +37,10 @@
 - [x] Replied to and closed only the completed CSIR member-balances support ticket; verified saved reply and Closed status in the signed-in inbox.
 - [x] Investigated Zach Wiid's Nelspruit R75 top-up Unauthorized ticket: active linked account, sign-in at 08:11 UTC, prior successful top-ups, no new payment session. Rejection occurs during sign-in validation before Stitch; exact failed-session cause is unconfirmed. Payment tickets remain open; no payment/code changes.
 - [ ] Verify Zach's payment after signing out and back in; requires his fresh retry/error evidence, without initiating a real payment on his behalf.
+
+## Uitsig bank reconciliation corrections (7 Nov)
+- [ ] Post confident bank corrections (duplicate Lights EFT, missing bank fees, Marizel second R300, Bernard/Jenny payments, 20 Oct electricity/stock/cleaning payments, rounding).
+- [ ] Joker Draw tickets: bar item "Joker Draw Sales" (no cost) and record PayFast ticket sales with actual fees.
+- [ ] Bring in GoBook Lights Account PayFast payments from the schedule.
+- [ ] Move the opening bank balance to the bank statement's earliest date/balance (16 Oct, R53,585.41) — Willem's instruction.
+- [ ] Remaining items need Willem: Squasha Teers R11,045, Berdina R1,200/R100, Brett Funds owed R100, Izak R870, Michelle/Clay R800, PayFast statement before 2 Nov.

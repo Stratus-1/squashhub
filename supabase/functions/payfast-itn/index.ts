@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
           payfast_payment_id: fields.pf_payment_id || session.payfast_payment_id,
         });
       }
+      await applyActualFee(admin, session.club_id, session.id, fields.amount_fee);
     } else {
       await admin
         .from("payfast_payment_sessions")
@@ -156,6 +157,21 @@ Deno.serve(async (req) => {
     return new Response("ok");
   }
 });
+
+// PayFast reports the exact fee it charged (amount_fee, usually negative).
+// Book one adjustment so the ledger matches PayFast instead of the estimate.
+function parsePayfastFee(raw: string | undefined): number | null {
+  if (raw == null || String(raw).trim() === "") return null;
+  const n = Math.abs(Number(raw));
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
+async function applyActualFee(admin: any, clubId: string, reference: string, rawFee: string | undefined) {
+  const fee = parsePayfastFee(rawFee);
+  if (fee == null) return;
+  const { error } = await admin.rpc("apply_payfast_actual_fee", { _club_id: clubId, _reference: reference, _fee: fee });
+  if (error) console.error("payfast-itn: actual fee adjustment failed", { reference, error: error.message });
+}
 
 // Bar tab / scan-to-pay PayFast notifications. Same verification as sessions;
 // the expected amount is the sum of the sale lines sharing the reference.
@@ -205,6 +221,7 @@ async function handleBarItn(
       return;
     }
     await finaliseBarReference(admin, clubId, reference, "paid");
+    await applyActualFee(admin, clubId, reference, fields.amount_fee);
   } else if (status === "FAILED" || status === "CANCELLED") {
     await finaliseBarReference(admin, clubId, reference, "failed");
   }

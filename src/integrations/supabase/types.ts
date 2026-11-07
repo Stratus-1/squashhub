@@ -7759,7 +7759,9 @@ export type Database = {
       }
       club_payment_gateway_fees: {
         Row: {
+          add_vat: boolean
           club_id: string
+          fee_fixed: number
           fee_pct: number
           method: string
           provider: string
@@ -7767,7 +7769,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          add_vat?: boolean
           club_id: string
+          fee_fixed?: number
           fee_pct: number
           method: string
           provider: string
@@ -7775,7 +7779,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          add_vat?: boolean
           club_id?: string
+          fee_fixed?: number
           fee_pct?: number
           method?: string
           provider?: string
@@ -15802,6 +15808,8 @@ export type Database = {
       }
       payment_gateway_fee_defaults: {
         Row: {
+          add_vat: boolean
+          fee_fixed: number
           fee_pct: number
           label: string
           method: string
@@ -15810,6 +15818,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          add_vat?: boolean
+          fee_fixed?: number
           fee_pct: number
           label: string
           method: string
@@ -15818,6 +15828,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          add_vat?: boolean
+          fee_fixed?: number
           fee_pct?: number
           label?: string
           method?: string
@@ -21863,6 +21875,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      apply_payfast_actual_fee: {
+        Args: { _club_id: string; _fee: number; _reference: string }
+        Returns: number
+      }
       apply_registration_division_choices: {
         Args: { p_registration_id: string }
         Returns: undefined
@@ -23316,6 +23332,10 @@ export type Database = {
       club_gateway_fee_percent: {
         Args: { _club_id: string; _method?: string }
         Returns: number
+      }
+      club_gateway_fee_rule: {
+        Args: { _club_id: string; _method?: string }
+        Returns: Record<string, unknown>
       }
       club_has_capability: {
         Args: { _capability: string; _club_id: string }
@@ -25017,6 +25037,16 @@ export type Database = {
           _desc: string
           _journal_ref: string
           _method?: string
+        }
+        Returns: number
+      }
+      post_gateway_fee_correction: {
+        Args: {
+          _actual_fee: number
+          _at?: string
+          _club_id: string
+          _desc?: string
+          _journal_ref: string
         }
         Returns: number
       }

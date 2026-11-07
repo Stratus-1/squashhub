@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
 
 // PayFast reports the exact fee it charged (amount_fee, usually negative).
 // Book one adjustment so the ledger matches PayFast instead of the estimate.
-export function parsePayfastFee(raw: string | undefined): number | null {
+function parsePayfastFee(raw: string | undefined): number | null {
   if (raw == null || String(raw).trim() === "") return null;
   const n = Math.abs(Number(raw));
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;

@@ -45,4 +45,4 @@
 - [x] Move the opening bank balance to the bank statement's earliest date/balance (16 Oct, R53,585.41) — Willem's instruction.
 - [x] Willem's answers (8 Nov) posted: PayFast Lights R19,613.12 as Lights income, Squasha Teers / Brett credit / Mielieland to opening balance, Berdina R1,200 + R100 expenses, Yoco 16–17 Oct Champs card fees + R334, Marizel R300 confirmed wages. App bank to 6 Nov R55,254.17 vs expected R55,332.64 (−R78.47 = Yoco R31.47 + R47 cleaning not on statement).
 - [x] R334 (16–17 Oct Yoco) confirmed kiosk sales: moved from Club Champs income to bar sales (8 Nov).
-- [ ] R47 Berdina cleaning material (26 Oct) is not on the bank statement — needs Willem: paid from bar cash, or later from the bank?
+- [x] R47 Berdina cleaning material (26 Oct) moved from bank to bar cash; R31.47 posted once as unreconciled Yoco difference (8 Nov).

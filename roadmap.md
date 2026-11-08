@@ -43,4 +43,5 @@
 - [x] Joker Draw tickets: bar item "Joker Draw Sales" (no cost) and record PayFast ticket sales with actual fees.
 - [x] Bring in GoBook Lights Account PayFast payments from the schedule.
 - [x] Move the opening bank balance to the bank statement's earliest date/balance (16 Oct, R53,585.41) — Willem's instruction.
-- [ ] Remaining items need Willem: PayFast statement 1 Sep–2 Nov (≈R19,613 GoBook Lights/older balance), Squasha Teers R11,045, Berdina R1,200/R100 vs R47, Brett Funds owed R100, Izak R870, Michelle/Clay R800, Yoco 16–17 Oct vs R1,400 Champs fees, Marizel second R300 (wages or overpayment).
+- [x] Willem's answers (8 Nov) posted: PayFast Lights R19,613.12 as Lights income, Squasha Teers / Brett credit / Mielieland to opening balance, Berdina R1,200 + R100 expenses, Yoco 16–17 Oct Champs card fees + R334, Marizel R300 confirmed wages. App bank to 6 Nov R55,254.17 vs expected R55,332.64 (−R78.47 = Yoco R31.47 + R47 cleaning not on statement).
+- [ ] R47 Berdina cleaning material (26 Oct) is not on the bank statement — needs Willem: paid from bar cash, or later from the bank?

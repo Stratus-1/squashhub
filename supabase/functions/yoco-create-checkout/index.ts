@@ -1,6 +1,7 @@
 // Creates a Yoco checkout for a member: fee payment or wallet top-up.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
+import { isYocoTestKey } from "../_shared/gateway-test-mode.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

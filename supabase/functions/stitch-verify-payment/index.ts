@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
     if (!session) return json({ error: "Session not found" }, 404);
     if (session.user_id !== userId) return json({ error: "Forbidden" }, 403);
-    if (session.status === "completed") return json({ status: "completed", already: true });
+    if (session.status === "completed") return json({ status: "completed", already: true, test: !!session.is_test });
     if (!session.stitch_request_id) return json({ error: "Session not initiated with Stitch" }, 400);
 
     const { data: secrets } = await admin.from("club_secrets")
@@ -76,10 +76,10 @@ Deno.serve(async (req) => {
     const { data: claimed } = await admin.from("stitch_payment_sessions")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", session.id).neq("status", "completed").select("id");
-    if (!claimed || claimed.length === 0) return json({ status: "completed", already: true });
+    if (!claimed || claimed.length === 0) return json({ status: "completed", already: true, test: !!session.is_test });
 
     await finalisePayment(admin, session);
-    return json({ status: "completed", amount: Number(session.amount), method: session.method });
+    return json({ status: "completed", amount: Number(session.amount), method: session.method, test: !!session.is_test });
   } catch (e: any) {
     console.error("stitch-verify-payment error:", e);
     return json({ error: e.message || "Unexpected error" }, 500);

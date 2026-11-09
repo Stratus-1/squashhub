@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     }
 
     if (session.status === "completed") {
-      return json({ status: "completed", already: true });
+      return json({ status: "completed", already: true, test: !!session.is_test });
     }
 
     // Fetch Yoco checkout status
@@ -143,7 +143,14 @@ Deno.serve(async (req) => {
     }
     if (!claimed || claimed.length === 0) {
       // Another concurrent call already completed it — nothing more to do.
-      return json({ status: "completed", already: true });
+      return json({ status: "completed", already: true, test: !!session.is_test });
+    }
+
+    // Sandbox (sk_test_) payments move no real money: never credit the member,
+    // settle fees/entries or trigger GoBook top-ups. The session row is the record.
+    if (session.is_test) {
+      console.log(`[yoco-verify-checkout] TEST payment ${session.id} completed — nothing recorded`);
+      return json({ status: "completed", amount: Number(session.amount), test: true });
     }
 
     const amount = Number(session.amount);

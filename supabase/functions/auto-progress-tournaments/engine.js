@@ -8474,6 +8474,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       const tenChart = usesTenRemainderChart(model.rrFinish, plan.remainder.length);
       const chartRest = tenChart || (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
+      const remainderPrevDone = locked && plan.remainder.length > 0 && plan.remainder.every((id) => history.some((f) => f.round === rd.round - 1 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id)));
       const chartBlocks = [];
       if (chartRest && !tenChart) {
         const chart = uitsigMensCChart();
@@ -8508,7 +8509,7 @@ function buildProposedSwissGrid(model, opts = {}) {
           const row = (id, pos) => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", projected: true, when: schedule.label };
           chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null, ...locked && x && y ? { certified: true } : {} });
         }
-      } else if ((sequencing ? prevDone && locked : prevDone || !locked && rd.round === 3) && plan.remainder.length) {
+      } else if ((sequencing ? prevDone && locked : prevDone || remainderPrevDone || !locked && rd.round === 3) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         const table = hybridSwissTable(seeds, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
@@ -8537,7 +8538,7 @@ function buildProposedSwissGrid(model, opts = {}) {
         score: null,
         court: null,
         playBy: opts.appliedPlayBy?.[rd.round] ?? null,
-        ...a != null && b != null && (certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) || locked && groupIds.has(a) && groupIds.has(b)) ? { certified: true } : {}
+        ...a != null && b != null && (certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) || locked && groupIds.has(a) && groupIds.has(b) || remainderPrevDone && !groupIds.has(a) && !groupIds.has(b)) ? { certified: true } : {}
       }));
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
       const remainingPositions = plan.remainder.flatMap((id) => {

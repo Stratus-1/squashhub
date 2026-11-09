@@ -211,15 +211,20 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     (async () => {
       try {
         let status = "";
+        let isTest = false;
         for (let attempt = 0; attempt < 12; attempt += 1) {
           const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
           if (error) throw error;
           status = data?.status || "";
+          isTest = !!data?.test;
           if (status === "completed") break;
           if (["failed", "expired", "cancelled"].includes(status) && yocoStatus !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        if (status === "completed") {
+        if (status === "completed" && isTest) {
+          clearPendingYocoSession(sid || undefined);
+          toast.info("TEST payment succeeded — the entry was NOT marked paid.", { duration: 10000 });
+        } else if (status === "completed") {
           clearPendingYocoSession(sid || undefined);
           await markNotificationRead();
           await refetchRegistration();

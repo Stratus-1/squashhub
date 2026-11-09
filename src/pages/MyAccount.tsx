@@ -437,15 +437,20 @@ export default function MyAccount() {
     (async () => {
       try {
         let status = "";
+        let isTest = false;
         for (let attempt = 0; attempt < 12; attempt += 1) {
           const { data, error } = await verifyClubCheckout(gateway, sid);
           if (error) throw error;
           status = (data as any)?.status || "";
+          isTest = !!(data as any)?.test;
           if (status === "completed") break;
           if (["failed", "expired", "cancelled"].includes(status) && statusHint !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        if (status === "completed") {
+        if (status === "completed" && isTest) {
+          clearPendingClubSession(gateway, sid);
+          toast.info("TEST payment succeeded — nothing was recorded on your account or in the club's books.", { duration: 10000 });
+        } else if (status === "completed") {
           clearPendingClubSession(gateway, sid);
           toast.success("Payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
@@ -495,6 +500,10 @@ export default function MyAccount() {
             const { data } = await verifyClubCheckout(gw as GatewayId, null);
             if ((data as any)?.status === "completed") {
               clearPendingClubSession(gw as GatewayId);
+              if ((data as any)?.test) {
+                toast.info("TEST payment succeeded — nothing was recorded on your account or in the club's books.", { duration: 10000 });
+                return;
+              }
               toast.success("Payment received — thank you!");
               queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
               queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });

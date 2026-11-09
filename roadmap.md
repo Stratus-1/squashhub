@@ -47,5 +47,5 @@
 - [x] R334 (16–17 Oct Yoco) confirmed kiosk sales: moved from Club Champs income to bar sales (8 Nov).
 - [x] R47 Berdina cleaning material (26 Oct) moved from bank to bar cash; R31.47 posted once as unreconciled Yoco difference (8 Nov).
 
-- [ ] Uitsig Men's B Round 4 (Gerhard, 9 Nov): preview shows 1v10/3v12 because it uses the old 20 Oct draft chart instead of the frozen 25 Oct chart (should be 1v3, 10v12). Saved games correct. Display fix awaits Willem's go-ahead.
+- [x] Uitsig Men's B Round 4 (Gerhard, 9 Nov): preview now follows the frozen 25 Oct chart (R4 1v3, 10v12; R5 3v5/4v6, 9v12/10v11). Display only; saved games unchanged.
 - [x] Checked: frozen 24-player Swiss chart document and the game-creating rules unchanged since 25 Oct.

@@ -18550,6 +18550,7 @@ export type Database = {
           description: string | null
           fee_ids: string[]
           id: string
+          is_test: boolean
           metadata: Json
           method: string
           payer_reference: string | null
@@ -18571,6 +18572,7 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_test?: boolean
           metadata?: Json
           method?: string
           payer_reference?: string | null
@@ -18592,6 +18594,7 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_test?: boolean
           metadata?: Json
           method?: string
           payer_reference?: string | null
@@ -20770,6 +20773,7 @@ export type Database = {
           description: string | null
           fee_ids: string[]
           id: string
+          is_test: boolean
           purpose: string
           status: string
           updated_at: string
@@ -20788,6 +20792,7 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_test?: boolean
           purpose: string
           status?: string
           updated_at?: string
@@ -20806,6 +20811,7 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_test?: boolean
           purpose?: string
           status?: string
           updated_at?: string

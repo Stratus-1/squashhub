@@ -46,3 +46,6 @@
 - [x] Willem's answers (8 Nov) posted: PayFast Lights R19,613.12 as Lights income, Squasha Teers / Brett credit / Mielieland to opening balance, Berdina R1,200 + R100 expenses, Yoco 16–17 Oct Champs card fees + R334, Marizel R300 confirmed wages. App bank to 6 Nov R55,254.17 vs expected R55,332.64 (−R78.47 = Yoco R31.47 + R47 cleaning not on statement).
 - [x] R334 (16–17 Oct Yoco) confirmed kiosk sales: moved from Club Champs income to bar sales (8 Nov).
 - [x] R47 Berdina cleaning material (26 Oct) moved from bank to bar cash; R31.47 posted once as unreconciled Yoco difference (8 Nov).
+
+- [ ] Uitsig Men's B Round 4 (Gerhard, 9 Nov): check positions 1 v 10 / 3 v 12 shown in Round 4 preview; report cause, no live changes without Willem's approval.
+- [ ] Check whether the original saved Swiss pairing setup (docs/SWISS_24_PLAYER_TEMPLATE.md) was changed since it was frozen.

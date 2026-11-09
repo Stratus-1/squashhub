@@ -297,6 +297,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       const tenChart = usesTenRemainderChart(model.rrFinish, plan.remainder.length);
       const chartRest = tenChart || ((opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3);
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
+      // The Swiss remainder ranks only on qualifying + its own games (hybridSwissTable), so once every
+      // remainder player has finished the previous round its pairing is fixed, whatever the groups do.
+      const remainderPrevDone = locked && plan.remainder.length > 0 && plan.remainder.every((id) =>
+        history.some((f) => f.round === rd.round - 1 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id)));
       // Owner's 18-player chart: positions 13–18 follow the chart (13v17,14v18,15v16 / 13v15,14v17,16v18 / 13v14,15v16,17v18),
       // with positions taken from standings after the previous round. Names appear only once that round is complete.
       const chartBlocks: GridBlock[] = [];
@@ -367,7 +371,8 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
         // Once Round 2 is complete the groups of four are frozen, so every later group game is fixed
         // regardless of other groups' or the remainder's open games.
         ...(a != null && b != null && ((certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1))
-          || (locked && groupIds.has(a) && groupIds.has(b))) ? { certified: true } : {}),
+          || (locked && groupIds.has(a) && groupIds.has(b))
+          || (remainderPrevDone && !groupIds.has(a) && !groupIds.has(b))) ? { certified: true } : {}),
       }));
       // Future slots are paired position labels only, never decided player identities.
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));

@@ -1258,7 +1258,7 @@ export default function SuperAdminSubscriptions() {
                 <li>Sign in at <a href="https://express.stitch.money" target="_blank" rel="noopener noreferrer" className="text-primary underline">express.stitch.money</a> using the platform (Stratus) Stitch Express account.</li>
                 <li>Copy the Client ID and reveal the Client Secret; paste both here and Save.</li>
                 <li>Register the redirect URL <code className="text-[10px]">https://squashhub.co.za/admin/subscriptions</code> under <strong>Settings → Redirect URLs</strong>.</li>
-                <li>Add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong> so paid subscription invoices auto-settle.</li>
+                <li>Add the webhook URL <code className="text-[10px] break-all select-all">{`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stitch-webhook`}</code> under <strong>Settings → Webhooks</strong> so paid subscription invoices auto-settle.</li>
               </ol>
             </div>
           </Card>

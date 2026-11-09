@@ -46,3 +46,6 @@
 - [x] Willem's answers (8 Nov) posted: PayFast Lights R19,613.12 as Lights income, Squasha Teers / Brett credit / Mielieland to opening balance, Berdina R1,200 + R100 expenses, Yoco 16–17 Oct Champs card fees + R334, Marizel R300 confirmed wages. App bank to 6 Nov R55,254.17 vs expected R55,332.64 (−R78.47 = Yoco R31.47 + R47 cleaning not on statement).
 - [x] R334 (16–17 Oct Yoco) confirmed kiosk sales: moved from Club Champs income to bar sales (8 Nov).
 - [x] R47 Berdina cleaning material (26 Oct) moved from bank to bar cash; R31.47 posted once as unreconciled Yoco difference (8 Nov).
+
+- [ ] Uitsig Men's B Round 4 (Gerhard, 9 Nov): preview shows 1v10/3v12 because it uses the old 20 Oct draft chart instead of the frozen 25 Oct chart (should be 1v3, 10v12). Saved games correct. Display fix awaits Willem's go-ahead.
+- [x] Checked: frozen 24-player Swiss chart document and the game-creating rules unchanged since 25 Oct.

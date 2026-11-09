@@ -100,6 +100,19 @@ Deno.serve(async (req) => {
       // Require a full-string match: JavaScript's $ may otherwise allow a trailing newline.
       if (!match || match[0] !== body.redirectPath) return json(400, { error: "Invalid checkout redirectPath" });
       path = body.redirectPath;
+    } else if (body.destination === "account-topup") {
+      // Opens the existing MyAccount Top Up dialog (EFT proof upload / configured
+      // online checkout). Only `/my-account?topup=<amount>` with exactly two
+      // decimals, no leading zeros, minimum R10; every other path/query is rejected.
+      const topupPath = /^\/my-account\?topup=([1-9]\d*\.\d{2})$/;
+      const match = typeof body.redirectPath === "string" ? topupPath.exec(body.redirectPath) : null;
+      // Require a full-string match: JavaScript's $ may otherwise allow a trailing newline.
+      if (!match || match[0] !== body.redirectPath || !(Number(match[1]) >= 10)) {
+        return json(400, { error: "Invalid top-up redirectPath" });
+      }
+      path = body.redirectPath;
+    } else if (body.destination !== undefined && body.destination !== "billing") {
+      return json(400, { error: "Unknown destination" });
     }
     const redirectTo = `${origin}${path}`;
     const { data: link, error } = await db.auth.admin.generateLink({

@@ -297,6 +297,10 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
       const tenChart = usesTenRemainderChart(model.rrFinish, plan.remainder.length);
       const chartRest = tenChart || ((opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3);
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
+      // The Swiss remainder ranks only on qualifying + its own games (hybridSwissTable), so once every
+      // remainder player has finished the previous round its pairing is fixed, whatever the groups do.
+      const remainderPrevDone = locked && plan.remainder.length > 0 && plan.remainder.every((id) =>
+        history.some((f) => f.round === rd.round - 1 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id)));
       // Owner's 18-player chart: positions 13–18 follow the chart (13v17,14v18,15v16 / 13v15,14v17,16v18 / 13v14,15v16,17v18),
       // with positions taken from standings after the previous round. Names appear only once that round is complete.
       const chartBlocks: GridBlock[] = [];
@@ -319,7 +323,9 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
           const x = slots[p.a - 1] ?? null, y = slots[p.b - 1] ?? null;
           if ((x && covered.has(x)) || (y && covered.has(y))) continue;
           const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
-          chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+          // Both slots filled only from completed games: the pairing cannot change, so the writer may
+          // create it as soon as those two players are known (never waiting for unrelated games).
+          chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null, ...(locked && x && y ? { certified: true as const } : {}) });
         }
       } else if (tenChart) {
         // Approved 10-player remainder chart: names appear once the game deciding each slot is complete.
@@ -336,9 +342,9 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
           const x = slots[a - 1] ?? null, y = slots[b - 1] ?? null;
           if ((x && covered.has(x)) || (y && covered.has(y))) continue;
           const row = (id: string | null, pos: number): GridRow => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", projected: true, when: schedule.label };
-          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null, ...(locked && x && y ? { certified: true as const } : {}) });
         }
-      } else if ((sequencing ? prevDone && locked : prevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
+      } else if ((sequencing ? prevDone && locked : prevDone || remainderPrevDone || (!locked && rd.round === 3)) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         const table = hybridSwissTable(seeds, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
@@ -362,7 +368,11 @@ export function buildProposedSwissGrid(model: SwissProgressionModel, opts: { fin
             ? { id: null, pos: fixed.get(id) ?? null, name: "TBD", result: "", projected: true, when: schedule.label }
             : { id, pos: id ? fixed.get(id) ?? null : null, name: id ? byId.get(id)?.name ?? "Unknown player" : "Bye", result: "", projected: true, when: schedule.label };
         }) as [GridRow, GridRow], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null,
-        ...(a != null && b != null && certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) ? { certified: true } : {}),
+        // Once Round 2 is complete the groups of four are frozen, so every later group game is fixed
+        // regardless of other groups' or the remainder's open games.
+        ...(a != null && b != null && ((certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1))
+          || (locked && groupIds.has(a) && groupIds.has(b))
+          || (remainderPrevDone && !groupIds.has(a) && !groupIds.has(b))) ? { certified: true } : {}),
       }));
       // Future slots are paired position labels only, never decided player identities.
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));

@@ -8152,15 +8152,7 @@ function appliedRoundPlayBy(row) {
 
 // src/lib/tournaments/swiss-preview-finals.ts
 function swissPreviewFinalsTemplate(n, round) {
-  const original = preferredSwissTemplate(n, round);
-  if (n !== 24 || round < 3 || round > 5)
-    return original;
-  const half = {
-    3: [[1, 6], [2, 5], [3, 9], [4, 10], [7, 12], [8, 11]],
-    4: [[1, 4], [2, 3], [5, 7], [6, 8], [9, 12], [10, 11]],
-    5: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
-  };
-  return { ...original, pairs: [0, 12].flatMap((offset) => half[round].map(([a, b]) => ({ round, a: a + offset, b: b + offset }))) };
+  return preferredSwissTemplate(n, round);
 }
 
 // src/lib/tournaments/swiss-uitsig-mens-c-chart.ts
@@ -8482,6 +8474,7 @@ function buildProposedSwissGrid(model, opts = {}) {
       const tenChart = usesTenRemainderChart(model.rrFinish, plan.remainder.length);
       const chartRest = tenChart || (opts.exactMensCChart === true || opts.mensCRemainderChart === true) && model.rows.length === 18 && model.rrFinish?.groups === 3;
       const prevDone = !!model.rounds.find((r) => r.round === rd.round - 1)?.complete;
+      const remainderPrevDone = locked && plan.remainder.length > 0 && plan.remainder.every((id) => history.some((f) => f.round === rd.round - 1 && (f.state === "completed" || f.state === "bye") && (f.a === id || f.b === id)));
       const chartBlocks = [];
       if (chartRest && !tenChart) {
         const chart = uitsigMensCChart();
@@ -8503,7 +8496,7 @@ function buildProposedSwissGrid(model, opts = {}) {
           if (x && covered.has(x) || y && covered.has(y))
             continue;
           const row = (id, pos) => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", when: schedule.label };
-          chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+          chartBlocks.push({ matchId: `chart-${rd.round}-${p.a}-${p.b}`, rows: [row(x, p.a), row(y, p.b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null, ...locked && x && y ? { certified: true } : {} });
         }
       } else if (tenChart) {
         const offset = plan.pairs.length * 2;
@@ -8514,9 +8507,9 @@ function buildProposedSwissGrid(model, opts = {}) {
           if (x && covered.has(x) || y && covered.has(y))
             continue;
           const row = (id, pos) => id ? { id, pos, name: byId.get(id)?.name ?? "Unknown player", result: "", projected: true, when: schedule.label } : { id: null, pos, name: "TBD", result: "", projected: true, when: schedule.label };
-          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null });
+          chartBlocks.push({ matchId: `chart10-${rd.round}-${a}-${b}`, rows: [row(x, offset + a), row(y, offset + b)], score: null, court: null, playBy: opts.appliedPlayBy?.[rd.round] ?? null, ...locked && x && y ? { certified: true } : {} });
         }
-      } else if ((sequencing ? prevDone && locked : prevDone || !locked && rd.round === 3) && plan.remainder.length) {
+      } else if ((sequencing ? prevDone && locked : prevDone || remainderPrevDone || !locked && rd.round === 3) && plan.remainder.length) {
         const rest = new Set(plan.remainder);
         const seeds = [...model.rows].sort((a, b) => a.seed - b.seed).map((r) => r.id);
         const table = hybridSwissTable(seeds, history.filter((f) => f.round < rd.round && (f.state === "completed" || f.state === "bye")), model.rrFinish, model.tieBreaks).filter((r) => rest.has(r.id));
@@ -8545,7 +8538,7 @@ function buildProposedSwissGrid(model, opts = {}) {
         score: null,
         court: null,
         playBy: opts.appliedPlayBy?.[rd.round] ?? null,
-        ...a != null && b != null && certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) ? { certified: true } : {}
+        ...a != null && b != null && (certifiedPos.has(fixed.get(a) ?? -1) && certifiedPos.has(fixed.get(b) ?? -1) || locked && groupIds.has(a) && groupIds.has(b) || remainderPrevDone && !groupIds.has(a) && !groupIds.has(b)) ? { certified: true } : {}
       }));
       const shown = new Set([...factual, ...pending, ...chartBlocks].flatMap((b) => b.rows.map((r) => r.pos)));
       const remainingPositions = plan.remainder.flatMap((id) => {
@@ -8928,7 +8921,9 @@ function projectSwissFixtures(i, playByOnly) {
           continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id))
           continue;
-        const early = b.certified === true && !prevComplete ? { rrFinishBlock: true } : {};
+        const groupSlots = (st.rrFinish?.groups ?? 0) * 4;
+        const groupGame = !st.rrFinish?.enabled || x.pos <= groupSlots && y.pos <= groupSlots;
+        const early = b.certified === true && !prevComplete && groupGame ? { rrFinishBlock: true } : {};
         if (playByOnly) {
           out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline, ...early });
           continue;

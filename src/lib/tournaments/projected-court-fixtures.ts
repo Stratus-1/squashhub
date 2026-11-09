@@ -154,7 +154,11 @@ function projectSwissFixtures(i: ProjectionInput, playByOnly: boolean): Array<Pr
         // blocks (group positions proven final) may be created while it is still open.
         if (st.rrFinish?.enabled && !prevComplete && !b.certified) continue;
         if (inRound(rd.round, x.id) || inRound(rd.round, y.id)) continue;
-        const early = b.certified === true && !prevComplete ? { rrFinishBlock: true as const } : {};
+        // Fixed RR group games may be created while earlier group rounds are open (DB checks Round 2 only).
+        // Certified remainder/chart games keep the normal per-player check: both finished the previous round.
+        const groupSlots = (st.rrFinish?.groups ?? 0) * 4;
+        const groupGame = !st.rrFinish?.enabled || (x.pos <= groupSlots && y.pos <= groupSlots);
+        const early = b.certified === true && !prevComplete && groupGame ? { rrFinishBlock: true as const } : {};
         if (playByOnly) {
           out.push({ champId: champ.id, group: gn, round: rd.round, aId: x.id, bId: y.id, title: `${x.name} v ${y.name}`, playBy: deadline, ...early });
           continue;

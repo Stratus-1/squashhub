@@ -111,8 +111,6 @@ Deno.serve(async (req) => {
         return json(400, { error: "Invalid top-up redirectPath" });
       }
       path = body.redirectPath;
-    } else if (body.destination !== undefined && body.destination !== "billing") {
-      return json(400, { error: "Unknown destination" });
     }
     const redirectTo = `${origin}${path}`;
     const { data: link, error } = await db.auth.admin.generateLink({

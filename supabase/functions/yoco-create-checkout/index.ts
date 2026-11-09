@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
         champ_registration_id,
         description: description || defaultDesc,
         status: "created",
+        is_test: isYocoTestKey(secretKey),
       })
       .select("id")
       .single();

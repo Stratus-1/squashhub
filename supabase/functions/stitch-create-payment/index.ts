@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
         description: (sessionMeta ? inviteContext?.description : description) || inviteContext?.description || defaultDesc,
         payer_reference: refPrefix,
         status: "created",
+        is_test: testMode,
         ...(sessionMeta ? { metadata: sessionMeta } : {}),
       }).select("id").single();
     if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);

@@ -576,7 +576,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
                     {" "}This is required for payers to be sent back to your club after paying. Never register the shared
                     {" "}<code className="text-[10px]">www.squashhub.co.za/pay/return</code> address, and do not include <code className="text-[10px]">?stitch_session=…</code> or other payment parameters.
                   </li>
-                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px]">https://squashhub.co.za/functions/v1/stitch-webhook</code> under <strong>Settings → Webhooks</strong>, then paste the webhook Signing Secret into the field below.</li>
+                  <li>For server-confirmed settlements, add the webhook URL <code className="text-[10px] break-all select-all">{`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stitch-webhook`}</code> under <strong>Settings → Webhooks</strong> (subscribe to the <strong>payment</strong> events), then paste the webhook Signing Secret into the field below.</li>
                   <li>Use the <em>test</em> client (Client ID starts with <code>test-</code>) while trialling; switch to <em>live</em> before collecting real money.</li>
 
                 </ol>

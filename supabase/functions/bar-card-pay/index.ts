@@ -3,6 +3,7 @@
 // records the sale as PENDING and returns the hosted checkout URL.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
+import { isStitchTestCreds, isYocoTestKey } from "../_shared/gateway-test-mode.ts";
 import {
   PAYFAST_LIVE_PROCESS,
   PAYFAST_SANDBOX_PROCESS,
@@ -138,6 +139,11 @@ Deno.serve(async (req) => {
     }
     if (gateway === "payfast" && (!(pfCreds.merchant_id || "").trim() || !(pfCreds.merchant_key || "").trim())) {
       return json({ error: "This club has not finished its card payment setup" });
+    }
+    // Sandbox credentials move no real money, so they must never close a real
+    // bar tab or mark a sale paid.
+    if ((gateway === "stitch" && isStitchTestCreds(creds)) || (gateway === "yoco" && isYocoTestKey(yocoSecretKey))) {
+      return json({ error: "Card payments are still in test mode at this club — please pay at the counter or charge it to your account." });
     }
 
     if (tabMode) {

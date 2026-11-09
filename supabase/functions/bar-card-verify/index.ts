@@ -2,6 +2,7 @@
 // finalises the sale record.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { finaliseBarReference } from "../_shared/bar-payment-finalise.ts";
+import { isStitchTestCreds, isYocoTestKey } from "../_shared/gateway-test-mode.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,6 +115,12 @@ Deno.serve(async (req) => {
     const failed = ["EXPIRED", "CANCELLED", "CANCELED", "FAILED", "PAYMENTINITIATIONREQUESTCANCELLED", "PAYMENTINITIATIONREQUESTEXPIRED"].includes(state)
       || (cancelled && !paid);
 
+    // A sandbox "paid" is not real money: release the lines back to the tab.
+    const isTest = gateway === "yoco" ? isYocoTestKey(yocoSecretKey) : isStitchTestCreds(creds);
+    if (paid && isTest) {
+      await finaliseBarReference(admin, sale.club_id, sale.payment_reference, "failed");
+      return json({ status: "failed", test: true, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });
+    }
     const next = paid ? "paid" : failed ? "failed" : "pending";
     await finaliseBarReference(admin, sale.club_id, sale.payment_reference, next);
     return json({ status: next, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });

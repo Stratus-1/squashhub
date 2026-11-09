@@ -27,6 +27,13 @@ export function isFailedState(status: string) {
 }
 
 export async function finalisePayment(admin: any, session: any) {
+  // Sandbox payments move no real money: never credit the member, settle
+  // fees/entries or trigger GoBook top-ups. The session row (is_test) is the
+  // only record, so admins can still see the test succeeded.
+  if (session?.is_test) {
+    console.log(`[stitch-settlement] TEST payment ${session.id} completed — nothing recorded`);
+    return;
+  }
   const amount = Number(session.amount);
   const description = session.description || `${session.purpose} payment (Stitch)`;
   const methodLabel = session.method === "card" ? "card" : "eft";

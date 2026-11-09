@@ -230,15 +230,20 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     (async () => {
       try {
         let status = "";
+        let isTest = false;
         for (let attempt = 0; attempt < 12; attempt += 1) {
           const { data, error } = await verifyClubCheckout(gateway, sid);
           if (error) throw error;
           status = (data as any)?.status || "";
+          isTest = !!(data as any)?.test;
           if (status === "completed") break;
           if (["failed", "expired", "cancelled"].includes(status) && statusHint !== "failure") break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        if (status === "completed") {
+        if (status === "completed" && isTest) {
+          clearPendingClubSession(gateway, sid);
+          toast.info("TEST payment succeeded — the entry fee was NOT marked paid.", { duration: 10000 });
+        } else if (status === "completed") {
           clearPendingClubSession(gateway, sid);
           toast.success("Entry fee paid — you're registered!");
           refetch();

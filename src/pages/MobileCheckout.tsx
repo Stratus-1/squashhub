@@ -50,14 +50,19 @@ export default function MobileCheckout() {
         }
         try {
           let status = "";
+          let isTest = false;
           for (let attempt = 0; attempt < 12; attempt += 1) {
             const result = await verifyClubCheckout(returned.gateway, returned.sid || null);
             if (result.error) throw result.error;
             status = String((result.data as { status?: unknown } | null)?.status || returned.statusHint || "processing").toLowerCase();
+            isTest = !!(result.data as { test?: unknown } | null)?.test;
             if (["completed", "failed", "expired", "cancelled", "canceled"].includes(status)) break;
             await new Promise(resolve => window.setTimeout(resolve, 1500));
           }
-          if (["completed", "paid", "success", "succeeded"].includes(status)) {
+          if (status === "completed" && isTest) {
+            setState("success"); setMessage("TEST payment succeeded. Nothing was recorded on your account."); notifyApp("completed");
+            clearPendingClubSession(returned.gateway, returned.sid);
+          } else if (["completed", "paid", "success", "succeeded"].includes(status)) {
             setState("success"); setMessage("Payment confirmed. You can return to SquashHub."); notifyApp("completed");
             clearPendingClubSession(returned.gateway, returned.sid);
           } else if (["failed", "cancelled", "canceled", "expired"].includes(status)) {

@@ -129,17 +129,24 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         // must NOT adopt some other member's identity just because the email
         // happens to match a row here.
         if (myMembership && user.email) {
+          // Saved emails can differ in capitals (e.g. "Jannie.x@" vs "jannie.x@"),
+          // so match case-insensitively; escape LIKE wildcards so "_" stays literal.
+          const emailPattern = user.email.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`);
           const { data: emailMembers, error: emailErr } = await fromExt("club_members")
             .select("id, name, email, club_member_number, gender, user_id, person_id")
             .eq("club_id", club.id)
-            .eq("email", user.email.toLowerCase())
+            .ilike("email", emailPattern)
             .order("joined_at", { ascending: true });
           if (emailErr) throw emailErr;
           linked = (emailMembers || []) as LinkedMember[];
         }
 
-        if (myMembership && !linked.find((m) => m.id === myMembership.id)) {
-          linked.unshift(myMembership as LinkedMember);
+        // Every member row already linked to this login is a family member too,
+        // whatever email is saved on it.
+        if (myMembership) {
+          const own = (ownMembers || []) as LinkedMember[];
+          const extra = own.filter((m) => !linked.find((l) => l.id === m.id));
+          linked = [...own.filter((m) => extra.includes(m)), ...linked];
         }
         setLinkedMembers(linked);
 

@@ -24245,7 +24245,14 @@ export type Database = {
       }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       join_club_event: {
-        Args: { _club_member_id: string; _event_id: string }
+        Args: {
+          _club_member_id: string
+          _event_id: string
+          p_club_id?: string
+          p_instance_id?: string
+          p_response?: string
+          p_sync_secret?: string
+        }
         Returns: string
       }
       join_club_request: { Args: { p_club_id: string }; Returns: string }
@@ -24295,7 +24302,12 @@ export type Database = {
         Returns: undefined
       }
       leave_club_event: {
-        Args: { _club_member_id: string; _event_id: string }
+        Args: {
+          _club_member_id: string
+          _event_id: string
+          p_club_id?: string
+          p_sync_secret?: string
+        }
         Returns: number
       }
       lift_expired_member_suspensions: { Args: never; Returns: number }

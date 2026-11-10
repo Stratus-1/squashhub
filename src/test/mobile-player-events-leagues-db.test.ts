@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import postgres from "postgres";
 
 // Synthetic database only (rolled back). Never point this suite at hosted member data.
-// Run: MOBILE_PLAYER_TEST_SOCKET=/path/to/socket [MOBILE_PLAYER_TEST_PORT=55432] bunx vitest run src/test/mobile-player-events-leagues-db.test.ts
+// Run against an EMPTY throwaway database: MOBILE_PLAYER_TEST_SOCKET=/path/to/socket [MOBILE_PLAYER_TEST_PORT=55432] [MOBILE_PLAYER_TEST_DB=postgres] bunx vitest run src/test/mobile-player-events-leagues-db.test.ts
 const SOCKET = process.env.MOBILE_PLAYER_TEST_SOCKET;
 const PORT = Number(process.env.MOBILE_PLAYER_TEST_PORT || 55432);
 const MIGRATION = "supabase/migrations/20261110203000_mobile_player_events_leagues.sql";
@@ -84,7 +84,7 @@ CREATE TABLE league_match_results(fixture_id uuid, position int, rubber_type tex
 `;
 
 async function withDb(fn: (tx: postgres.TransactionSql) => Promise<void>) {
-  const sql = postgres({ host: SOCKET, port: PORT, username: "postgres", database: "postgres", max: 1, onnotice: () => {} });
+  const sql = postgres({ host: SOCKET, port: PORT, username: "postgres", database: process.env.MOBILE_PLAYER_TEST_DB || "postgres", max: 1, onnotice: () => {} });
   try {
     await sql.begin(async (tx) => {
       await tx.unsafe(SCHEMA);

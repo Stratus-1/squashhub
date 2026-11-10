@@ -14,6 +14,16 @@
 --      passed) for a signed-out caller or a caller without a profile row,
 --      letting such callers join or remove any member. NULL now denies; the
 --      owner and shared-email family checks are otherwise unchanged.
+--      join_club_event also takes defaulted p_response ('confirmed' |
+--      'declined') and p_instance_id, used ONLY by the Player API (secret
+--      path) to answer the member's own existing invitation: exact club,
+--      exact member, active membership, active event, an existing non-'left'
+--      invitation row, and a scheduled, not-yet-started occurrence of this
+--      event (series reply only for a one-off event without a scheduled
+--      occurrence). Only that member's reply row is written. Without
+--      p_response the open self-join behaviour is unchanged, and
+--      invitation-only events still cannot be self-joined. Web callers
+--      supplying a reply are refused (the web keeps its existing row update).
 --   3. mobile_player_competition_payload(...)  + "leagues" object (same
 --      signature); rankings/tournaments output unchanged, read-only.
 --
@@ -114,10 +124,10 @@ BEGIN
           'actions', jsonb_build_object(
             'canJoin', sr.id IS NULL AND COALESCE(e.allow_self_join, false),
             'canLeave', sr.id IS NOT NULL AND sr.status <> 'left',
-            'canRespond', COALESCE(st.my_status = 'invited', false),
-            'respondTarget', CASE WHEN COALESCE(st.my_status = 'invited', false) IS NOT TRUE THEN NULL
-                                  WHEN ir.id IS NOT NULL THEN 'occurrence'
-                                  ELSE 'series' END
+            -- Exactly what join_club_event(p_response, p_instance_id) accepts.
+            'canRespond', rt.target IS NOT NULL,
+            'respondTarget', rt.target,
+            'respondInstanceId', CASE WHEN rt.target = 'occurrence' THEN occ.id END
           )
         ) AS ev
       FROM public.club_events e
@@ -149,6 +159,16 @@ BEGIN
         END AS my_status
       ) st
       CROSS JOIN LATERAL (
+        SELECT CASE
+          WHEN sr.id IS NULL OR sr.status = 'left' THEN NULL
+          WHEN occ.id IS NOT NULL THEN
+            CASE WHEN occ.instance_date + COALESCE(e.start_time, time '00:00') > v_local_now THEN 'occurrence' END
+          WHEN COALESCE(e.recurrence, 'once') = 'once'
+               AND e.start_date + COALESCE(e.start_time, time '00:00') > v_local_now THEN 'series'
+          ELSE NULL
+        END AS target
+      ) rt
+      CROSS JOIN LATERAL (
         SELECT CASE e.recurrence
           WHEN 'weekly' THEN e.start_date + (GREATEST(COALESCE(NULLIF(e.num_instances, 0), 1), 1) - 1) * 7
           WHEN 'monthly' THEN (e.start_date + make_interval(months => GREATEST(COALESCE(NULLIF(e.num_instances, 0), 1), 1) - 1))::date
@@ -170,13 +190,15 @@ BEGIN
 END;
 $function$;
 
--- 2. join_club_event / leave_club_event: defaulted p_sync_secret + p_club_id.
+-- 2. join_club_event / leave_club_event: defaulted p_sync_secret + p_club_id
+-- (join also: p_response + p_instance_id for the Player API invitation reply).
 -- Adding defaulted parameters changes the signature, so each old two-argument
 -- function is replaced inside this single transaction (no parallel function).
 
 DROP FUNCTION IF EXISTS public.join_club_event(uuid, uuid);
+DROP FUNCTION IF EXISTS public.join_club_event(uuid, uuid, text, uuid);
 
-CREATE FUNCTION public.join_club_event(_event_id uuid, _club_member_id uuid, p_sync_secret text DEFAULT NULL, p_club_id uuid DEFAULT NULL)
+CREATE FUNCTION public.join_club_event(_event_id uuid, _club_member_id uuid, p_sync_secret text DEFAULT NULL, p_club_id uuid DEFAULT NULL, p_response text DEFAULT NULL, p_instance_id uuid DEFAULT NULL)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -185,7 +207,11 @@ AS $function$
 DECLARE
   v_event public.club_events%ROWTYPE;
   v_member public.club_members%ROWTYPE;
+  v_rsvp public.club_event_rsvps%ROWTYPE;
+  v_inst public.club_event_instances%ROWTYPE;
   v_rsvp_id uuid;
+  v_local_now timestamp := (now() AT TIME ZONE 'Africa/Johannesburg');
+  v_today date := (now() AT TIME ZONE 'Africa/Johannesburg')::date;
   r RECORD;
 BEGIN
   IF p_sync_secret IS NOT NULL THEN
@@ -195,6 +221,15 @@ BEGIN
     IF p_club_id IS NULL THEN
       RAISE EXCEPTION 'Club is required' USING ERRCODE = '42501';
     END IF;
+  ELSIF p_response IS NOT NULL OR p_instance_id IS NOT NULL THEN
+    -- Invitation replies through this RPC exist only for the Player API.
+    RAISE EXCEPTION 'Not allowed' USING ERRCODE = '42501';
+  END IF;
+  IF p_instance_id IS NOT NULL AND p_response IS NULL THEN
+    RAISE EXCEPTION 'Reply is required';
+  END IF;
+  IF p_response IS NOT NULL AND p_response NOT IN ('confirmed', 'declined') THEN
+    RAISE EXCEPTION 'Reply must be confirmed or declined';
   END IF;
 
   SELECT * INTO v_event FROM public.club_events WHERE id = _event_id;
@@ -202,7 +237,7 @@ BEGIN
   IF p_club_id IS NOT NULL AND v_event.club_id IS DISTINCT FROM p_club_id THEN
     RAISE EXCEPTION 'Event is not in this club' USING ERRCODE = '42501';
   END IF;
-  IF NOT COALESCE(v_event.allow_self_join, false) THEN
+  IF p_response IS NULL AND NOT COALESCE(v_event.allow_self_join, false) THEN
     RAISE EXCEPTION 'This event is invitation only';
   END IF;
   IF COALESCE(v_event.status, 'active') <> 'active' THEN
@@ -224,6 +259,49 @@ BEGIN
          AND NOT COALESCE(v_member.email IS NOT NULL
               AND v_member.email = (SELECT email FROM public.profiles WHERE id = auth.uid()), false)) THEN
     RAISE EXCEPTION 'Not allowed';
+  END IF;
+
+  -- Player API invitation reply: only this member's existing invitation.
+  IF p_response IS NOT NULL THEN
+    SELECT * INTO v_rsvp FROM public.club_event_rsvps
+     WHERE event_id = _event_id AND club_member_id = _club_member_id;
+    IF NOT FOUND OR v_rsvp.status = 'left' THEN
+      RAISE EXCEPTION 'No invitation for this member' USING ERRCODE = '42501';
+    END IF;
+
+    IF p_instance_id IS NOT NULL THEN
+      SELECT * INTO v_inst FROM public.club_event_instances WHERE id = p_instance_id;
+      IF NOT FOUND OR v_inst.event_id IS DISTINCT FROM _event_id THEN
+        RAISE EXCEPTION 'Occurrence is not part of this event' USING ERRCODE = '42501';
+      END IF;
+      IF v_inst.status IS DISTINCT FROM 'scheduled' THEN
+        RAISE EXCEPTION 'This occurrence is not scheduled';
+      END IF;
+      IF v_inst.instance_date + COALESCE(v_event.start_time, time '00:00') <= v_local_now THEN
+        RAISE EXCEPTION 'This occurrence has already started';
+      END IF;
+      INSERT INTO public.club_event_instance_rsvps (instance_id, club_member_id, status)
+      VALUES (p_instance_id, _club_member_id, p_response)
+      ON CONFLICT (instance_id, club_member_id)
+        DO UPDATE SET status = EXCLUDED.status, updated_at = now()
+      RETURNING id INTO v_rsvp_id;
+      RETURN v_rsvp_id;
+    END IF;
+
+    -- Series reply: one-off events without a scheduled occurrence only.
+    IF COALESCE(v_event.recurrence, 'once') <> 'once'
+       OR EXISTS (SELECT 1 FROM public.club_event_instances i
+                   WHERE i.event_id = _event_id AND i.status = 'scheduled' AND i.instance_date >= v_today) THEN
+      RAISE EXCEPTION 'Occurrence is required';
+    END IF;
+    IF v_event.start_date + COALESCE(v_event.start_time, time '00:00') <= v_local_now THEN
+      RAISE EXCEPTION 'This event has already started';
+    END IF;
+    UPDATE public.club_event_rsvps
+       SET status = p_response, updated_at = now()
+     WHERE id = v_rsvp.id
+    RETURNING id INTO v_rsvp_id;
+    RETURN v_rsvp_id;
   END IF;
 
   INSERT INTO public.club_event_rsvps (event_id, club_member_id, status)
@@ -248,8 +326,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.join_club_event(uuid, uuid, text, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.join_club_event(uuid, uuid, text, uuid) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.join_club_event(uuid, uuid, text, uuid, text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.join_club_event(uuid, uuid, text, uuid, text, uuid) TO anon, authenticated, service_role;
 
 DROP FUNCTION IF EXISTS public.leave_club_event(uuid, uuid);
 

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { UserPlus, Check, X } from "lucide-react";
+import { UserPlus, Check, X, Users } from "lucide-react";
 import { useState } from "react";
 import { applicationStatus, type ApplicationStatus } from "@/lib/membership-application";
 import { ensureJoiningClubFee, type JoiningFeeCategory } from "@/lib/joining-fee";
@@ -26,6 +26,15 @@ interface PendingApplicant {
   applied_at: string | null;
   fee_category_id: string | null;
   status: ApplicationStatus;
+  /** Set when a member on a Family Package asked to add this person. */
+  family: { addedBy: string | null; relationship: string | null } | null;
+}
+
+/** "added by Jannie Goosen, spouse" — who asked and how they're related. */
+export function familyNote(f: { addedBy: string | null; relationship: string | null }): string {
+  const parts = [f.addedBy ? `added by ${f.addedBy}` : "added by a family member"];
+  if (f.relationship) parts.push(f.relationship.toLowerCase());
+  return parts.join(", ");
 }
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
@@ -72,8 +81,41 @@ export function PendingApplicationsPanel({ clubId }: Props) {
           unpaid.set(f.club_member_id, (unpaid.get(f.club_member_id) || 0) + 1);
         }
       }
+      // Family package requests: who added them and how they're related.
+      const family = new Map<string, { addedBy: string | null; relationship: string | null }>();
+      if (ids.length) {
+        const { data: famRows } = await (supabase.from as any)("club_family_members")
+          .select("club_member_id, relationship, family_group_id, status")
+          .in("club_member_id", ids)
+          .neq("status", "removed");
+        const fam = (famRows || []) as any[];
+        const groupIds = [...new Set(fam.map((f) => f.family_group_id))];
+        const primaryByGroup = new Map<string, string>();
+        const nameById = new Map<string, string>();
+        if (groupIds.length) {
+          const { data: groups } = await (supabase.from as any)("club_family_groups")
+            .select("id, primary_member_id")
+            .in("id", groupIds);
+          for (const g of (groups || []) as any[]) primaryByGroup.set(g.id, g.primary_member_id);
+          const primaryIds = [...new Set(primaryByGroup.values())];
+          if (primaryIds.length) {
+            const { data: prim } = await (supabase.from as any)("club_members")
+              .select("id, name")
+              .in("id", primaryIds);
+            for (const m of (prim || []) as any[]) nameById.set(m.id, m.name);
+          }
+        }
+        for (const f of fam) {
+          const pid = primaryByGroup.get(f.family_group_id);
+          family.set(f.club_member_id, {
+            addedBy: pid ? nameById.get(pid) || null : null,
+            relationship: f.relationship || null,
+          });
+        }
+      }
       return rows.map((r) => ({
         ...r,
+        family: family.get(r.id) || null,
         status: applicationStatus(r, { unpaidJoiningFees: unpaid.get(r.id) || 0 }),
       })) as PendingApplicant[];
     },
@@ -160,7 +202,10 @@ export function PendingApplicationsPanel({ clubId }: Props) {
         </Badge>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        These people signed up themselves. They can only see their own record and fee statement until you approve
+        {pending.some((p) => p.family)
+          ? "People marked Family addition were added by a member on a Family Package; the others signed up themselves."
+          : "These people signed up themselves."}{" "}
+        They can only see their own record and fee statement until you approve
         them (or their first fee is paid, depending on your activation setting).
       </p>
       <div className="space-y-1.5">
@@ -170,6 +215,16 @@ export function PendingApplicationsPanel({ clubId }: Props) {
             className="flex flex-wrap items-center gap-2 rounded-md border bg-background px-2 py-1.5"
           >
             <span className="text-[12px] font-medium truncate flex-1 min-w-[120px]">{p.name || "—"}</span>
+            {p.family && (
+              <span className="flex items-center gap-1 basis-full sm:basis-auto">
+                <Badge variant="secondary" className="text-[10px] gap-1">
+                  <Users className="w-3 h-3" /> Family addition
+                </Badge>
+                <span className="text-[10px] text-muted-foreground">
+                  {familyNote(p.family)}
+                </span>
+              </span>
+            )}
             <span className="text-[10px] text-muted-foreground truncate">{p.email || ""}</span>
             <span className="text-[10px] text-muted-foreground truncate">{p.phone || ""}</span>
             <Badge variant={p.status === "awaiting_approval" ? "default" : "outline"} className="text-[10px]">

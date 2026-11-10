@@ -16,6 +16,7 @@ const U1 = id(20), U2 = id(21);
 const E_INVITED = id(30), E_OPEN = id(31), E_INV_ONLY = id(32), E_PAUSED = id(33), E_ENDED = id(34),
   E_CANCELLED = id(35), E_DECLINED_ONCE = id(36), E_LEFT = id(37), E_FRESH_WEEK = id(38), E_FOREIGN = id(39);
 const OCC_NEXT = id(40), OCC_LATER = id(41), OCC_PAST = id(42), OCC_OPEN = id(43), OCC_FRESH = id(44), OCC_LEFT = id(45);
+const E_TODAY = id(46), OCC_TODAY = id(47), OCC_CANCELLED = id(48), E_ONCE_STARTED = id(49), E_PAUSED_INV = id(79);
 const LA = id(50), LB = id(51), PA = id(52), PX = id(53), SEASON = id(54);
 const T1 = id(60), T_ARCHIVED = id(61), T_OTHER = id(62), T_FOREIGN = id(63);
 const F_UP = id(70), F_PAST = id(71), F_NOT_MINE = id(72), F_FOREIGN_CLUB = id(73), F_LEGACY = id(74),
@@ -161,17 +162,19 @@ const home = async (tx: postgres.TransactionSql, member = M, club = CLUB, secret
       const byId = Object.fromEntries(p.events.map((e: any) => [e.id, e]));
       expect(Object.keys(byId).sort()).toEqual([E_INVITED, E_OPEN, E_INV_ONLY, E_DECLINED_ONCE, E_LEFT, E_FRESH_WEEK].sort());
       // Repeating event: status is the reply for the NEXT scheduled occurrence.
+      // canRespond/respondTarget/respondInstanceId describe exactly what join_club_event(p_response, p_instance_id) accepts.
       expect(byId[E_INVITED]).toMatchObject({ invited: true, myStatus: "confirmed", occurrence: { id: OCC_NEXT }, occurrenceRsvpId: expect.any(String),
-        actions: { canJoin: false, canLeave: true, canRespond: false, respondTarget: null } });
-      // Confirmed on the series but no reply for this week's occurrence: asked afresh.
-      expect(byId[E_FRESH_WEEK]).toMatchObject({ myStatus: "invited", actions: { canRespond: true, respondTarget: "series" } });
+        actions: { canJoin: false, canLeave: true, canRespond: true, respondTarget: "occurrence", respondInstanceId: OCC_NEXT } });
+      // Confirmed on the series but no reply for this week's occurrence: asked afresh, answered for that occurrence.
+      expect(byId[E_FRESH_WEEK]).toMatchObject({ myStatus: "invited", actions: { canRespond: true, respondTarget: "occurrence", respondInstanceId: OCC_FRESH } });
       // Self-join event the member is not on.
       expect(byId[E_OPEN]).toMatchObject({ invited: false, myStatus: "not_invited", allowSelfJoin: true, invitationOnly: false, rsvpId: null,
-        actions: { canJoin: true, canLeave: false, canRespond: false } });
+        actions: { canJoin: true, canLeave: false, canRespond: false, respondTarget: null, respondInstanceId: null } });
       // Invitation-only event the member is not on: visible, never joinable.
-      expect(byId[E_INV_ONLY]).toMatchObject({ invited: false, invitationOnly: true, actions: { canJoin: false, canLeave: false } });
-      expect(byId[E_DECLINED_ONCE]).toMatchObject({ myStatus: "declined", actions: { canRespond: false, canLeave: true } });
-      expect(byId[E_LEFT]).toMatchObject({ myStatus: "left", occurrenceRsvpId: null, actions: { canJoin: false, canLeave: false } });
+      expect(byId[E_INV_ONLY]).toMatchObject({ invited: false, invitationOnly: true, actions: { canJoin: false, canLeave: false, canRespond: false } });
+      // One-off event without a scheduled occurrence: the member may change their series reply.
+      expect(byId[E_DECLINED_ONCE]).toMatchObject({ myStatus: "declined", actions: { canRespond: true, respondTarget: "series", respondInstanceId: null, canLeave: true } });
+      expect(byId[E_LEFT]).toMatchObject({ myStatus: "left", occurrenceRsvpId: null, actions: { canJoin: false, canLeave: false, canRespond: false } });
       // No other players' records, names or admin fields.
       const text = JSON.stringify(p.events);
       expect(text).not.toContain(OTHER);
@@ -199,9 +202,10 @@ const home = async (tx: postgres.TransactionSql, member = M, club = CLUB, secret
     await withDb(async (tx) => {
       await seedEvents(tx);
       const [sig] = await tx`select to_regprocedure('join_club_event(uuid,uuid)') as old_join, to_regprocedure('leave_club_event(uuid,uuid)') as old_leave,
-        has_function_privilege('authenticated','join_club_event(uuid,uuid,text,uuid)','EXECUTE') as auth_join,
+        to_regprocedure('join_club_event(uuid,uuid,text,uuid)') as mid_join,
+        has_function_privilege('authenticated','join_club_event(uuid,uuid,text,uuid,text,uuid)','EXECUTE') as auth_join,
         has_function_privilege('anon','leave_club_event(uuid,uuid,text,uuid)','EXECUTE') as anon_leave`;
-      expect(sig).toEqual({ old_join: null, old_leave: null, auth_join: true, anon_leave: true });
+      expect(sig).toEqual({ old_join: null, old_leave: null, mid_join: null, auth_join: true, anon_leave: true });
 
       // Web: two named arguments, owner session.
       await asUser(tx, U1);
@@ -246,6 +250,93 @@ const home = async (tx: postgres.TransactionSql, member = M, club = CLUB, secret
       expect((await tx`select leave_club_event(${E_INVITED}, ${M}, ${SECRET}, ${CLUB}) as n`)[0].n).toBe(1);
       expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_PAST} and club_member_id=${M}`)[0].status).toBe("declined");
       expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_NEXT} and club_member_id=${OTHER}`)[0].status).toBe("declined");
+    });
+  });
+
+  it("Player API invitation reply: only the invited member, exact scope, upcoming scheduled occurrence, own row only", async () => {
+    await withDb(async (tx) => {
+      await seedEvents(tx);
+      // Extra fixtures: an occurrence that already started today, a cancelled occurrence,
+      // a one-off event that already started, and a paused invitation.
+      await tx`insert into club_events(id,club_id,title,start_time,end_time,start_date,status,recurrence,num_instances,allow_self_join) values
+        (${E_TODAY},${CLUB},'Started today','00:00','23:59',current_date,'active','weekly',4,false),
+        (${E_ONCE_STARTED},${CLUB},'One-off started','00:00','23:59',current_date,'active','once',1,false),
+        (${E_PAUSED_INV},${CLUB},'Paused invite','18:00','20:00',current_date+1,'paused','once',1,false)`;
+      await tx`insert into club_event_instances(id,event_id,instance_date,status) values
+        (${OCC_TODAY},${E_TODAY},current_date,'scheduled'),(${OCC_CANCELLED},${E_INVITED},current_date+15,'cancelled')`;
+      await tx`insert into club_event_rsvps(event_id,club_member_id,status) values
+        (${E_TODAY},${M},'invited'),(${E_ONCE_STARTED},${M},'invited'),(${E_PAUSED_INV},${M},'invited'),(${E_INVITED},${PENDING},'invited')`;
+      await asUser(tx, null);
+      const reply = (ev: string, member: string, club: string | null, response: string | null, inst: string | null, secret: string | null = SECRET) =>
+        err(tx, `select join_club_event(_event_id => $1, _club_member_id => $2, p_sync_secret => $3, p_club_id => $4, p_response => $5, p_instance_id => $6)`,
+          [ev, member, secret, club, response, inst]);
+      const otherRows = async () => [
+        await tx`select event_id, status from club_event_rsvps where club_member_id<>${M} order by event_id, club_member_id`,
+        await tx`select instance_id, status from club_event_instance_rsvps where club_member_id<>${M} order by instance_id, club_member_id`,
+      ];
+      const before = await otherRows();
+
+      // Accepted: invited member (invitation-only weekly event) declines the specified upcoming occurrence.
+      expect(await reply(E_INVITED, M, CLUB, "declined", OCC_NEXT)).toBe("OK");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_NEXT} and club_member_id=${M}`)[0].status).toBe("declined");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_LATER} and club_member_id=${M}`)[0].status).toBe("invited");
+      expect((await tx`select status from club_event_rsvps where event_id=${E_INVITED} and club_member_id=${M}`)[0].status).toBe("invited");
+      expect((await home(tx)).events.find((e: any) => e.id === E_INVITED).myStatus).toBe("declined");
+      // Accepted: occurrence without a reply row yet gets the member's own row.
+      expect(await reply(E_FRESH_WEEK, M, CLUB, "confirmed", OCC_FRESH)).toBe("OK");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_FRESH} and club_member_id=${M}`)[0].status).toBe("confirmed");
+      // Accepted: one-off event without a scheduled occurrence answers the series.
+      expect(await reply(E_DECLINED_ONCE, M, CLUB, "confirmed", null)).toBe("OK");
+      expect((await tx`select status from club_event_rsvps where event_id=${E_DECLINED_ONCE} and club_member_id=${M}`)[0].status).toBe("confirmed");
+      // Nobody else's rows changed.
+      expect(await otherRows()).toEqual(before);
+
+      // Only an invited member: not invited, or left, is refused and writes nothing.
+      expect(await reply(E_INV_ONLY, M, CLUB, "confirmed", null)).toContain("No invitation for this member");
+      expect(await reply(E_FRESH_WEEK, OTHER, CLUB, "confirmed", OCC_FRESH)).toContain("No invitation for this member");
+      expect(await reply(E_LEFT, M, CLUB, "confirmed", OCC_LEFT)).toContain("No invitation for this member");
+      expect(await tx`select 1 from club_event_rsvps where event_id=${E_INV_ONLY} and club_member_id=${M}`).toHaveLength(0);
+      expect(await tx`select 1 from club_event_instance_rsvps where instance_id=${OCC_FRESH} and club_member_id=${OTHER}`).toHaveLength(0);
+      // Self-join to an invitation-only event without an invite stays denied (secret and web).
+      expect(await err(tx, `select join_club_event($1,$2,$3,$4)`, [E_INV_ONLY, M, SECRET, CLUB])).toContain("invitation only");
+
+      // Wrong member / club / secret.
+      expect(await reply(E_INVITED, FOREIGN, CLUB, "confirmed", OCC_NEXT)).toContain("Member is not in this club");
+      expect(await reply(E_INVITED, M, OTHER_CLUB, "confirmed", OCC_NEXT)).toContain("Event is not in this club");
+      expect(await reply(E_INVITED, M, null, "confirmed", OCC_NEXT)).toContain("Club is required");
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", OCC_NEXT, "x".repeat(40))).toContain("Not allowed");
+      expect(await reply(E_INVITED, PENDING, CLUB, "confirmed", OCC_NEXT)).toContain("Membership is not active");
+      expect(await reply(E_PAUSED_INV, M, CLUB, "confirmed", null)).toContain("This event is not open");
+
+      // Wrong instance, wrong reply value, missing occurrence.
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", OCC_OPEN)).toContain("Occurrence is not part of this event");
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", id(999))).toContain("Occurrence is not part of this event");
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", null)).toContain("Occurrence is required");
+      expect(await reply(E_INVITED, M, CLUB, null, OCC_NEXT)).toContain("Reply is required");
+      for (const bad of ["left", "invited", "maybe"]) expect(await reply(E_INVITED, M, CLUB, bad, OCC_NEXT)).toContain("Reply must be confirmed or declined");
+
+      // Expired, started or cancelled occurrences; started one-off event.
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", OCC_PAST)).toContain("already started");
+      expect(await reply(E_TODAY, M, CLUB, "confirmed", OCC_TODAY)).toContain("already started");
+      expect(await reply(E_INVITED, M, CLUB, "confirmed", OCC_CANCELLED)).toContain("not scheduled");
+      expect(await reply(E_ONCE_STARTED, M, CLUB, "confirmed", null)).toContain("This event has already started");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_PAST} and club_member_id=${M}`)[0].status).toBe("declined");
+      const p = await home(tx);
+      expect(p.events.find((e: any) => e.id === E_TODAY).actions).toMatchObject({ canRespond: false, respondTarget: null });
+      expect(p.events.find((e: any) => e.id === E_ONCE_STARTED).actions).toMatchObject({ canRespond: false, respondTarget: null });
+
+      // Web callers: replies through this RPC are refused; the two-argument join is unchanged.
+      await asUser(tx, U1);
+      expect(await err(tx, `select join_club_event(_event_id => $1, _club_member_id => $2, p_response => $3, p_instance_id => $4)`,
+        [E_INVITED, M, "confirmed", OCC_NEXT])).toContain("Not allowed");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_NEXT} and club_member_id=${M}`)[0].status).toBe("declined");
+      expect(await err(tx, `select join_club_event($1,$2)`, [E_OPEN, M])).toBe("OK");
+      expect((await tx`select status from club_event_instance_rsvps where instance_id=${OCC_OPEN} and club_member_id=${M}`)[0].status).toBe("confirmed");
+      expect(await err(tx, `select join_club_event($1,$2)`, [E_INVITED, M])).toContain("invitation only");
+      // Secret self-join without a reply keeps the open-event behaviour.
+      await asUser(tx, null);
+      expect(await err(tx, `select join_club_event($1,$2,$3,$4)`, [E_LEFT, M, SECRET, CLUB])).toBe("OK");
+      expect((await tx`select status from club_event_rsvps where event_id=${E_LEFT} and club_member_id=${M}`)[0].status).toBe("confirmed");
     });
   });
 

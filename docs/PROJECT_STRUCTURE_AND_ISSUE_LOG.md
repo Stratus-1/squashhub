@@ -4365,3 +4365,5 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-09 — Stitch/Yoco test payments recorded as real money (CSIR)
 - Cause: sessions created with sandbox credentials settled exactly like live payments: member credit, auto-settled fees, gateway-fee journal and a pending GoBook Lights request (Willem's R100 went to GoBook as payment 43415).
 - Fix: `is_test` on `stitch_payment_sessions`/`yoco_payment_sessions` set from credentials at creation (`_shared/gateway-test-mode.ts`); `finalisePayment`, `yoco-verify-checkout` and `payment_session_gateway_fee` skip test sessions; `bar-card-pay` refuses test-mode checkout and `bar-card-verify` never marks a test payment paid; return screens show a TEST notice. Test: `src/test/gateway-test-mode.test.ts`.
+
+- 2026-11-10 — Family Switch Member missed Zelda Goosen (Uitsig): MemberContext matched shared email case-sensitively ("Jannie." vs "jannie.") and only added the first login-linked row. Now matches email case-insensitively and includes every member row linked to the login.

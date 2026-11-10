@@ -2717,6 +2717,20 @@
       "when": 1794320872136,
       "tag": "0387_family_request_admin_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 388,
+      "version": "7",
+      "when": 1794342114101,
+      "tag": "0388_mobile_my_bar_purchases_internal_secret",
+      "breakpoints": true
+    },
+    {
+      "idx": 389,
+      "version": "7",
+      "when": 1794342150721,
+      "tag": "0389_mobile_member_finance_statement_full_history",
+      "breakpoints": true
     }
   ]
 }

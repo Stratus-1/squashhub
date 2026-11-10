@@ -24881,7 +24881,11 @@ export type Database = {
         }[]
       }
       my_bar_purchases: {
-        Args: { _club_id: string; _club_member_id: string }
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          p_sync_secret?: string
+        }
         Returns: Json
       }
       new_invite_token: { Args: never; Returns: string }

@@ -211,6 +211,11 @@ const home = async (tx: postgres.TransactionSql, member = M, club = CLUB, secret
       expect(occStatus).toBe("confirmed");
       expect((await tx`select leave_club_event(_event_id => ${E_OPEN}, _club_member_id => ${M}) as n`)[0].n).toBe(1);
       expect(await err(tx, `select join_club_event($1,$2)`, [E_INV_ONLY, M])).toContain("invitation only");
+      // Web: a signed-out caller, or a session without a profile row, cannot act for anyone
+      // (the previous check evaluated to NULL and let these through).
+      await asUser(tx, null);
+      expect(await err(tx, `select leave_club_event($1,$2)`, [E_INVITED, M])).toContain("Not allowed");
+      expect(await err(tx, `select join_club_event($1,$2)`, [E_LEFT, M])).toContain("Not allowed");
       // Web: another user's session cannot act for this member.
       await asUser(tx, U2);
       expect(await err(tx, `select join_club_event($1,$2)`, [E_LEFT, M])).toContain("Not allowed");

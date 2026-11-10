@@ -10,6 +10,10 @@
 --      come with the Player API's verified club, which must equal both the
 --      event's club and the member's club. The RPC only ever acts on the exact
 --      _club_member_id passed in.
+--      Web-path fix: the previous ownership test evaluated to NULL (and so
+--      passed) for a signed-out caller or a caller without a profile row,
+--      letting such callers join or remove any member. NULL now denies; the
+--      owner and shared-email family checks are otherwise unchanged.
 --   3. mobile_player_competition_payload(...)  + "leagues" object (same
 --      signature); rankings/tournaments output unchanged, read-only.
 --
@@ -215,9 +219,10 @@ BEGIN
        OR lower(COALESCE(v_member.status::text, '')) IN ('resigned', 'cancelled', 'rejected', 'archived') THEN
       RAISE EXCEPTION 'Membership is not active' USING ERRCODE = '42501';
     END IF;
-  ELSIF v_member.user_id IS DISTINCT FROM auth.uid()
-     AND NOT (v_member.email IS NOT NULL
-              AND v_member.email = (SELECT email FROM public.profiles WHERE id = auth.uid())) THEN
+  ELSIF auth.uid() IS NULL
+     OR (v_member.user_id IS DISTINCT FROM auth.uid()
+         AND NOT COALESCE(v_member.email IS NOT NULL
+              AND v_member.email = (SELECT email FROM public.profiles WHERE id = auth.uid()), false)) THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;
 
@@ -280,9 +285,10 @@ BEGIN
     RAISE EXCEPTION 'Member is not in this club';
   END IF;
   IF p_sync_secret IS NULL
-     AND v_member.user_id IS DISTINCT FROM auth.uid()
-     AND NOT (v_member.email IS NOT NULL
-              AND v_member.email = (SELECT email FROM public.profiles WHERE id = auth.uid())) THEN
+     AND (auth.uid() IS NULL
+          OR (v_member.user_id IS DISTINCT FROM auth.uid()
+              AND NOT COALESCE(v_member.email IS NOT NULL
+                   AND v_member.email = (SELECT email FROM public.profiles WHERE id = auth.uid()), false))) THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;
 

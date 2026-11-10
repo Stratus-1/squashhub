@@ -146,7 +146,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         if (myMembership) {
           const own = (ownMembers || []) as LinkedMember[];
           const extra = own.filter((m) => !linked.find((l) => l.id === m.id));
-          linked = [...own.filter((m) => extra.includes(m)), ...linked];
+          linked = [...extra, ...linked];
         }
         setLinkedMembers(linked);
 

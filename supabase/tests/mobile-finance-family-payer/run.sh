@@ -5,9 +5,16 @@ unset PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE SUPABASE_DB_URL || true
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 D="$(mktemp -d)"; chmod 777 "$D"
-trap 'setpriv --reuid=1000 --regid=1000 --clear-groups pg_ctl -D "$D/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
-setpriv --reuid=1000 --regid=1000 --clear-groups initdb -D "$D/data" -U lovable >/dev/null
-setpriv --reuid=1000 --regid=1000 --clear-groups pg_ctl -D "$D/data" -o "-p 54431 -k $D -c listen_addresses=''" -l "$D/log" -w start >/dev/null
+if command -v setpriv >/dev/null 2>&1; then
+  run_pg() { setpriv --reuid=1000 --regid=1000 --clear-groups -- "$@"; }
+else
+  # macOS developer machines have no setpriv; initdb can run as the current
+  # non-root user while the database role remains the same test-only role.
+  run_pg() { "$@"; }
+fi
+trap 'run_pg pg_ctl -D "$D/data" -m immediate stop >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
+run_pg initdb -D "$D/data" -U lovable >/dev/null
+run_pg pg_ctl -D "$D/data" -o "-p 54431 -k $D -c listen_addresses=''" -l "$D/log" -w start >/dev/null
 P="psql -X -q -v ON_ERROR_STOP=1 -h $D -p 54431 -U lovable -d postgres"
 $P -f "$HERE/schema.sql"
 grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111200000_mobile_member_finance_family_payer_correction.sql" | $P

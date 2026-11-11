@@ -58,4 +58,4 @@
 ## Comms (11 Nov 2026)
 - [x] "Members with an outstanding balance" campaign audience
 - [x] Default templates (Activate account, Pay outstanding balance) seeded for every new club
-- [ ] Nelspruit: Rachel can't see comms templates — admins/office bearers need full member comms access
+- [x] Nelspruit: Rachel can't see comms templates — admins/office bearers now get full member comms access (AGM ballot admin unchanged)

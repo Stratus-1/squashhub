@@ -17,7 +17,6 @@ import { definedOnly, deferredStages } from "../smart-builder/deferred";
 import { effectiveMapping } from "../smart-builder/matchups";
 import { venuesOutsideSet } from "../smart-builder/venues";
 import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
-import { RIVERSIDE_CLUB_ID } from "./swiss-riverside-aabb-charts";
 import { withdrawalUpdates } from "./withdraw";
 import { assertTournamentPairingWritable, prospectiveSwissPolicy } from "./swiss-sequencing-policy";
 

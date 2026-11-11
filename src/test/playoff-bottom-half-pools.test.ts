@@ -57,3 +57,14 @@ describe("two-pool bottom half with 5th and 7th place games (Uitsig Men's A / La
     expect(r.stages.flatMap((s) => s.mapping!.matches.map((x) => x.label ?? null)).every((l) => l === null)).toBe(true);
   });
 });
+
+describe("bottom-half placing games stay out of the title semis/final summary", () => {
+  it("formalStageOf ignores 5th–8th games even with semi/final stage codes", async () => {
+    const { formalStageOf } = await import("@/lib/tournaments/tournament-summary");
+    expect(formalStageOf({ stage: "playoff_sf", stage_label: "Semifinal (5th–8th)" })).toBeNull();
+    expect(formalStageOf({ stage: "playoff_final", stage_label: "5th/6th place" })).toBeNull();
+    expect(formalStageOf({ stage: "ko", stage_label: "7th/8th place" })).toBeNull();
+    expect(formalStageOf({ stage: "playoff_sf", stage_label: "Semifinal" })).toBe("sf");
+    expect(formalStageOf({ stage: "playoff_final", stage_label: "Final" })).toBe("final");
+  });
+});

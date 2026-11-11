@@ -716,6 +716,8 @@ export function stageWinners(src: PlannedStage, matches: Array<Record<string, an
 /** Mapped stage fed by finishing positions of an earlier pool stage: positions → units → fixtures. */
 /* ───── early play-off games: create a game as soon as both its places are settled ───── */
 
+const isPoolKind = (k: string) => k === "round_robin" || k === "pools";
+
 const rowDecided = (x: Record<string, any>) => isDecided({ status: x.status, winner: x.winner_member_id, score: x.score } as any);
 
 /**
@@ -727,7 +729,7 @@ const rowDecided = (x: Record<string, any>) => isDecided({ status: x.status, win
  */
 export function settledPoolPositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d), maxOpen = 12): Map<string, string> {
   const out = new Map<string, string>();
-  if (src.kind !== "round_robin") return out;
+  if (!isPoolKind(src.kind)) return out;
   const rows = matches.filter((x) => x.stage_key === src.id && !x.is_bye);
   const byPool = new Map<number, Array<Record<string, any>>>();
   for (const x of rows) { const pn = x.pool_number ?? 1; byPool.set(pn, [...(byPool.get(pn) ?? []), x]); }
@@ -788,7 +790,7 @@ export function settledWinnerSlots(src: PlannedStage, matches: Array<Record<stri
 
 /** Whether a mapped stage may create single games before its source stage is finished. */
 export const earlyGamesSupported = (st: PlannedStage, src: PlannedStage | null | undefined) =>
-  !!src && st.kind === "mapped" && ((st.mapping?.source === "stage_standings" && src.kind === "round_robin") || (st.mapping?.source === "stage_winners" && src.kind === "mapped" && !!src.mapping?.matches?.length));
+  !!src && st.kind === "mapped" && ((st.mapping?.source === "stage_standings" && isPoolKind(src.kind)) || (st.mapping?.source === "stage_winners" && src.kind === "mapped" && !!src.mapping?.matches?.length));
 
 const gameKey = (round: number | null | undefined, order: number | null | undefined) => `${round ?? 1}:${Number(order) || 0}`;
 

@@ -169,7 +169,9 @@ Deno.serve(async (req) => {
     const cents = topupCents(body.amount);
     if (cents === null) return json(400, { error: "amount must be between R10.00 and R100000.00 with at most two decimals" });
     const amount = cents / 100;
-    const prefix = `${body.clubId}/${body.memberId}`;
+    const clubId = body.clubId.toLowerCase();
+    const memberId = body.memberId.toLowerCase();
+    const prefix = `${clubId}/${memberId}`;
     const storage = db.storage.from(EFT_PROOF_BUCKET);
 
     if (body.action === "player_eft_topup_upload_url") {
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
     const pathRe = /^([0-9a-f-]{36})\/([0-9a-f-]{36})\/(topup-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|webp))$/;
     const pm = pathRe.exec(path);
     // Full-string match against this exact club/member prefix (case-sensitive, as issued).
-    if (!pm || pm[0] !== path || pm[1] !== body.clubId || pm[2] !== body.memberId) {
+    if (!pm || pm[0] !== path || pm[1] !== clubId || pm[2] !== memberId) {
       return json(400, { error: "Invalid proof path" });
     }
     const fileName = pm[3];

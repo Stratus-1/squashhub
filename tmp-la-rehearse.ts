@@ -18,3 +18,5 @@ import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 const tl = stageSchedules(d.arch.beta_lifecycle?.format_plan ?? null);
 console.log("timeline len", tl.length, tl.map((t: any) => t.deadline));
 console.log("applied", d.rounds.map((r: any) => [r.round_number, appliedRoundPlayBy(r)]));
+console.log("TL", JSON.stringify(tl.map((t: any) => ({ ...t, windows: t.windows?.length }))));
+console.log("STAGES", JSON.stringify((d.arch.beta_lifecycle.format_plan.stages ?? []).map((s: any) => ({ id: s.id, name: s.name, phase: s.phase, scope: s.scope ?? s.categories, mode: s.mode }))));

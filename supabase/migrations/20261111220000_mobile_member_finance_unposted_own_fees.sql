@@ -3,11 +3,17 @@
 -- Own unpaid fees with no member GL row: eligible own fees (club_member_id =
 -- p_member_id, paid IS FALSE, payer NULL or self, amount > 0, excluding
 -- club_payable_assoc/club_payable_national) that have no club_journal_entries
--- row for the same fee id, member, club and debtors/member_credits account
--- are added once to totalBilled and outstanding and emitted once as a
+-- row for the same fee id, member, club and debtors/member_credits account,
+-- and that the existing fee posting rule would post now, are added once to totalBilled and outstanding and emitted once as a
 -- synthetic statement debit with deterministic id fee-<fee UUID>, dated
 -- created_at, inside the one chronological running balance. Fees that already
--- have a linked GL row are represented only by those rows. totalPaid, member
+-- have a linked GL row are represented only by those rows.
+-- Posting rule: public.journal_fee_assessment() (AFTER INSERT trigger
+-- trg_journal_fee_assessment) skips a fee when invoice_issued_at IS NULL AND
+-- invoice_due_date IS NOT NULL AND invoice_due_date > CURRENT_DATE; such
+-- unissued future-due drafts are posted later by public.journal_fee_issued()
+-- when invoice_issued_at is set. The same predicate, negated, is used here,
+-- so unissued future-due drafts stay excluded. totalPaid, member
 -- credit, family payer logic and 0397 paid-history display are unchanged.
 -- Signature, SECURITY DEFINER, search_path, internal-secret check, club/member
 -- scoping, grants and response keys are unchanged. No tables or new APIs.
@@ -90,6 +96,9 @@ BEGIN
     AND (f.paid_by_member_id IS NULL OR f.paid_by_member_id = p_member_id)
     AND COALESCE(f.fee_type, '') NOT IN ('club_payable_assoc', 'club_payable_national')
     AND COALESCE(f.amount, 0) > 0
+    AND NOT (f.invoice_issued_at IS NULL
+             AND f.invoice_due_date IS NOT NULL
+             AND f.invoice_due_date > CURRENT_DATE)
     AND NOT EXISTS (
       SELECT 1
       FROM public.club_journal_entries posted
@@ -316,6 +325,9 @@ BEGIN
         AND (f.paid_by_member_id IS NULL OR f.paid_by_member_id = p_member_id)
         AND COALESCE(f.fee_type, '') NOT IN ('club_payable_assoc', 'club_payable_national')
         AND COALESCE(f.amount, 0) > 0
+        AND NOT (f.invoice_issued_at IS NULL
+                 AND f.invoice_due_date IS NOT NULL
+                 AND f.invoice_due_date > CURRENT_DATE)
         AND NOT EXISTS (
           SELECT 1
           FROM public.club_journal_entries posted

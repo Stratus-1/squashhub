@@ -154,7 +154,7 @@ export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, p
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "mapped" as const,
     roundId: `${st.id}:r${x.round}`, round: x.round, poolId: null, slot: x.order, a: x.aId, b: x.bId,
     // Play-off stages carry their real name (Semifinals / Final) so pages and result messages recognise them.
-    label: st.mapping!.source === "seed_pools" ? `${x.a} v ${x.b}` : st.name,
+    label: st.mapping!.source === "seed_pools" ? `${x.a} v ${x.b}` : x.label ?? st.name,
   }));
 }
 

@@ -12,7 +12,8 @@ import { IntegrityError, roundRobin, snakePools } from "./contract";
 
 export interface SlotRef { pool: number; position: number } // pool 0-based, position 1-based
 export interface MappedUnit { id: string; slots: SlotRef[] }
-export interface MappedMatch { round: number; order: number; a: string; b: string; tie?: string }
+/** `label`: optional own game name (e.g. "5th/6th place" for the bottom-half game of a Final stage); default = stage name. */
+export interface MappedMatch { round: number; order: number; a: string; b: string; tie?: string; label?: string }
 /** stage_winners: slot A{n} = winner of the n-th game (playing order) of the source stage — e.g. Final ← Semifinal winners. */
 export type MappingSource = "seed_pools" | "stage_standings" | "stage_winners";
 export interface StageMapping {

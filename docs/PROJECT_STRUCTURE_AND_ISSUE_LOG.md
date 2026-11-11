@@ -4416,3 +4416,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-11 — Staff loan paid by EFT showed as positive Cash (Nelspruit)
 - Cause: club-made asset accounts without a parent were carried on the `cash` ledger account, so "Loan Constance" (R2,000 EFT) credited Bank correctly but debited Cash.
 - Fix: new `other_assets` carrier (`STANDALONE_FALLBACK_ACCOUNT.Asset`), the one existing line moved from `cash` to `other_assets`; "Petty Cash" relabelled "Cash". Test in `src/lib/finance/transaction-accounts.test.ts`.
+
+### 2026-11-11 — Bar counter open tabs were difficult to find
+- Request: with many tabs open, the barman had to scan cards in opening order to find a customer.
+- Fix: `src/lib/bar/open-tabs.ts` provides display-only, case-insensitive name sorting/filtering; `BarCounter.tsx` now lists tabs alphabetically and includes a name search with clear/no-match controls. Board totals, automatic refreshes, PIN authority, tab opening and settlement behaviour are unchanged.
+- Verification: `src/lib/bar/open-tabs.test.ts` plus the existing `bar-counter-session.test.tsx` integration suite — 23 focused tests passed, including rendered order, search/clear and unchanged tab totals; preview build OK.

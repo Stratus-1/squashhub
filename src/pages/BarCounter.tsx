@@ -38,8 +38,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
+import { sortAndFilterOpenTabs } from "@/lib/bar/open-tabs";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet, Gift } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet, Gift, Search, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
@@ -132,6 +133,7 @@ export default function BarCounter() {
   const [division, setDivision] = useState("bar");
   const [category, setCategory] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState("");
+  const [tabSearch, setTabSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newTabKind, setNewTabKind] = useState<"member" | "visitor">("member");
@@ -322,6 +324,10 @@ export default function BarCounter() {
   const activeTab = useMemo(
     () => board?.tabs.find((t) => t.tab_id === activeTabId) ?? null,
     [board, activeTabId],
+  );
+  const visibleTabs = useMemo(
+    () => sortAndFilterOpenTabs(board?.tabs ?? [], tabSearch),
+    [board?.tabs, tabSearch],
   );
   // Online card payment only works through the gateways the bar checkout supports.
   const onlineAvailable = !!board && board.online_enabled !== false && !!board.venue_code
@@ -987,13 +993,44 @@ export default function BarCounter() {
             )}
           </Card>
 
+          {board.tabs.length > 0 && (
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Input
+                aria-label="Search open tabs"
+                placeholder="Search open tabs by name"
+                autoComplete="off"
+                value={tabSearch}
+                onChange={event => setTabSearch(event.target.value)}
+                className="h-10 pl-9 pr-10"
+              />
+              {tabSearch && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Clear open-tab search"
+                  className="absolute right-1 top-1 h-8 w-8"
+                  onClick={() => setTabSearch("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
+
           {board.tabs.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted-foreground">
               No open tabs. Open one above when someone starts drinking.
             </Card>
+          ) : visibleTabs.length === 0 ? (
+            <Card className="p-8 text-center text-sm text-muted-foreground space-y-2">
+              <p>No open tabs match “{tabSearch.trim()}”.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => setTabSearch("")}>Clear search</Button>
+            </Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
-              {board.tabs.map((t) => (
+              {visibleTabs.map((t) => (
                 <Card
                   key={t.tab_id}
                   className={`p-2 flex flex-col gap-0.5 active:scale-[0.98] transition cursor-pointer min-w-0 ${t.status === "closing" ? "border-destructive" : ""}`}

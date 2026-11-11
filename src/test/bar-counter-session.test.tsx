@@ -271,4 +271,25 @@ describe("counter personal PIN boundary", () => {
     expect(client.getQueryData(["bar-counter-board", "revoked-session", null])).toBeUndefined();
     expect(mocks.rpc.mock.calls.filter(([name]) => name === "bar_counter_board").every(([, args]) => args._token === "revoked-session" && args._club_id === null)).toBe(true);
   });
+
+  it("shows open tabs alphabetically and finds a person with the name search", async () => {
+    localStorage.setItem("sh.barcounter.token.river-menu", "verified-session");
+    localStorage.setItem("sh.barcounter.operator.river-menu", "Test server");
+    const busyBoard = { ...board, tabs: [
+      { tab_id: "zoe", token: "z", guest_name: "Zoe Zulu", status: "open", opened_at: "2026-11-11T08:00:00Z", total: 50, lines: [] },
+      { tab_id: "vian", token: "v", guest_name: "Vian Crafford", status: "open", opened_at: "2026-11-11T09:00:00Z", total: 214, lines: [] },
+      { tab_id: "andre", token: "a", guest_name: "Andre Adams", status: "open", opened_at: "2026-11-11T10:00:00Z", total: 75, lines: [] },
+    ] };
+    mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_counter_board" ? busyBoard : false, error: null }));
+    mount("/s/river-menu/counter");
+    await screen.findByText("Zoe Zulu");
+    expect(screen.getAllByText(/^(Zoe Zulu|Vian Crafford|Andre Adams)$/).map(node => node.textContent)).toEqual(["Andre Adams", "Vian Crafford", "Zoe Zulu"]);
+    fireEvent.change(screen.getByLabelText("Search open tabs"), { target: { value: "craff" } });
+    expect(screen.getByText("Vian Crafford")).toBeInTheDocument();
+    expect(screen.getByText("R214.00")).toBeInTheDocument();
+    expect(screen.queryByText("Zoe Zulu")).not.toBeInTheDocument();
+    expect(screen.queryByText("Andre Adams")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear open-tab search" }));
+    expect(screen.getByText("Zoe Zulu")).toBeInTheDocument();
+  });
 });

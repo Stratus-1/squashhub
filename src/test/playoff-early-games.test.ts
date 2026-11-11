@@ -40,7 +40,7 @@ function spec() {
       divisionId: "g1", groupNumber: 1, label: "Mens A · Singles", unit: "players", seeding: { method: "snake", source: "entry_order" },
       placements: "champion", finalStandings: "last_stage", deferredStages: [], entrants: [], poolLabels: ["Pool A", "Pool B"], playoffBottomHalf: true,
       stages: [
-        { id: "main", kind: "round_robin", name: "Round robin", order: 0, discipline: "singles", poolMembers: [["p1", "p4", "p5", "p8"], ["p2", "p3", "p6", "p7"]], schedule: { rule: "play_by", deadline: "2026-11-05", roundDates: ["2026-10-22", "2026-10-29", "2026-11-05"] } },
+        { id: "main", kind: "pools", name: "Round robin", order: 0, pools: 2, poolSize: 4, discipline: "singles", schedule: { rule: "play_by", deadline: "2026-11-05", roundDates: ["2026-10-22", "2026-10-29", "2026-11-05"] } },
         { id: "po1", kind: "mapped", name: "Semifinal", order: 1, discipline: "singles", generation: "automatic", waitForOrganiser: false,
           progression: { mode: "all_continue", standings: "reset" }, schedule: playBy("2026-11-12"),
           mapping: { source: "stage_standings", sourceStageId: "main", pools: 2, poolSize: 4, discipline: "singles",

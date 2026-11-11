@@ -227,7 +227,23 @@ Deno.serve(async (req) => {
       status: "pending",
       proof_url: path,
     }).select("id").single();
-    if (insErr || !inserted?.id) return json(500, { error: "Could not record the top-up" });
+    if (insErr || !inserted?.id) {
+      // A concurrent confirm of the same proof may have won the insert (the
+      // existing 60-second duplicate-pending trigger blocks the second one).
+      const { data: raced } = await db.from("member_credit_transactions")
+        .select("id, amount")
+        .eq("club_id", body.clubId).eq("club_member_id", body.memberId).eq("proof_url", path)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (raced) {
+        return Math.round(Number(raced.amount) * 100) === cents
+          ? json(200, { ok: true, transactionId: raced.id })
+          : json(409, { error: "This proof is already attached to a top-up with a different amount" });
+      }
+      if (insErr?.message?.includes("matching payment request was just submitted")) {
+        return json(409, { error: "A matching payment request was just submitted. Please wait for the club to confirm it." });
+      }
+      return json(500, { error: "Could not record the top-up" });
+    }
 
     // Best-effort finance notification, as on web; never fails the confirm.
     try {

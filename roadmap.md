@@ -54,3 +54,8 @@
 
 - [x] Enter Transaction: Payments out and Income account pickers include balance sheet accounts (Willem, 11 Nov).
 - [x] Bar counter: sort open tabs alphabetically and add a person-name search (Willem, 11 Nov).
+
+## Comms (11 Nov 2026)
+- [x] "Members with an outstanding balance" campaign audience
+- [x] Default templates (Activate account, Pay outstanding balance) seeded for every new club
+- [ ] Nelspruit: Rachel can't see comms templates — admins/office bearers need full member comms access

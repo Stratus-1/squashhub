@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { sendComms } from "@/lib/comms/send";
 import { buildNominationLink } from "@/lib/agm/ballot";
@@ -43,7 +47,8 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
       const byNom = new Map<string, string[]>();
       for (const s of (sup as any[]) ?? []) byNom.set(s.nomination_id, [...(byNom.get(s.nomination_id) ?? []), s.m?.name ?? "Member"]);
       const withSup = (noms as any[]).map((n) => ({ ...n, supporters: byNom.get(n.id) ?? (n.by?.name ? [n.by.name] : []) }));
-      return { positions: pos as any[], noms: withSup, eligible: (list as any[]).length };
+      const memberIds = (list as any[]).map((r) => r.club_member_id as string);
+      return { positions: pos as any[], noms: withSup, eligible: memberIds.length, memberIds };
     },
     refetchInterval: open ? 30_000 : false,
   });
@@ -67,6 +72,41 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
     onError: (e: any) => toast({ title: "Could not send reminder", description: e.message, variant: "destructive" }),
   });
 
+  // Reminder to every member on the nomination list. Each member gets a fresh
+  // personal link; their earlier link keeps working (old hashes are retained).
+  const [confirmAll, setConfirmAll] = useState(false);
+  const allowSelf = ballot.allow_self_actions !== false;
+  const closesText = ballot.nominations_close_at ? fmt(ballot.nominations_close_at) : "";
+  const remindAll = useMutation({
+    mutationFn: async () => {
+      const ids = data?.memberIds ?? [];
+      if (!ids.length) throw new Error("No members on the nomination list");
+      const origin = window.location.origin;
+      const vars: Record<string, { nomination_link: string }> = {};
+      for (let i = 0; i < ids.length; i += 10) {
+        const chunk = ids.slice(i, i + 10);
+        const toks = await Promise.all(chunk.map(async (id) => {
+          const { data: tok, error } = await rpc("agm_reissue_nomination_token", { p_ballot_id: ballot.id, p_member_id: id });
+          if (error) throw error;
+          return [id, tok as string] as const;
+        }));
+        for (const [id, tok] of toks) vars[id] = { nomination_link: buildNominationLink(tok, origin) };
+      }
+      await sendComms({
+        clubId, name: `${ballot.title} — nominations reminder`, channels: ["email"],
+        audience: { type: "selected", memberIds: Object.keys(vars) }, memberVars: vars,
+        meta: { purpose: "agm_nominations", ballot_id: ballot.id },
+        content: { email: {
+          subject: `${ballot.title} — reminder: nominations close ${closesText}`,
+          body: `<p>Dear {{first_name}},</p><p>A reminder that nominations for the ${ballot.title} committee close on <strong>${closesText}</strong>.</p><p>Use your personal link to nominate another member${allowSelf ? ", or make yourself available for the position you would like to fill" : ""}, and to accept or decline any nominations you have received: <a href="{{nomination_link}}">Make your nominations</a></p><p>Your earlier nomination link also still works.</p>`,
+        } },
+      });
+      return Object.keys(vars).length;
+    },
+    onSuccess: (n) => toast({ title: "Reminder emailed", description: `Sent to ${n} members.` }),
+    onError: (e: any) => toast({ title: "Could not send reminder", description: e.message, variant: "destructive" }),
+  });
+
   const noms = data?.noms ?? [];
   const pendingPeople = new Map<string, string>();
   noms.filter((n) => n.status === "pending").forEach((n) => pendingPeople.set(n.nominee_member_id, n.nominee?.name ?? "Member"));
@@ -82,6 +122,33 @@ export function AgmNominationsCard({ clubId, ballot }: { clubId: string; ballot:
         {data?.eligible ?? 0} members can nominate and be nominated. Self-nominations count as accepted; others wait for the nominee to accept.
         When nominations close, accepted nominees go onto the ballot automatically and pending ones are dropped.
       </p>
+      {open && !pastClose && (data?.eligible ?? 0) > 0 && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={remindAll.isPending} onClick={() => setConfirmAll(true)}>
+            {remindAll.isPending ? "Sending reminder…" : `Email reminder to all ${data?.eligible} members`}
+          </Button>
+        </div>
+      )}
+      <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Email a nominations reminder?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>All {data?.eligible} members on the nomination list will get this email with their personal link:</p>
+                <div className="rounded border border-border p-2 text-xs text-foreground">
+                  A reminder that nominations for the {ballot.title} committee close on <strong>{closesText}</strong>. Use your personal link to nominate another member{allowSelf ? ", or make yourself available for the position you would like to fill" : ""}, and to accept or decline any nominations you have received.
+                </div>
+                <p className="text-xs">Earlier nomination links keep working.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => remindAll.mutate()}>Send reminder</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {(data?.positions ?? []).map((p) => {
         const list = noms.filter((n) => n.position_id === p.id);
         return (

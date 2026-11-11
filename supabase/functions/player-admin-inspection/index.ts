@@ -25,6 +25,38 @@ type Body = {
   saleId?: string;
   tabId?: string;
   cancelled?: boolean;
+  amount?: number | string;
+  contentType?: string;
+  extension?: string;
+  path?: string;
+};
+
+// EFT top-up proof (mobile): same bucket, path shape and pending row as the
+// web MyAccount EFT top-up; the bridge only ever issues its own random paths.
+const EFT_PROOF_BUCKET = "payment-proofs";
+const EFT_PROOF_MAX_BYTES = 10 * 1024 * 1024;
+const EFT_PROOF_TYPES: Record<string, string[]> = {
+  "application/pdf": ["pdf"],
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/png": ["png"],
+  "image/webp": ["webp"],
+};
+const EFT_PROOF_EXT_TO_TYPE: Record<string, string> = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+// Returns integer cents for R10.00–R100,000.00 with at most two decimals, else null.
+const topupCents = (v: unknown): number | null => {
+  let text: string;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return null;
+    const scaled = v * 100;
+    if (Math.abs(scaled - Math.round(scaled)) > 1e-6) return null;
+    text = (Math.round(scaled) / 100).toFixed(2);
+  } else if (typeof v === "string") {
+    text = v.trim();
+  } else return null;
+  const m = /^(\d{1,6})(?:\.(\d{1,2}))?$/.exec(text);
+  if (!m || m[0] !== text) return null;
+  const cents = Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
+  return cents >= 1000 && cents <= 10_000_000 ? cents : null;
 };
 
 Deno.serve(async (req) => {
@@ -67,7 +99,7 @@ Deno.serve(async (req) => {
   }
 
   // ---------- Member-scoped actions ----------
-  if (!["player_billing_link", "door_ble_config", "player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale"].includes(String(body.action))) {
+  if (!["player_billing_link", "door_ble_config", "player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale", "player_eft_topup_upload_url", "player_eft_topup_confirm"].includes(String(body.action))) {
     return json(400, { error: "Unknown action" });
   }
   if (!isUuid(body.clubId) || !isUuid(body.memberId)) return json(400, { error: "clubId and memberId required" });
@@ -119,6 +151,90 @@ Deno.serve(async (req) => {
     const actionLink = (link as { properties?: { action_link?: string } } | null)?.properties?.action_link;
     if (error || !actionLink) return json(500, { error: "Could not create billing link" });
     return json(200, { actionLink, redirectTo });
+  }
+
+  if (body.action === "player_eft_topup_upload_url" || body.action === "player_eft_topup_confirm") {
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!email || email.length > 254 || !email.includes("@")) return json(400, { error: "email required" });
+    if (!member.user_id) return json(403, { error: "Member has no linked login" });
+    const { data: authUser } = await db.auth.admin.getUserById(member.user_id);
+    if (!authUser?.user?.email || authUser.user.email.toLowerCase() !== email) {
+      return json(403, { error: "Email does not match this member's login" });
+    }
+    const { data: club } = await db.from("clubs").select("accepted_payment_methods").eq("id", body.clubId).maybeSingle();
+    const methods = Array.isArray(club?.accepted_payment_methods) ? club.accepted_payment_methods : [];
+    if (!methods.some((m: unknown) => String(m).toLowerCase() === "eft")) {
+      return json(403, { error: "EFT payments are not enabled at this club" });
+    }
+    const cents = topupCents(body.amount);
+    if (cents === null) return json(400, { error: "amount must be between R10.00 and R100000.00 with at most two decimals" });
+    const amount = cents / 100;
+    const prefix = `${body.clubId}/${body.memberId}`;
+    const storage = db.storage.from(EFT_PROOF_BUCKET);
+
+    if (body.action === "player_eft_topup_upload_url") {
+      const contentType = typeof body.contentType === "string" ? body.contentType.trim().toLowerCase() : "";
+      const allowedExts = EFT_PROOF_TYPES[contentType];
+      if (!allowedExts) return json(400, { error: "contentType must be application/pdf, image/jpeg, image/png or image/webp" });
+      const extension = typeof body.extension === "string" ? body.extension.trim().toLowerCase().replace(/^\./, "") : "";
+      if (!allowedExts.includes(extension)) return json(400, { error: "extension does not match contentType" });
+      const path = `${prefix}/topup-${crypto.randomUUID()}.${extension}`;
+      const { data: signed, error } = await storage.createSignedUploadUrl(path, { upsert: false });
+      if (error || !signed?.signedUrl) return json(500, { error: "Could not create upload URL" });
+      return json(200, { uploadUrl: signed.signedUrl, token: signed.token, path, contentType, maxBytes: EFT_PROOF_MAX_BYTES, amount: amount.toFixed(2) });
+    }
+
+    // player_eft_topup_confirm
+    const path = typeof body.path === "string" ? body.path : "";
+    const pathRe = /^([0-9a-f-]{36})\/([0-9a-f-]{36})\/(topup-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|webp))$/;
+    const pm = pathRe.exec(path);
+    // Full-string match against this exact club/member prefix (case-sensitive, as issued).
+    if (!pm || pm[0] !== path || pm[1] !== body.clubId || pm[2] !== body.memberId) {
+      return json(400, { error: "Invalid proof path" });
+    }
+    const fileName = pm[3];
+    const { data: listed, error: listErr } = await storage.list(prefix, { search: fileName, limit: 10 });
+    if (listErr) return json(500, { error: "Could not check the uploaded proof" });
+    const obj = (listed || []).find((o: { name: string }) => o.name === fileName) as
+      | { name: string; id?: string | null; metadata?: { size?: number; mimetype?: string } | null }
+      | undefined;
+    if (!obj || !obj.id) return json(404, { error: "Proof of payment has not been uploaded" });
+    const size = Number(obj.metadata?.size ?? NaN);
+    if (!Number.isFinite(size) || size <= 0) return json(400, { error: "Uploaded proof is empty" });
+    if (size > EFT_PROOF_MAX_BYTES) return json(413, { error: "Proof of payment must be 10 MB or smaller" });
+
+    const { data: existing, error: exErr } = await db.from("member_credit_transactions")
+      .select("id, amount")
+      .eq("club_id", body.clubId).eq("club_member_id", body.memberId).eq("proof_url", path)
+      .order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (exErr) return json(500, { error: "Could not check existing top-up" });
+    if (existing) {
+      if (Math.round(Number(existing.amount) * 100) !== cents) {
+        return json(409, { error: "This proof is already attached to a top-up with a different amount" });
+      }
+      return json(200, { ok: true, transactionId: existing.id });
+    }
+
+    const { data: inserted, error: insErr } = await db.from("member_credit_transactions").insert({
+      club_id: body.clubId,
+      club_member_id: body.memberId,
+      amount,
+      type: "debit",
+      method: "eft",
+      description: "Top-up via EFT",
+      status: "pending",
+      proof_url: path,
+    }).select("id").single();
+    if (insErr || !inserted?.id) return json(500, { error: "Could not record the top-up" });
+
+    // Best-effort finance notification, as on web; never fails the confirm.
+    try {
+      const { error: nErr } = await db.functions.invoke("notify-pending-topup", { body: { transactionId: inserted.id } });
+      if (nErr) console.warn("[player-admin-inspection] notify-pending-topup failed", nErr.message);
+    } catch (e) {
+      console.warn("[player-admin-inspection] notify-pending-topup failed", (e as Error).message);
+    }
+    return json(200, { ok: true, transactionId: inserted.id });
   }
 
   if (["player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale"].includes(String(body.action))) {

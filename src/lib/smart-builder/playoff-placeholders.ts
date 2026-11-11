@@ -28,7 +28,16 @@ export function legacyStageOf(name: string): string {
   return a === "QF" ? "playoff_qf" : a === "SF" ? "playoff_sf" : a === "Final" ? "playoff_final" : "ko";
 }
 
-export type PlaceholderGame = { stageKey: string; stageName: string; order: number; a: string; b: string };
+/** `label`: the game's own name (bottom-half games, e.g. "5th/6th place"); absent = numbered stage name. */
+export type PlaceholderGame = { stageKey: string; stageName: string; order: number; a: string; b: string; label?: string };
+
+/** Fixture heading for one placeholder: own name (numbered when shared), else "Semifinal 2" / "Final". */
+export function placeholderStageLabel(list: PlaceholderGame[], x: PlaceholderGame): string {
+  const same = list.filter((y) => (y.label ?? null) === (x.label ?? null));
+  const k = same.indexOf(x) + 1;
+  if (x.label) return same.length === 1 ? x.label : `${x.label} ${k}`;
+  return same.length === 1 ? x.stageName : `${x.stageName} ${k}`;
+}
 
 /** Pure: placeholder games for every predefined play-off stage of one division, in play order. */
 export function placeholderGames(div: { stages: any[] }): PlaceholderGame[] {
@@ -49,7 +58,7 @@ export function placeholderGames(div: { stages: any[] }): PlaceholderGame[] {
       if (m.source === "stage_winners") return `${m.losers ? "Loser" : "Winner"} ${prev[s.position - 1] ?? `game ${s.position}`}`;
       return m.pools > 1 ? `Pool ${L(s.pool)} #${s.position}` : `#${s.position}`;
     };
-    games.forEach((g: any, i: number) => out.push({ stageKey: st.id, stageName: st.name, order: i + 1, a: label(g.a), b: label(g.b) }));
+    games.forEach((g: any, i: number) => out.push({ stageKey: st.id, stageName: st.name, order: i + 1, a: label(g.a), b: label(g.b), ...(g.label ? { label: g.label } : {}) }));
     ids.set(st.id, gid);
   }
   return out;
@@ -97,7 +106,7 @@ export async function syncPlayoffPlaceholders(champId: string): Promise<{ create
       } as any).select("id").single();
       if (re) throw new Error(re.message);
       const { error } = await fromExt("club_champs_matches").insert(list.map((x) => ({
-        champ_id: champId, group_number: g, round_number, stage: legacyStageOf(name), stage_key: `${sk}${PH}`, stage_label: list.length === 1 ? name : `${name} ${x.order}`,
+        champ_id: champId, group_number: g, round_number, stage: legacyStageOf(name), stage_key: `${sk}${PH}`, stage_label: placeholderStageLabel(list, x),
         status: "scheduled", bracket_position: x.order, placeholder_a: x.a, placeholder_b: x.b,
         division_id, stage_id, round_id: (r as any).id,
       })) as any);

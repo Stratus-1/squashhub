@@ -2794,6 +2794,13 @@
       "when": 1794423773905,
       "tag": "0398_mobile_member_finance_unposted_own_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 399,
+      "version": "7",
+      "when": 1794424316034,
+      "tag": "0399_club_public_fees_include_registration",
+      "breakpoints": true
     }
   ]
 }

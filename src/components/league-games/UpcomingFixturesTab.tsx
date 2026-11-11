@@ -12,7 +12,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useHasPermission } from "@/hooks/use-club-permissions";
-import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
+import { canEditSubmittedLeagueScores, canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";

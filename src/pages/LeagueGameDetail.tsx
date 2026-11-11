@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMatchDayDevice, useLeagueGamesHome } from "@/contexts/MatchDayDevice";
 import { useIsClubAdmin } from "@/hooks/use-club";
 import { useHasPermission } from "@/hooks/use-club-permissions";
-import { canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
+import { canEditSubmittedLeagueScores, canManageLeagueFixtureSetup } from "@/lib/leagues/fixture-setup-access";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import { parseServingMethod } from "@/lib/marker/doubles-serving";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";

@@ -616,7 +616,15 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         // NSA league captains can also enter/edit past or already-submitted results.
                         // Other associations (e.g. Nelspruit) still require club/super admin.
                         const isNsaCaptain = isCaptain && externalSource === "nsa";
-                        const canEnter = isClubAdmin || isSuperAdmin || isNsaCaptain;
+                        // Leagues permission holders at this club may also edit submitted scores.
+                        const canEnter = canEditSubmittedLeagueScores({
+                          isDevice: !!md,
+                          isClubAdmin: isClubAdmin || isSuperAdmin,
+                          isNsaCaptain,
+                          hasLeaguePermission,
+                          memberClubId: activeMember ? memberClub?.id : null,
+                          fixtureClubIds: [clubId],
+                        });
                         const blocked = needsAdminMode && !canEnter;
                         // Set Up & Mark restricted to: captain of one of the teams,
                         // members assigned to play, members in that league, or admins.
@@ -680,7 +688,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                                 (f._isLive && !f._hasSnapshot)
                                   ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
                                   : blocked
-                                    ? "Only a club or super admin can enter or edit results for past matches."
+                                    ? "Only a club admin or someone with the Leagues permission can enter or edit results for past matches."
                                     : viewOnly
                                       ? "Only the captain or members in this league can set up and mark this game."
                                       : undefined

@@ -2837,6 +2837,15 @@ export default function LeagueGameDetail() {
     memberClubId: activeMember ? memberClub?.id : null,
     fixtureClubIds: [homeClubId, awayClubId],
   });
+  // Who may re-open a submitted scorecard: club admins plus Leagues permission
+  // holders for fixtures played by their own club.
+  const canEditSubmittedScores = canEditSubmittedLeagueScores({
+    isDevice: !!md,
+    isClubAdmin,
+    hasLeaguePermission,
+    memberClubId: activeMember ? memberClub?.id : null,
+    fixtureClubIds: [homeClubId, awayClubId],
+  });
   const canEditLineup = !isSubmitted && !md && !isMarkOnly && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
@@ -3973,10 +3982,10 @@ export default function LeagueGameDetail() {
             <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
               <Check className="w-4 h-4 mr-1" /> Results Submitted
             </Badge>
-            {isClubAdmin && (
+            {canEditSubmittedScores && (
               <div>
-                <Button size="sm" variant="outline" onClick={() => { setAdminOverride(true); toast.info("Admin edit mode — change scores then press Submit again."); }}>
-                  <Edit3 className="w-4 h-4 mr-1" /> Admin: Edit Submitted Scores
+                <Button size="sm" variant="outline" onClick={() => { setAdminOverride(true); toast.info("Edit mode — change scores then press Submit again."); }}>
+                  <Edit3 className="w-4 h-4 mr-1" /> {isClubAdmin ? "Admin: Edit Submitted Scores" : "Edit Submitted Scores"}
                 </Button>
               </div>
             )}

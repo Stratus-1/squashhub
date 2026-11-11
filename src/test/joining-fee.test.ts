@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decideJoiningClubFee } from "@/lib/joining-fee";
+import { computeJoinFee } from "@/lib/fee-proration";
 
 // Joining fee rule (owner, Oct 2026): the pro-rata club fee is raised the
 // moment a fee category is set for a new member application — by the member
@@ -53,9 +54,37 @@ describe("decideJoiningClubFee", () => {
     expect(d.amount).toBe(1800);
     expect(d.proRated).toBe(false);
   });
+});
 
-  // Calendar months (owner, 11 Nov 2026), renewal 1 Jan, R1,800/year.
-  it.each([
-    ["2026-10-31T22:30:00Z", 3, 450],  // 1 Nov 00:30 Johannesburg is still November... see TZ note
-  ])("placeholder %s", () => {});
+// Pro-rata counts calendar months (owner, 11 Nov 2026): the join month counts
+// in full; one month or less before renewal = full fee for the next season.
+describe("computeJoinFee calendar months (renewal 1 Jan, R1,200/year)", () => {
+  const at = (m: number, d: number, h = 0) => computeJoinFee(1200, 1, 1, true, new Date(2026, m - 1, d, h));
+
+  it("charges 2 months for any November join", () => {
+    for (const d of [1, 2, 15, 30]) {
+      expect(at(11, d)).toEqual({ amount: 200, monthsCharged: 2, seasonYear: 2026, fullFee: false });
+    }
+    expect(at(11, 1, 0).monthsCharged).toBe(2);
+  });
+
+  it("charges the full year covering the next season for any December join", () => {
+    for (const d of [1, 2, 15, 31]) {
+      expect(at(12, d)).toEqual({ amount: 1200, monthsCharged: 12, seasonYear: 2027, fullFee: true });
+    }
+  });
+
+  it("charges 3 months for an October join, including 31 October", () => {
+    expect(at(10, 1).monthsCharged).toBe(3);
+    expect(at(10, 31).amount).toBe(300);
+  });
+
+  it("counts months up to a 1 March renewal", () => {
+    expect(computeJoinFee(1200, 3, 1, true, new Date(2026, 10, 15))).toMatchObject({ monthsCharged: 4, amount: 400, seasonYear: 2026 });
+    expect(computeJoinFee(1200, 3, 1, true, new Date(2027, 1, 10))).toMatchObject({ fullFee: true, seasonYear: 2027 });
+  });
+
+  it("charges the full current-year fee when joining just after renewal", () => {
+    expect(at(1, 5)).toMatchObject({ monthsCharged: 12, amount: 1200, seasonYear: 2026, fullFee: false });
+  });
 });

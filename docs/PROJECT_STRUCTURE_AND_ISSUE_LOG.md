@@ -4431,3 +4431,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Cause: structured "Withdraw a player" kept positions only for Riverside; elsewhere it deleted the entry and rebuilt, renumbering the Ladies A chart so no saved result matched a position.
 - Fix: `withdrawStructuredPlayer` keeps position for Swiss categories and any category in play (all clubs), walks over only unplayed games; server engine rebuilt + redeployed.
 - Data: Kirsten's Ladies A entry restored at position 5 and marked withdrawn – bye. Results, other players and bookings untouched. Ladies A Round 3 still has no real games for Elzandri v Kelsey and Tarryn v Kirsten (walkover once created).
+
+### 2026-11-11 — Play-off games created as soon as both places are certain (all clubs)
+- Request: Uitsig Men's A 5th–8th semis were known (Pool A done; Pool B only Jarrod v Mark for 1st/2nd) but waited for the whole pool stage.
+- Engine: `startMappedStage` creates only the settled games early and the rest later; `stageLifecycle` treats a partly created stage as not finished; placeholders hand over by game number; DB stage-round guard allows additions with a new game number and no shared player (migration 0394). Server engine rebuilt + redeployed.
+- Live: Men's A SF3 Nico Ras v Logan Kidson, SF4 Carel Ras v Bradley Hunt created (play by 12 Nov), draw notices sent by the tournament's Auto setting. Ladies B correctly still waits (Elizane v Jenny can create a three-way tie; Rahman v Coetsee open).

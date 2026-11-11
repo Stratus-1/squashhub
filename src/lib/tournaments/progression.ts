@@ -21,7 +21,7 @@ import { inheritedStageScoring } from "./stage-scoring";
 import { assertTournamentPairingWritable, isFrozenUitsigTournament } from "./swiss-sequencing-policy";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
-import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
+import { bufferedDb, confirmStructuredPlayoffs, earlyGamesSupported, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
 import type { TieBreakCriterion } from "./tie-breaks";
 import { buildPlayoffChain } from "../smart-builder/playoff-chain";
 import { divisionGroup, previewTransition, type SpecDivision, type TournamentSpec } from "./engine-service";
@@ -86,6 +86,15 @@ export function setupStartsAutomatically(rows: any[] | undefined, divisionLabel:
   return r ? r.start === "auto" : null;
 }
 
+/** Dry run: how many games of a mapped stage the engine would create right now (0 = none / not possible). */
+async function earlyGames(db: Db, tid: string, d: SpecDivision, st: PlannedStage): Promise<number> {
+  try {
+    const b = bufferedDb(db);
+    await startStage(b.db, tid, d, st);
+    return b.ops.reduce((n, o: any) => n + (o.op === "insert" && o.table === "club_champs_matches" ? o.rows.length : 0), 0);
+  } catch { return 0; }
+}
+
 /** Seed-pool mapped stages are created with the tournament — never "progressed into". */
 const createdUpFront = (st: PlannedStage) => st.kind === "mapped" && st.mapping?.source === "seed_pools";
 
@@ -104,9 +113,17 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
       const played = rows.filter((m) => isDecided({ status: m.status, winner: m.winner_member_id, score: m.score } as any)).length;
       const base = { divisionKey: d.divisionId, divisionLabel: d.label, stageKey: st.id, name: st.name, played, total: rows.length };
       if (rows.length) {
-        const c = stageDone(st, rows);
+        // A play-off stage whose games are created one by one (as places become certain) is not finished
+        // until every game of its mapping exists — a later stage must never read half a stage as complete.
+        const partial = st.kind === "mapped" && !createdUpFront(st) && !!st.mapping?.matches?.length && rows.length < st.mapping.matches.length;
+        const c = !partial && stageDone(st, rows);
         done.set(st.id, c);
-        out.push({ ...base, state: c ? "completed" : "active", automatic: false, detail: c ? "All games decided." : `${played} of ${rows.length} games decided.` });
+        if (partial) {
+          const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
+          const more = auto ? await earlyGames(db, tid, d, st) : 0;
+          if (more) { out.push({ ...base, state: "ready", automatic: true, plannedDate: st.schedule?.date ?? st.schedule?.deadline ?? null, detail: `${more} more ${st.name} game${more === 1 ? "" : "s"} can be created now — both players are known.` }); continue; }
+        }
+        out.push({ ...base, state: c ? "completed" : "active", automatic: false, detail: c ? "All games decided." : partial ? `${rows.length} of ${st.mapping!.matches.length} games created (the rest once their players are known); ${played} decided.` : `${played} of ${rows.length} games decided.` });
         continue;
       }
       done.set(st.id, false);
@@ -119,6 +136,9 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
       const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
       const plannedDate = st.schedule?.date ?? st.schedule?.deadline ?? null;
       if (!done.get(src.id)) {
+        // Games whose two places are already certain are created now; the rest follow automatically.
+        const early = auto && earlyGamesSupported(st, src) ? await earlyGames(db, tid, d, st) : 0;
+        if (early) { out.push({ ...base, state: "ready", automatic: true, plannedDate, afterStageKey: src.id, detail: `${early} ${st.name} game${early === 1 ? "" : "s"} can be created now — both players are known; the rest follow when ${src.name} is finished.` }); continue; }
         out.push({ ...base, state: "waiting", automatic: auto, plannedDate, detail: auto ? `Starts automatically when ${src.name} is finished.` : `Offered for your confirmation when ${src.name} is finished.` });
         continue;
       }

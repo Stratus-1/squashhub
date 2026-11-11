@@ -17,6 +17,8 @@ export type SummaryRow<M extends SummaryFixture> = {
 
 export function formalStageOf(m: SummaryFixture): SummaryStage | null {
   const label = String(m.stage_label || "").toLowerCase();
+  // Bottom-half placing games ("Semifinal (5th–8th)", "5th/6th place") are never the title semis/final.
+  if (/\(\d+(st|nd|rd|th)\s*[–-]/.test(label) || /\d+(st|nd|rd|th)\/\d+(st|nd|rd|th) place/.test(label)) return null;
   // A paced "Round N" never becomes a formal stage just because the field is small.
   if (/quarter.?final|\bqf\b/.test(label)) return "qf";
   if (/semi.?final|\bsf\b/.test(label)) return "sf";

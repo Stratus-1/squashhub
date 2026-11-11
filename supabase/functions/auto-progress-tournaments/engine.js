@@ -1953,7 +1953,7 @@ function mappedFixtures(tid, d, st, positions) {
     slot: x.order,
     a: x.aId,
     b: x.bId,
-    label: st.mapping.source === "seed_pools" ? `${x.a} v ${x.b}` : st.name
+    label: st.mapping.source === "seed_pools" ? `${x.a} v ${x.b}` : x.label ?? st.name
   }));
 }
 function swissFirstRound(tid, d, st) {
@@ -7087,8 +7087,19 @@ function withThirdPlace(res) {
   const final = res.stages[res.stages.length - 1];
   if (!final || final.mapping?.source !== "stage_winners")
     return { ...res, notes: [...res.notes, "3rd/4th place needs a semifinal before the final."] };
-  const third = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order, mapping: { ...final.mapping, losers: true } };
+  const matches = final.mapping.matches.map((m) => m.label ? { ...m, label: shiftPlaceLabel(m.label, 2) } : m);
+  const third = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order, mapping: { ...final.mapping, losers: true, matches } };
   return { ...res, stages: [...res.stages.slice(0, -1), third, { ...final, order: final.order + 1 }] };
+}
+var ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+function shiftPlaceLabel(label, by) {
+  const m = /^(\d+)\w\w\/(\d+)\w\w place$/.exec(label);
+  return m ? `${ordinal(Number(m[1]) + by)}/${ordinal(Number(m[2]) + by)} place` : label;
+}
+function labelBottomHalf(mapping, stageName, top, last) {
+  const half = mapping.matches.length / 2;
+  const label = last ? `${ordinal(top + 1)}/${ordinal(top + 2)} place` : `${stageName} (${ordinal(top + 1)}–${ordinal(2 * top)})`;
+  return { ...mapping, matches: mapping.matches.map((m, i) => i >= half ? { ...m, label } : m) };
 }
 function buildPlayoffChainCore(main, version, planned, opts = {}) {
   const notes = [];
@@ -7200,6 +7211,7 @@ function buildPlayoffChainCore(main, version, planned, opts = {}) {
     games = [...top, ...lower];
   } else if (opts.bottomHalf)
     notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list or two pools.`);
+  const bottomTop = opts.bottomHalf && (pools === 1 || pools === 2) ? 2 * g : 0;
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize)
     return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
@@ -7222,7 +7234,7 @@ function buildPlayoffChainCore(main, version, planned, opts = {}) {
       name: e.name,
       discipline: main.discipline,
       schedule,
-      mapping,
+      mapping: bottomTop ? labelBottomHalf(mapping, e.name, bottomTop, i === planned.length - 1) : mapping,
       progression: { mode: "all_continue", standings: "reset" },
       generation: !opts.forceConfirm && e.plan.trigger === "auto" ? "automatic" : "owner_approval",
       waitForOrganiser: !(!opts.forceConfirm && e.plan.trigger === "auto")

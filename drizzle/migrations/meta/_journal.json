@@ -2808,6 +2808,20 @@
       "when": 1794425295311,
       "tag": "0400_joining_fee_calendar_months",
       "breakpoints": true
+    },
+    {
+      "idx": 401,
+      "version": "7",
+      "when": 1794426797452,
+      "tag": "0401_comms_outstanding_audience_default_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 402,
+      "version": "7",
+      "when": 1794427026366,
+      "tag": "0402_comms_office_bearer_access",
+      "breakpoints": true
     }
   ]
 }

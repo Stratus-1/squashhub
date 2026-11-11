@@ -22871,6 +22871,10 @@ export type Database = {
         Args: { _club: string; _uid: string }
         Returns: boolean
       }
+      can_manage_club_comms: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_family_group: { Args: { _group_id: string }; Returns: boolean }
       can_manage_tournament:
         | { Args: { _tournament_id: string }; Returns: boolean }
@@ -24920,6 +24924,7 @@ export type Database = {
         }
         Returns: Json
       }
+      my_can_manage_club_comms: { Args: { _club_id: string }; Returns: boolean }
       new_invite_token: { Args: never; Returns: string }
       new_model_cap: {
         Args: { _capability: string; _club_id: string; _user_id: string }
@@ -25470,6 +25475,10 @@ export type Database = {
           subdomain: string
           tenant_type: string
         }[]
+      }
+      seed_club_balance_template: {
+        Args: { p_club_id: string }
+        Returns: string
       }
       seed_club_welcome_template: {
         Args: { p_club_id: string }

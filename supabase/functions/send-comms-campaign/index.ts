@@ -15,6 +15,7 @@ import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "..
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
 import { isActiveCommsMember, isEligibleNominationMember } from "../_shared/comms-active-members.ts";
+import { isOutstandingAudienceMember, owingMemberIds, type LedgerRow } from "../_shared/comms-outstanding.ts";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { template as nominationTemplate } from "../_shared/transactional-email-templates/club-notification.tsx";
@@ -101,6 +102,13 @@ async function expandRecipients(clubId: string, campaign: any) {
   } else if (audience === "unlinked") {
     // Authoritative: active memberships with NO linked login, evaluated now (at send time).
     q = q.is("user_id", null).eq("status", "active");
+  } else if (audience === "outstanding") {
+    // Authoritative: balances evaluated now (at send time) from the member ledger.
+    const owing = await clubOwingMemberIds(clubId);
+    if (!owing.size) return [];
+    q = q.eq("status", "active");
+    const { data } = await q;
+    return (data ?? []).filter((m: any) => owing.has(m.id) && isOutstandingAudienceMember(m));
   }
 
   const { data } = await q;
@@ -124,6 +132,23 @@ async function expandRecipients(clubId: string, campaign: any) {
   }
 
   return members;
+}
+
+async function clubOwingMemberIds(clubId: string): Promise<Set<string>> {
+  const rows: LedgerRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from("club_journal_entries")
+      .select("id,club_member_id,account,debit,credit")
+      .eq("club_id", clubId)
+      .in("account", ["debtors", "member_credits"])
+      .not("club_member_id", "is", null)
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw new Error(`Could not read member balances: ${error.message}`);
+    rows.push(...((data ?? []) as LedgerRow[]));
+    if (!data || data.length < 1000) break;
+  }
+  return owingMemberIds(rows);
 }
 
 async function mergeVarsFor(member: any, club: any, leagueId: string | null) {
@@ -225,10 +250,10 @@ Deno.serve(async (req) => {
       const { data: userData } = await admin.auth.getUser(bearer);
       const userId = userData?.user?.id;
       if (!userId) return json({ error: "Not authenticated" }, 401);
-      const { data: isAdmin } = await admin.rpc("is_club_admin", {
+      const { data: canSend } = await admin.rpc("can_manage_club_comms", {
         _user_id: userId, _club_id: campaign.club_id,
       });
-      if (!isAdmin) return json({ error: "Not a club admin" }, 403);
+      if (!canSend) return json({ error: "You don't have permission to send member communications for this club" }, 403);
     }
 
     // Large sends run in time-boxed chunks; a chunk hands over to the next by

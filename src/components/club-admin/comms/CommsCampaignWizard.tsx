@@ -19,13 +19,15 @@ import { validateCampaign, CHANNEL_LABEL } from "@/lib/comms/validation";
 import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
 import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
 import { isActiveCommsMember } from "../../../../supabase/functions/_shared/comms-active-members";
+import { balancesByMember, isOutstandingAudienceMember, OUTSTANDING_MIN } from "../../../../supabase/functions/_shared/comms-outstanding";
+import { fromExt } from "@/lib/supabase-ext";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
 import { CommsEmailPreview, type EmailPreviewClub } from "./CommsEmailPreview";
 import { CommsDocumentUpload } from "./CommsDocumentUpload";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
-type AudienceType = "all" | "unlinked" | "selected" | "league" | "skills";
+type AudienceType = "all" | "unlinked" | "outstanding" | "selected" | "league" | "skills";
 
 const STEPS = ["Template", "Recipients", "Channels", "Preview", "Send"];
 
@@ -72,6 +74,11 @@ export function CommsCampaignWizard({
   useEffect(() => {
     if (isOnboarding) setAudienceType((a) => (a === "all" ? "unlinked" : a));
   }, [isOnboarding]);
+  // Balance reminders default to members who actually owe the club.
+  const isBalanceTemplate = /outstanding balance/i.test(template?.name ?? "");
+  useEffect(() => {
+    if (isBalanceTemplate) setAudienceType((a) => (a === "all" ? "outstanding" : a));
+  }, [isBalanceTemplate]);
 
   const { data: members = [] } = useQuery({
     queryKey: ["comms-members", clubId],
@@ -105,6 +112,28 @@ export function CommsCampaignWizard({
     enabled: audienceType === "league" && !!leagueId,
   });
 
+  // Member statement balances (debtors + member credit), read-only, for the outstanding audience.
+  const { data: balances, isLoading: balancesLoading } = useQuery({
+    queryKey: ["comms-member-balances", clubId],
+    queryFn: async () => {
+      const rows: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await fromExt("club_journal_entries")
+          .select("id,club_member_id,account,debit,credit")
+          .eq("club_id", clubId)
+          .in("account", ["debtors", "member_credits"])
+          .not("club_member_id", "is", null)
+          .order("id")
+          .range(from, from + 999);
+        if (error) throw error;
+        rows.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      return balancesByMember(rows);
+    },
+    enabled: !!clubId && audienceType === "outstanding",
+  });
+
   const wantedSkills = useMemo(
     () => skillText.split(",").map((s) => s.trim()).filter(Boolean),
     [skillText],
@@ -117,6 +146,10 @@ export function CommsCampaignWizard({
 
   const recipients = useMemo(() => {
     if (audienceType === "unlinked") return unlinkedSummary.included;
+    if (audienceType === "outstanding") {
+      if (!balances) return [];
+      return members.filter((m: any) => isOutstandingAudienceMember(m) && (balances.get(m.id) ?? 0) > OUTSTANDING_MIN);
+    }
     if (audienceType === "selected") return members.filter((m: any) => selectedIds.includes(m.id));
     if (audienceType === "league") return members.filter((m: any) => leagueMemberIds.includes(m.id));
     if (audienceType === "skills") {
@@ -130,7 +163,7 @@ export function CommsCampaignWizard({
       });
     }
     return members.filter(isActiveCommsMember);
-  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary]);
+  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary, balances]);
 
   const warnings = useMemo(
     () =>
@@ -175,7 +208,9 @@ export function CommsCampaignWizard({
                 ? { type: "skills", filter: { skills: wantedSkills, volunteer_willing: volunteersOnly } }
                 : audienceType === "unlinked"
                   ? { type: "unlinked" }
-                  : { type: "all" },
+                  : audienceType === "outstanding"
+                    ? { type: "outstanding" }
+                    : { type: "all" },
         scheduledFor: mode === "schedule" ? new Date(scheduleFor).toISOString() : null,
         draft: mode === "draft",
       });
@@ -266,6 +301,7 @@ export function CommsCampaignWizard({
                 <SelectContent>
                   <SelectItem value="all">All members</SelectItem>
                   <SelectItem value="unlinked">Members not yet registered (no SquashHub login){isOnboarding ? " — recommended" : ""}</SelectItem>
+                  <SelectItem value="outstanding">Members with an outstanding balance</SelectItem>
                   <SelectItem value="selected">Selected members</SelectItem>
                   <SelectItem value="league">A league</SelectItem>
                   <SelectItem value="skills">Skills / volunteers</SelectItem>
@@ -321,6 +357,8 @@ export function CommsCampaignWizard({
 
             {audienceType === "unlinked" ? (
               <UnlinkedSummary s={unlinkedSummary} />
+            ) : audienceType === "outstanding" ? (
+              <OutstandingSummary loading={balancesLoading} recipients={recipients as any[]} balances={balances} />
             ) : (
               <p className="text-xs text-muted-foreground">{recipients.length} recipient(s) match.</p>
             )}
@@ -468,6 +506,40 @@ function UnlinkedSummary({ s }: { s: ReturnType<typeof summariseUnlinkedAudience
         link before stay included while they remain unregistered (a new campaign sends again; a retry of the same campaign never repeats).
         Each member gets their own personal link.
       </p>
+    </div>
+  );
+}
+
+function OutstandingSummary({
+  loading,
+  recipients,
+  balances,
+}: {
+  loading: boolean;
+  recipients: any[];
+  balances?: Map<string, number>;
+}) {
+  if (loading || !balances) return <p className="text-xs text-muted-foreground">Checking member balances…</p>;
+  const total = recipients.reduce((s, m) => s + (balances.get(m.id) ?? 0), 0);
+  const fmt = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        <strong className="text-foreground">{recipients.length}</strong> member(s) owe the club (total {fmt(total)}). Balances are checked again
+        when the campaign is sent, so anyone who pays before then is left out. Resigned members are never included.
+      </p>
+      {recipients.length > 0 && (
+        <ScrollArea className="h-40 rounded border border-border p-2">
+          {[...recipients]
+            .sort((a, b) => (balances.get(b.id) ?? 0) - (balances.get(a.id) ?? 0))
+            .map((m) => (
+              <div key={m.id} className="flex items-center gap-2 py-0.5 text-xs">
+                <span className="flex-1 truncate">{m.name}</span>
+                <span className="text-destructive tabular-nums">{fmt(balances.get(m.id) ?? 0)}</span>
+              </div>
+            ))}
+        </ScrollArea>
+      )}
     </div>
   );
 }

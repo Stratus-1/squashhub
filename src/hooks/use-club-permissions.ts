@@ -5,6 +5,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { useClubContext } from "@/contexts/ClubContext";
+import { supabase } from "@/integrations/supabase/client";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [
@@ -89,6 +90,24 @@ export function useMemberPermission(memberId: string | undefined) {
 }
 
 /**
+ * Member Communications is open to club admins, holders of the "communications"
+ * permission and every current office bearer. The server decides
+ * (`my_can_manage_club_comms`), the same rule the comms tables and sender enforce.
+ */
+export function useCanManageComms(clubId: string | undefined) {
+  return useQuery({
+    queryKey: ["can-manage-comms", clubId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("my_can_manage_club_comms", { _club_id: clubId });
+      if (error) return false;
+      return data === true;
+    },
+    enabled: !!clubId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
  * Check if the current active member has a specific admin permission.
  * Captain/Admin roles always return true.
  */
@@ -98,6 +117,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const memberId = activeMember?.id;
   const { club } = useClubContext();
   const { isChairman } = useFinancialAccess(club?.id);
+  const { data: canManageComms } = useCanManageComms(club?.id);
 
   // Fetch member's club role
   const { data: memberRow } = useQuery({
@@ -119,6 +139,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const { data: perm } = useMemberPermission(memberId);
 
   if (isSuperAdmin) return true;
+  if (permission === "communications" && canManageComms) return true;
   // Explicit grants always count — including restricted slugs handed out by a super admin.
   if (perm?.custom_permissions?.includes(permission)) return true;
   if (perm?.club_permission_roles?.permissions?.includes(permission)) return true;
@@ -143,6 +164,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   const memberId = activeMember?.id;
   const { club } = useClubContext();
   const { isChairman, isLoading: chairmanLoading } = useFinancialAccess(club?.id);
+  const commsQuery = useCanManageComms(club?.id);
 
   const { data: memberRow, isPending: memberRolePending } = useQuery({
     queryKey: ["member-role", memberId],
@@ -168,6 +190,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   // Explicit grants first (these may include restricted slugs granted by a super admin).
   perm?.custom_permissions?.forEach(p => perms.add(p));
   perm?.club_permission_roles?.permissions?.forEach(p => perms.add(p));
+  if (commsQuery.data) perms.add("communications");
 
   const impliedFull =
     isRoleFullAccess || isChairman || isChairmanRole(perm?.club_permission_roles?.role_name) || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
@@ -176,7 +199,7 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   return {
     permissions: perms,
     isFullAdmin: !!impliedFull,
-    isLoading: superAdminLoading || memberCtxLoading || (!!memberId && (memberRolePending || permissionQuery.isPending || chairmanLoading)),
+    isLoading: superAdminLoading || memberCtxLoading || (!!memberId && (memberRolePending || permissionQuery.isPending || chairmanLoading)) || (!!club?.id && commsQuery.isPending),
   };
 
 }

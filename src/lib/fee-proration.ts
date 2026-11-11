@@ -8,6 +8,11 @@
  *  - Joining earlier than one month before renewal → charge pro-rata for the
  *    whole months remaining until the renewal date; the member is invoiced
  *    again at the next renewal.
+ *
+ * Months are CALENDAR months (owner, 11 Nov 2026): the join month counts in
+ * full and the renewal month starts the new fee year. With a 1 January
+ * renewal, any November join pays 2 months (Nov + Dec) and any December join
+ * pays the full year covering the next season.
  */
 
 export interface ProRataResult {
@@ -34,10 +39,13 @@ export function nextRenewalDate(dueMonth: number, dueDay = 1, from: Date = new D
   return next;
 }
 
-/** Fractional months between `from` and the next renewal. */
+/**
+ * Calendar months left in the current fee year: from the join month
+ * (inclusive) up to the renewal month (exclusive).
+ */
 export function monthsUntilRenewal(dueMonth: number, dueDay = 1, from: Date = new Date()): number {
   const next = nextRenewalDate(dueMonth, dueDay, from);
-  return (next.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30.4375);
+  return (next.getFullYear() * 12 + next.getMonth()) - (from.getFullYear() * 12 + from.getMonth());
 }
 
 /**
@@ -76,7 +84,7 @@ export function computeJoinFee(
     return { amount: annualFee, monthsCharged: 12, seasonYear: currentSeasonYear, fullFee: true };
   }
 
-  const monthsCharged = Math.min(12, Math.max(1, Math.ceil(months)));
+  const monthsCharged = Math.min(12, Math.max(1, months));
   const amount = Math.round((annualFee / 12) * monthsCharged * 100) / 100;
   return { amount, monthsCharged, seasonYear: currentSeasonYear, fullFee: false };
 }

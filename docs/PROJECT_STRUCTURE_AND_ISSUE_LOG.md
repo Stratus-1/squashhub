@@ -4472,3 +4472,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-11 — Club page omitted once-off registration fees
 - Gap: Fees tab "show on landing" switch saved on `national_body_fees` registration rows, but `get_club_public_fees` read only `member_fee_categories`.
 - Fix: drizzle 0399 (`supabase/migrations/20261111230000_club_public_fees_include_registration.sql`) unions active, flagged registration fees (> R0) as `billing_period = 'once_off'`, listed after categories; `ClubLanding` shows "R350 once-off". Same signature/return/grants. Now visible for CSIR, Gordons Bay, Highveld and Nelspruit (Riverside/Uitsig switches off).
+
+### 2026-11-11 — Pro-rata joining fees count calendar months
+- Owner rule: join month counts in full, renewal month starts the new fee year; ≤1 month before renewal charges the full fee for the next season (1 Jan renewal: any November join = 2 months, any December join = full next year).
+- Before: 30.4375-day fractional months rounded up, so 1 Dec charged 2 months and early 1 Nov could charge 3.
+- Fixed in `src/lib/fee-proration.ts` (`monthsUntilRenewal`/`computeJoinFee`) and `chairman_ensure_joining_fee` (migration `20261111240000_joining_fee_calendar_months.sql`, Drizzle 0400). Tests in `src/test/joining-fee.test.ts`. Existing fees untouched.

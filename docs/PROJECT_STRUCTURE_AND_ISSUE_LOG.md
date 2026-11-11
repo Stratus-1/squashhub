@@ -4426,3 +4426,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Request: add A3 v B4 and B3 v A4 semifinals for Men's A and Ladies B; bottom winners play for 5th, losers for 7th.
 - Code: `MappedMatch.label` + `labelBottomHalf` in `playoff-chain.ts` (bottom games named "Semifinal (5th–8th)", "5th/6th place", "7th/8th place"); `mappedFixtures` and placeholders use the label; `formalStageOf` ignores placing games. Server engine rebuilt and `auto-progress-tournaments` redeployed.
 - Data: Uitsig Club Champs 2026 groups 1 and 6 only — stage mappings + bottom-half flag updated, 8 waiting games added (backup of prior builder_spec kept privately). Top games unchanged. New finals-day games have no court/time yet.
+
+### 2026-11-11 — Uitsig Ladies A: withdrawing Kirsten-Lee Hunt hid all results
+- Cause: structured "Withdraw a player" kept positions only for Riverside; elsewhere it deleted the entry and rebuilt, renumbering the Ladies A chart so no saved result matched a position.
+- Fix: `withdrawStructuredPlayer` keeps position for Swiss categories and any category in play (all clubs), walks over only unplayed games; server engine rebuilt + redeployed.
+- Data: Kirsten's Ladies A entry restored at position 5 and marked withdrawn – bye. Results, other players and bookings untouched. Ladies A Round 3 still has no real games for Elzandri v Kelsey and Tarryn v Kirsten (walkover once created).

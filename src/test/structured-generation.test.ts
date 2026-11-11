@@ -3,7 +3,7 @@ import {
   confirmStructuredPlayoffs, generateStructuredTournament, nextKnockoutRound, persistStructure,
   previewStructuredPlayoffs, specFromDefinition, type Db,
 } from "@/lib/tournaments/structured-persist";
-import { atomically, rebuildStructured, withdrawStructured, type CommitOp } from "@/lib/tournaments/structured-persist";
+import { atomically, rebuildStructured, withdrawStructured, withdrawStructuredPlayer, type CommitOp } from "@/lib/tournaments/structured-persist";
 import { applyEdit, classifyEdit, serializeSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { DefinitionSchema } from "@/lib/smart-builder/definition";
 import { generateRotatingDoublesSchedule } from "@/lib/tournaments/rotating-doubles";
@@ -288,17 +288,20 @@ describe("rebuild + withdrawal", () => {
     expect(men.some((m) => [m.player_a_member_id, m.player_b_member_id].includes("m8"))).toBe(false);
     expect(men.every((m) => m.division_id && m.stage_id && m.round_id && m.pool_id)).toBe(true);
   });
-  it("withdrawal after play keeps results and removes only that player's unplayed games", async () => {
+  it("withdrawal after play keeps results and walks over only that player's unplayed games", async () => {
     const send = sendTo(env.db, []);
     await atomically(env.db, TID, send, (db) => generateStructuredTournament(db, TID));
     const m1Games = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
     finish([m1Games[0]], (m) => m.player_a_member_id);
     const before = env.t.club_champs_matches.length;
-    await atomically(env.db, TID, send, (db) => withdrawStructured(db, TID, "m1"));
+    env.t.club_champs_registrations = [{ id: "reg-m1", champ_id: TID, club_member_id: "m1" }];
+    await withdrawStructuredPlayer(env.db, TID, "m1", send);
     const left = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
-    expect(left).toHaveLength(1);
-    expect(left[0].winner_member_id).toBeTruthy();
-    expect(env.t.club_champs_matches.length).toBe(before - (m1Games.length - 1));
+    expect(left).toHaveLength(m1Games.length);
+    expect(left.find((m) => m.id === m1Games[0].id)?.winner_member_id).toBe("m1");
+    expect(left.filter((m) => m.id !== m1Games[0].id).every((m) => m.winner_member_id && m.winner_member_id !== "m1")).toBe(true);
+    expect(env.t.club_champs_matches.length).toBe(before);
+    expect(env.t.club_champs_entries.some((e) => e.club_member_id === "m1")).toBe(true);
     expect(env.t.club_champs_matches.filter((m) => m.group_number === 2)).toHaveLength(12); // ladies untouched
   });
 });
@@ -368,5 +371,27 @@ describe("double round robin, Swiss tie-breaks, 3rd place", () => {
     expect(next.find((f) => f.thirdPlace)).toMatchObject({ a: "p4", b: "p2" });
     const played = next.map((f) => ({ ...f, winner: f.a }));
     expect(() => nextKnockoutRound("t", "d", "ko", [...sf, ...played] as any, { thirdPlace: true })).toThrow(/final/);
+  });
+});
+
+describe("structured withdrawal after play has started (Uitsig Ladies A)", () => {
+  it("any club: keeps the entry/position, keeps played results, walks over only the player's unplayed games", async () => {
+    const spec: TournamentSpec = { version: 1, architecture: "structured", name: "Uitsig", divisions: [{ divisionId: "g5", groupNumber: 1, label: "Ladies A", unit: "players", entrants: [], stages: [{ id: "rr", order: 0, kind: "round_robin", name: "Round robin" }] } as any] };
+    env.t.tournaments[0] = { id: TID, club_id: "d8397b8a-60d3-4c4b-afee-25dab218bf19", builder_architecture: "structured", builder_spec: spec, best_of: 5, points_per_game: 11 };
+    env.t.club_champs_entries = Array.from({ length: 4 }, (_, i) => ({ id: `e${i}`, champ_id: TID, group_number: 1, club_member_id: `p${i + 1}`, order_index: i }));
+    env.t.club_champs_registrations = [{ id: "reg", champ_id: TID, club_member_id: "p3" }];
+    env.t.club_champs_matches = [
+      { id: "played", champ_id: TID, group_number: 1, round_number: 1, player_a_member_id: "p3", player_b_member_id: "p4", status: "completed", winner_member_id: "p3", score: "3-1" },
+      { id: "future", champ_id: TID, group_number: 1, round_number: 2, player_a_member_id: "p1", player_b_member_id: "p3", status: "scheduled", winner_member_id: null },
+      { id: "other", champ_id: TID, group_number: 1, round_number: 2, player_a_member_id: "p2", player_b_member_id: "p4", status: "scheduled", winner_member_id: null },
+    ];
+    await withdrawStructured(env.db, TID, "p3");
+    expect(env.t.club_champs_entries.map((e: any) => e.club_member_id)).toEqual(["p1", "p2", "p3", "p4"]);
+    expect(env.t.club_champs_registrations[0].withdrawn_keep_position).toBe(true);
+    const byId = (id: string) => env.t.club_champs_matches.find((m: any) => m.id === id);
+    expect(byId("played")).toMatchObject({ winner_member_id: "p3", score: "3-1" });
+    expect(byId("future").winner_member_id).toBe("p1");
+    expect(byId("other")).toMatchObject({ status: "scheduled", winner_member_id: null });
+    expect(env.t.club_champs_matches).toHaveLength(3);
   });
 });

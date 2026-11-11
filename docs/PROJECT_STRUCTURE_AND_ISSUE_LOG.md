@@ -4397,3 +4397,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Request: Player app needs the creation date of each family-paid fee.
 - Change: `supabase/migrations/20261111180000_mobile_member_finance_payer_fee_created_at.sql` (applied as `drizzle/migrations/0392_mobile_member_finance_payer_fee_created_at.sql`, byte-identical, SHA-256 `9318e1bc…6b65`) redefines `mobile_member_finance_payload` from the live 20261111160000 body, adding only `'createdAt', f.created_at` to each payerFees object. Selection, ordering, other fields, `fees`, `statement`, balances, auth, signature and grants unchanged.
 - Verified live (read-only, internal-secret API path): 4 CSIR family payers + 3 ordinary members — all non-payerFees keys identical before/after; payerFees identical apart from the new key; each `createdAt` equals the fee row's `created_at`. Wrong secret → Unauthorized; wrong club → Member not found for club.
+
+### 2026-11-11 — Leagues permission holders could not edit submitted league scores (Nelspruit, Vian Crafford)
+- Symptom: Vian (NSC, role member + custom `leagues` permission) could not edit submitted doubles league results.
+- Cause: "Edit result" on Upcoming and "Edit Submitted Scores" on the scorecard were gated to club admin/super admin (and NSA captains) only; the database already allows club members of the fixture's club to update results.
+- Fix: new `canEditSubmittedLeagueScores` (src/lib/leagues/fixture-setup-access.ts) used by UpcomingFixturesTab and LeagueGameDetail — admins, NSA captains, and Leagues-permission holders for their own club's fixtures. Recorded-player corrections remain admin-only. Tests in src/test/league-fixture-setup-access.test.ts.

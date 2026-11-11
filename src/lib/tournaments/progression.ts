@@ -122,8 +122,9 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
           const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
           // The stage it takes players from is finished but the rest can't be resolved (e.g. a tie): say why.
           const src = sourceOf(d, st);
-          let why: string | null = null;
-          const more = auto || (src && done.get(src.id)) ? await earlyGames(db, tid, d, st, (e: any) => { why = e?.message ?? String(e); }) : 0;
+          const err: { why: string | null } = { why: null };
+          const more = auto || (src && done.get(src.id)) ? await earlyGames(db, tid, d, st, (e: any) => { err.why = e?.message ?? String(e); }) : 0;
+          const why = err.why;
           if (!more && why && src && done.get(src.id) && !/already/i.test(why)) { out.push({ ...base, state: "blocked", automatic: false, detail: why }); continue; }
           if (more && !auto) { out.push({ ...base, state: "ready", automatic: false, afterStageKey: src?.id ?? null, detail: `${src?.name ?? "The stage before"} is finished — confirm to create the remaining ${st.name} games.` }); continue; }
           if (more) { out.push({ ...base, state: "ready", automatic: true, plannedDate: st.schedule?.date ?? st.schedule?.deadline ?? null, detail: `${more} more ${st.name} game${more === 1 ? "" : "s"} can be created now — both players are known.` }); continue; }

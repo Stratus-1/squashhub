@@ -539,28 +539,34 @@ export async function rebuildStructured(db: Db, tid: string): Promise<RebuildRep
 }
 
 /** Withdraw one player (and their pair) then rebuild. Played results stay; only their future games go. */
+/** Categories (of the player's entries) where any real game has been played or decided: positions there are kept on withdrawal. */
+export function withdrawKeepPositionGroups(matches: Array<Record<string, any>>, entryGroups: number[]): number[] {
+  const played = new Set(matches.filter((m) => !m.is_bye && (m.winner_member_id || String(m.status ?? "").toLowerCase() === "completed")).map((m) => Number(m.group_number)));
+  return [...new Set(entryGroups)].filter((g) => played.has(g));
+}
+
 export async function withdrawStructured(db: Db, tid: string, memberId: string): Promise<RebuildReport> {
   if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
   const entries = (await db.select("club_champs_entries", { champ_id: tid })).filter((e) => e.club_member_id === memberId || e.partner_member_id === memberId);
   if (!entries.length) throw new IntegrityError("not_entered", "That player is not entered.");
   const [tour] = await db.select("tournaments", { id: tid });
-  if (tour?.club_id === RIVERSIDE_CLUB_ID) {
-    const spec = tour.builder_spec as TournamentSpec | undefined;
-    const swissGroups = new Set((spec?.divisions ?? []).filter((d) => d.stages[0]?.kind === "swiss").flatMap((d) => divisionEntryGroups(spec as TournamentSpec, d)));
-    const keep = entries.filter((e) => swissGroups.has(e.group_number));
-    if (keep.length) {
-      if (keep.length !== entries.length) throw new IntegrityError("unsupported", "Withdraw this player's non-Swiss categories separately; Swiss positions must be kept.");
-      const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });
-      if (!registrations.length) throw new IntegrityError("not_entered", "The registration is missing; no Swiss position was removed.");
-      await db.update("club_champs_registrations", { champ_id: tid, club_member_id: memberId }, { withdrawn_keep_position: true, withdrawn_reason: "Withdrawn" });
-      const matches = (await db.select("club_champs_matches", { champ_id: tid })).flatMap((m) => typeof m.id === "string" ? [{ ...m, id: m.id, status: m.status }] : []);
-      for (const group of new Set(keep.map((e) => e.group_number))) {
-        for (const u of withdrawalUpdates(matches, memberId, { groupNumber: group, bestOf: tour.best_of ?? 5, pointsPerGame: tour.points_per_game ?? 11 })) {
-          await db.update("club_champs_matches", { id: u.id }, u.payload);
-        }
+  // Once play has started in a category the withdrawn player keeps their position (shown as
+  // "withdrawn – bye"): results already played stay, every unplayed game of theirs becomes a walkover
+  // and later games against them are walked over automatically (DB trigger champ_auto_walkover_withdrawn).
+  // Removing the entry would renumber every position and rebuild other players' unplayed games.
+  const allMatches = (await db.select("club_champs_matches", { champ_id: tid })).flatMap((m) => typeof m.id === "string" ? [{ ...m, id: m.id, status: m.status }] : []);
+  const keepGroups = withdrawKeepPositionGroups(allMatches, entries.map((e) => Number(e.group_number)));
+  if (keepGroups.length) {
+    if (keepGroups.length !== new Set(entries.map((e) => Number(e.group_number))).size) throw new IntegrityError("unsupported", "Withdraw this player's not-yet-started categories separately; categories already in play keep their position.");
+    const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });
+    if (!registrations.length) throw new IntegrityError("not_entered", "The registration is missing; no position was removed.");
+    await db.update("club_champs_registrations", { champ_id: tid, club_member_id: memberId }, { withdrawn_keep_position: true, withdrawn_reason: "Withdrawn" });
+    for (const group of keepGroups) {
+      for (const u of withdrawalUpdates(allMatches, memberId, { groupNumber: group, bestOf: tour?.best_of ?? 5, pointsPerGame: tour?.points_per_game ?? 11 })) {
+        await db.update("club_champs_matches", { id: u.id }, u.payload);
       }
-      return { regenerated: [], keptPlayed: matches.filter((m) => m.status === "completed").length, removedFuture: 0, created: 0 };
     }
+    return { regenerated: [], keptPlayed: allMatches.filter((m) => m.status === "completed").length, removedFuture: 0, created: 0 };
   }
   await db.remove("club_champs_entries", entries.map((e) => e.id));
   return rebuildStructured(db, tid);

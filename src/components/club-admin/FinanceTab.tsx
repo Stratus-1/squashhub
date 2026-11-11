@@ -42,6 +42,7 @@ import DebitOrdersPanel from "./DebitOrdersPanel";
 import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
 import { MemberCreditControl } from "./MemberCreditControl";
 import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
+import { transactionAccountGroups } from "@/lib/finance/transaction-accounts";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -105,8 +106,6 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
 };
 
 const ALL_ACCOUNTS = Object.keys(CHART_OF_ACCOUNTS) as GLAccount[];
-const DEBIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Asset" || CHART_OF_ACCOUNTS[a].category === "Expense");
-const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Liability" || CHART_OF_ACCOUNTS[a].category === "Income");
 
 // Default gateway fee percentages by provider, VAT-inclusive (list rate x 1.15).
 // Overridable per club in Banking settings.
@@ -391,8 +390,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     const normalDr = !acc || acc.category === "Asset" || acc.category === "Expense";
     return normalDr ? b.debit - b.credit : b.credit - b.debit;
   };
-  const customIncomeAccounts = customAccounts.filter((a) => a.is_active && a.category === "Income");
-  const customExpenseAccounts = customAccounts.filter((a) => a.is_active && a.category === "Expense");
+  const txAccountGroups = transactionAccountGroups(txDirection, CHART_OF_ACCOUNTS, customAccounts.filter((a) => a.is_active));
   const getAccountLabel = (value: string) => {
     if (value?.startsWith("custom:")) {
       return customAccounts.find((a) => a.id === value.slice(7))?.name || "Club account";
@@ -1393,7 +1391,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
             </div>
 
             <div>
-              <Label className="text-xs">{txDirection === "income" ? "Income Account" : "Expense Account"}</Label>
+              <Label className="text-xs">{txDirection === "income" ? "Income or balance sheet account" : "Expense or balance sheet account"}</Label>
               {txDirection === "income" && txMemberId && txMemberId !== "__none__" ? (
                 <>
                   <div className="h-9 px-3 flex items-center rounded-md border bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
@@ -1413,19 +1411,24 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         Member Paying Outstanding Account (settles their bill)
                       </SelectItem>
                     )}
-                    {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
-                      .filter(a => !["bank", "bank_current", "cash", "debtors", "bar_cost_of_sales", "shop_cost_of_sales"].includes(a))
-                      .map(a => (
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px]">{txDirection === "income" ? "Income accounts" : "Expense accounts"}</SelectLabel>
+                      {txAccountGroups.standardPL.map(a => (
                         <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                       ))}
-                    {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).length > 0 && (
-                      <SelectGroup>
-                        <SelectLabel className="text-[10px]">Club accounts</SelectLabel>
-                        {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).map(a => (
-                          <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                    )}
+                      {txAccountGroups.customPL.map(a => (
+                        <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px]">Balance sheet accounts</SelectLabel>
+                      {txAccountGroups.standardBS.map(a => (
+                        <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
+                      ))}
+                      {txAccountGroups.customBS.map(a => (
+                        <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               )}

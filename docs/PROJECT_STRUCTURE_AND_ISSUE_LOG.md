@@ -4450,3 +4450,10 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Source `supabase/migrations/20261111190000_mobile_member_finance_family_payer_parity.sql` = `drizzle/migrations/0395_…` byte-identical. Signature, SECURITY DEFINER, search_path, secret check, grants unchanged.
 - Live impact at apply time: 0 GL rows excluded; 5 R0 family fees moved from owners' `fees` to payers' `payerFees`; no money totals changed.
 - Known divergence (as supplied SQL): GL exclusion matches fees owned by *another* member (`club_member_id <> p_member_id`), while web skips GL rows for the member's *own* fees paid by someone else; the statement array also omits unpaid payer-fee lines that web adds. No live rows affected today.
+
+### 2026-11-11 — Player finance family-payer correction (migration 0396)
+- Forward-only fix of 0395's two divergences: GL totals and statement now skip ledger rows for the member's *own* fees with a different recorded payer (`billed_fee.club_member_id = p_member_id`), and the statement adds one synthetic debit per unpaid payer fee with amount > 0 (`id = family-fee-<fee UUID>`, `date = created_at`, "Fee raised: <name> — <label>", account `debtors`) inside one chronological running balance. The family total in outstanding uses the same amount > 0 rule so outstanding equals the final statement balance, as on web.
+- Source `supabase/migrations/20261111200000_mobile_member_finance_family_payer_correction.sql` = `drizzle/migrations/0396_…` byte-identical; live body identical to source. Signature, SECURITY DEFINER, search_path, secret check, club scoping, grants, response keys unchanged.
+- Test: `supabase/tests/mobile-finance-family-payer/run.sh` (throwaway local PostgreSQL) passes on 0396 and fails on 0395.
+- Live impact at apply time: 0 GL rows excluded under either rule, 0 unpaid payer fees above R0, 0 payer fees with a GL row on the payer's own account; no member payload money values or statements changed.
+- Remaining web-only statement lines (not in Player payload): directly-paid bar purchases shown as net-zero item/payment pairs.

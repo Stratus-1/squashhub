@@ -4407,3 +4407,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 
 ## 2026-11-11 — Enter Transaction lacked balance sheet accounts
 - Payments out only listed expenses/standard assets (no Accounts Payable, Member Credits, Association Payable, club assets like "Loan Constance"); Income lacked assets (e.g. Uitsig "COT Utility Account"). Fix: shared `transactionAccountGroups` (`src/lib/finance/transaction-accounts.ts`) used by FinanceTab; picker now grouped "Income/Expense accounts" + "Balance sheet accounts". Posting unchanged. Tests: `src/lib/finance/transaction-accounts.test.ts`.
+
+### 2026-11-11 — Enter Transaction account search
+- Request: the Enter Transaction account list was long to scroll on phones.
+- Fix: `src/components/club-admin/finance/SearchableAccountPicker.tsx` (inline cmdk list, no portal so typing/scrolling work inside the dialog) replaces the Select in `FinanceTab.tsx`; same account groups and values from `transactionAccountGroups`.
+- Verified on a 384px screen: typing "loan" filtered to "Loan Constance" and selecting it filled the field.

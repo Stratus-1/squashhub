@@ -2745,6 +2745,13 @@
       "when": 1794376114545,
       "tag": "0391_mobile_resolver_inactive_memberships",
       "breakpoints": true
+    },
+    {
+      "idx": 392,
+      "version": "7",
+      "when": 1794377145956,
+      "tag": "0392_mobile_member_finance_payer_fee_created_at",
+      "breakpoints": true
     }
   ]
 }

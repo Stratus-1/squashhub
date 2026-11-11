@@ -53,4 +53,4 @@
 - [x] Nelspruit: let Leagues-permission holders (Vian) edit submitted league scores, see the Standings edit pencil and adjust bonus points (BP).
 
 - [x] Enter Transaction: Payments out and Income account pickers include balance sheet accounts (Willem, 11 Nov).
-- [ ] Bar counter: sort open tabs alphabetically and add a person-name search (Willem, 11 Nov).
+- [x] Bar counter: sort open tabs alphabetically and add a person-name search (Willem, 11 Nov).

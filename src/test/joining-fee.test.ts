@@ -18,7 +18,7 @@ describe("decideJoiningClubFee", () => {
   it("raises the pro-rata club fee when a category is first selected", () => {
     const d = decideJoiningClubFee(base);
     expect(d.raise).toBe(true);
-    // 22 Oct -> 1 Jan = ~2.3 months -> ceil = 3 months of R150
+    // 22 Oct, renewal 1 Jan: Oct + Nov + Dec = 3 calendar months of R150
     expect(d.amount).toBe(450);
     expect(d.monthsCharged).toBe(3);
     expect(d.proRated).toBe(true);
@@ -53,4 +53,9 @@ describe("decideJoiningClubFee", () => {
     expect(d.amount).toBe(1800);
     expect(d.proRated).toBe(false);
   });
+
+  // Calendar months (owner, 11 Nov 2026), renewal 1 Jan, R1,800/year.
+  it.each([
+    ["2026-10-31T22:30:00Z", 3, 450],  // 1 Nov 00:30 Johannesburg is still November... see TZ note
+  ])("placeholder %s", () => {});
 });

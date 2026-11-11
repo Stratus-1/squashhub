@@ -4421,3 +4421,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Request: with many tabs open, the barman had to scan cards in opening order to find a customer.
 - Fix: `src/lib/bar/open-tabs.ts` provides display-only, case-insensitive name sorting/filtering; `BarCounter.tsx` now lists tabs alphabetically and includes a name search with clear/no-match controls. Board totals, automatic refreshes, PIN authority, tab opening and settlement behaviour are unchanged.
 - Verification: `src/lib/bar/open-tabs.test.ts` plus the existing `bar-counter-session.test.tsx` integration suite — 23 focused tests passed, including rendered order, search/clear and unchanged tab totals; preview build OK.
+
+### 2026-11-11 — Uitsig Men's A / Ladies B: bottom-half semifinals with 5th and 7th place
+- Request: add A3 v B4 and B3 v A4 semifinals for Men's A and Ladies B; bottom winners play for 5th, losers for 7th.
+- Code: `MappedMatch.label` + `labelBottomHalf` in `playoff-chain.ts` (bottom games named "Semifinal (5th–8th)", "5th/6th place", "7th/8th place"); `mappedFixtures` and placeholders use the label; `formalStageOf` ignores placing games. Server engine rebuilt and `auto-progress-tournaments` redeployed.
+- Data: Uitsig Club Champs 2026 groups 1 and 6 only — stage mappings + bottom-half flag updated, 8 waiting games added (backup of prior builder_spec kept privately). Top games unchanged. New finals-day games have no court/time yet.

@@ -130,7 +130,13 @@ export function placeholderAdoption(placeholders: PhRow[], real: PhRow[]) {
   for (const [k, ps] of phGroups) {
     const rs = (groups.get(k) ?? []).sort((a, b) => a.order - b.order);
     if (!rs.length) continue;
-    ps.sort((a, b) => a.order - b.order).forEach((p, i) => { if (rs[i]) out.push({ placeholder: p, real: rs[i] }); });
+    ps.sort((a, b) => a.order - b.order);
+    // Real games carry their game number (bracket position): pair by that number, so a stage whose games
+    // are created one by one (as players become known) hands each slot to the right game. Legacy rows
+    // without a game number keep the old in-order pairing.
+    const numbered = [...ps, ...rs].every((r) => r.order >= 1 && r.order < 1000);
+    if (numbered) { for (const p of ps) { const r = rs.find((x) => x.order === p.order); if (r) out.push({ placeholder: p, real: r }); } continue; }
+    ps.forEach((p, i) => { if (rs[i]) out.push({ placeholder: p, real: rs[i] }); });
   }
   return out;
 }
@@ -153,7 +159,12 @@ export async function adoptPlaceholderRows(champId: string): Promise<number> {
     }
   }
   // Placeholder stages whose real games now exist: remove any leftover placeholders and their round.
-  const adoptedStages = new Set(plan.map((x) => `${x.placeholder.group}|${x.placeholder.stageKey}`));
+  // Only once the stage has at least as many real games as placeholders: a stage created game by game
+  // keeps the placeholders of the games still to come.
+  const realCount = (p: PhRow) => real.filter((r) => r.group === p.group && r.stageKey === p.stageKey.replace(PH, "")).length
+    + all.filter((m) => Number(m.group_number) === p.group && String(m.stage_key) === p.stageKey.replace(PH, "") && (m.winner_member_id || DONE.includes(String(m.status ?? "").toLowerCase()))).length;
+  const phCount = (p: PhRow) => ph.filter((x) => x.group === p.group && x.stageKey === p.stageKey).length;
+  const adoptedStages = new Set(plan.filter((x) => realCount(x.placeholder) >= phCount(x.placeholder)).map((x) => `${x.placeholder.group}|${x.placeholder.stageKey}`));
   const left = ph.filter((p) => adoptedStages.has(`${p.group}|${p.stageKey}`) && !plan.some((x) => x.placeholder.id === p.id));
   if (left.length) await fromExt("club_champs_matches").delete().in("id", left.map((p) => p.id));
   for (const k of new Set(plan.map((x) => x.placeholder.stageKey))) {

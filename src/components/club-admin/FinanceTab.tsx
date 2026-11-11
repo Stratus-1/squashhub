@@ -106,8 +106,6 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
 };
 
 const ALL_ACCOUNTS = Object.keys(CHART_OF_ACCOUNTS) as GLAccount[];
-const DEBIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Asset" || CHART_OF_ACCOUNTS[a].category === "Expense");
-const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Liability" || CHART_OF_ACCOUNTS[a].category === "Income");
 
 // Default gateway fee percentages by provider, VAT-inclusive (list rate x 1.15).
 // Overridable per club in Banking settings.
@@ -392,8 +390,6 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     const normalDr = !acc || acc.category === "Asset" || acc.category === "Expense";
     return normalDr ? b.debit - b.credit : b.credit - b.debit;
   };
-  const customIncomeAccounts = customAccounts.filter((a) => a.is_active && a.category === "Income");
-  const customExpenseAccounts = customAccounts.filter((a) => a.is_active && a.category === "Expense");
   const txAccountGroups = transactionAccountGroups(txDirection, CHART_OF_ACCOUNTS, customAccounts.filter((a) => a.is_active));
   const getAccountLabel = (value: string) => {
     if (value?.startsWith("custom:")) {

@@ -43,6 +43,7 @@ import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
 import { MemberCreditControl } from "./MemberCreditControl";
 import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
 import { transactionAccountGroups } from "@/lib/finance/transaction-accounts";
+import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -1403,34 +1404,29 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                   </p>
                 </>
               ) : (
-                <Select value={txAccount} onValueChange={setTxAccount}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
-                  <SelectContent>
-                    {txDirection === "income" && (
-                      <SelectItem value="debtors">
-                        Member Paying Outstanding Account (settles their bill)
-                      </SelectItem>
-                    )}
-                    <SelectGroup>
-                      <SelectLabel className="text-[10px]">{txDirection === "income" ? "Income accounts" : "Expense accounts"}</SelectLabel>
-                      {txAccountGroups.standardPL.map(a => (
-                        <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                      ))}
-                      {txAccountGroups.customPL.map(a => (
-                        <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel className="text-[10px]">Balance sheet accounts</SelectLabel>
-                      {txAccountGroups.standardBS.map(a => (
-                        <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                      ))}
-                      {txAccountGroups.customBS.map(a => (
-                        <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <SearchableAccountPicker
+                  value={txAccount}
+                  onChange={setTxAccount}
+                  groups={[
+                    ...(txDirection === "income"
+                      ? [{ options: [{ value: "debtors", label: "Member Paying Outstanding Account (settles their bill)" }] }]
+                      : []),
+                    {
+                      heading: txDirection === "income" ? "Income accounts" : "Expense accounts",
+                      options: [
+                        ...txAccountGroups.standardPL.map(a => ({ value: a as string, label: CHART_OF_ACCOUNTS[a].label })),
+                        ...txAccountGroups.customPL.map(a => ({ value: `custom:${a.id}`, label: a.name })),
+                      ],
+                    },
+                    {
+                      heading: "Balance sheet accounts",
+                      options: [
+                        ...txAccountGroups.standardBS.map(a => ({ value: a as string, label: CHART_OF_ACCOUNTS[a].label })),
+                        ...txAccountGroups.customBS.map(a => ({ value: `custom:${a.id}`, label: a.name })),
+                      ],
+                    },
+                  ]}
+                />
               )}
               {txAmount && parseFloat(txAmount) > 0 && (txAccount || (txDirection === "income" && txMemberId && txMemberId !== "__none__")) && (
                 <div className="mt-2 p-2 rounded bg-muted/60 text-[10px] text-muted-foreground space-y-0.5">

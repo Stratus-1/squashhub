@@ -370,3 +370,25 @@ describe("double round robin, Swiss tie-breaks, 3rd place", () => {
     expect(() => nextKnockoutRound("t", "d", "ko", [...sf, ...played] as any, { thirdPlace: true })).toThrow(/final/);
   });
 });
+
+describe("structured withdrawal after play has started (Uitsig Ladies A)", () => {
+  it("any club: keeps the entry/position, keeps played results, walks over only the player's unplayed games", async () => {
+    const spec: TournamentSpec = { version: 1, architecture: "structured", name: "Uitsig", divisions: [{ divisionId: "g5", groupNumber: 1, label: "Ladies A", unit: "players", entrants: [], stages: [{ id: "rr", order: 0, kind: "round_robin", name: "Round robin" }] } as any] };
+    env.t.tournaments[0] = { id: TID, club_id: "d8397b8a-60d3-4c4b-afee-25dab218bf19", builder_architecture: "structured", builder_spec: spec, best_of: 5, points_per_game: 11 };
+    env.t.club_champs_entries = Array.from({ length: 4 }, (_, i) => ({ id: `e${i}`, champ_id: TID, group_number: 1, club_member_id: `p${i + 1}`, order_index: i }));
+    env.t.club_champs_registrations = [{ id: "reg", champ_id: TID, club_member_id: "p3" }];
+    env.t.club_champs_matches = [
+      { id: "played", champ_id: TID, group_number: 1, round_number: 1, player_a_member_id: "p3", player_b_member_id: "p4", status: "completed", winner_member_id: "p3", score: "3-1" },
+      { id: "future", champ_id: TID, group_number: 1, round_number: 2, player_a_member_id: "p1", player_b_member_id: "p3", status: "scheduled", winner_member_id: null },
+      { id: "other", champ_id: TID, group_number: 1, round_number: 2, player_a_member_id: "p2", player_b_member_id: "p4", status: "scheduled", winner_member_id: null },
+    ];
+    await withdrawStructured(env.db, TID, "p3");
+    expect(env.t.club_champs_entries.map((e: any) => e.club_member_id)).toEqual(["p1", "p2", "p3", "p4"]);
+    expect(env.t.club_champs_registrations[0].withdrawn_keep_position).toBe(true);
+    const byId = (id: string) => env.t.club_champs_matches.find((m: any) => m.id === id);
+    expect(byId("played")).toMatchObject({ winner_member_id: "p3", score: "3-1" });
+    expect(byId("future").winner_member_id).toBe("p1");
+    expect(byId("other")).toMatchObject({ status: "scheduled", winner_member_id: null });
+    expect(env.t.club_champs_matches).toHaveLength(3);
+  });
+});

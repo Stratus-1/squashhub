@@ -538,10 +538,11 @@ export async function rebuildStructured(db: Db, tid: string): Promise<RebuildRep
 }
 
 /** Withdraw one player (and their pair) then rebuild. Played results stay; only their future games go. */
-/** Categories (of the player's entries) where any real game has been played or decided: positions there are kept on withdrawal. */
-export function withdrawKeepPositionGroups(matches: Array<Record<string, any>>, entryGroups: number[]): number[] {
+/** Categories (of the player's entries) that keep a withdrawn player's position: Swiss categories, and any category where a real game has been played. */
+export function withdrawKeepPositionGroups(matches: Array<Record<string, any>>, entryGroups: number[], swissGroups: number[] = []): number[] {
   const played = new Set(matches.filter((m) => !m.is_bye && (m.winner_member_id || String(m.status ?? "").toLowerCase() === "completed")).map((m) => Number(m.group_number)));
-  return [...new Set(entryGroups)].filter((g) => played.has(g));
+  const swiss = new Set(swissGroups);
+  return [...new Set(entryGroups)].filter((g) => played.has(g) || swiss.has(g));
 }
 
 export async function withdrawStructured(db: Db, tid: string, memberId: string): Promise<RebuildReport> {
@@ -554,7 +555,9 @@ export async function withdrawStructured(db: Db, tid: string, memberId: string):
   // and later games against them are walked over automatically (DB trigger champ_auto_walkover_withdrawn).
   // Removing the entry would renumber every position and rebuild other players' unplayed games.
   const allMatches = (await db.select("club_champs_matches", { champ_id: tid })).flatMap((m) => typeof m.id === "string" ? [{ ...m, id: m.id, status: m.status }] : []);
-  const keepGroups = withdrawKeepPositionGroups(allMatches, entries.map((e) => Number(e.group_number)));
+  const spec = tour?.builder_spec as TournamentSpec | undefined;
+  const swissGroups = (spec?.divisions ?? []).filter((d) => d.stages[0]?.kind === "swiss").flatMap((d) => divisionEntryGroups(spec as TournamentSpec, d)).map(Number);
+  const keepGroups = withdrawKeepPositionGroups(allMatches, entries.map((e) => Number(e.group_number)), swissGroups);
   if (keepGroups.length) {
     if (keepGroups.length !== new Set(entries.map((e) => Number(e.group_number))).size) throw new IntegrityError("unsupported", "Withdraw this player's not-yet-started categories separately; categories already in play keep their position.");
     const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });

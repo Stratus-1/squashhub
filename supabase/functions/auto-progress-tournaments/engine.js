@@ -8201,6 +8201,19 @@ function stageSchedules(formatPlan) {
     windows: [{ date: s.date, from: s.from, to: s.to, courtIds: (s.courtIds ?? []).map(Number) }, ...(s.extraDays ?? []).map((d) => ({ date: d.date, from: d.from, to: d.to, courtIds: (d.courtIds ?? s.courtIds ?? []).map(Number) }))].filter((w) => w.date && w.from && w.to && w.courtIds.length)
   }));
 }
+function stageSchedulesForUnit(formatPlan, divisionLabel) {
+  const all = formatPlan?.stages ?? [];
+  if (!all.some((s) => String(s.unit ?? "").trim()))
+    return stageSchedules(formatPlan);
+  const norm = (v) => String(v ?? "").trim().toLowerCase();
+  const label = norm(divisionLabel);
+  const base = norm(String(divisionLabel ?? "").split(" · ")[0]);
+  const mine = all.filter((s) => {
+    const u = norm(s.unit);
+    return !u || u === label || u === base;
+  });
+  return stageSchedules({ ...formatPlan, stages: mine });
+}
 
 // src/lib/tournaments/swiss-positional-draw.ts
 var fixtureKey = (round, slotA, slotB) => `r${round}-${slotA}v${slotB}`;
@@ -8951,11 +8964,13 @@ function swissStage(champ, arch, gn) {
     if (st?.kind !== "swiss")
       return null;
     const rrFinish = st.rrFinish?.enabled ? st.rrFinish : undefined;
-    const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
+    const timeline = stageSchedulesForUnit(arch?.beta_lifecycle?.format_plan ?? null, d?.label);
     if (!timeline.length)
       return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
-    return { tieBreaks: st.tieBreaks, rounds: champ.club_id === RIVERSIDE_CLUB_ID || rrFinish ? st.swissRounds ?? null : timeline.length, schedule: { ...st.schedule ?? {}, roundDates }, rrFinish };
+    const swissRoundCount = Number(st.swissRounds);
+    const rounds = Number.isFinite(swissRoundCount) && swissRoundCount > 0 ? swissRoundCount : champ.club_id === RIVERSIDE_CLUB_ID || rrFinish ? st.swissRounds ?? null : timeline.length;
+    return { tieBreaks: st.tieBreaks, rounds, schedule: { ...st.schedule ?? {}, roundDates }, rrFinish };
   }
   const r = Number(champ?.swiss_rounds?.[String(gn)]);
   return Number.isFinite(r) && r > 0 ? { rounds: r } : null;

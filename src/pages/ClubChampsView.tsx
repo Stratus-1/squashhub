@@ -1,4 +1,4 @@
-import { stageSchedules } from "@/lib/tournaments/round-scheduling";
+import { stageSchedules, stageSchedulesForUnit } from "@/lib/tournaments/round-scheduling";
 import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
 import { supabase } from "@/integrations/supabase/client";
 import * as React from "react";
@@ -644,7 +644,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       if (st?.kind !== "swiss") return null;
       // The saved round timeline (Stages & Scheduling) is authoritative for how many rounds are played and
       // each round's week; stale per-stage copies (e.g. 6 rounds, R3–R6 all on one date) must not win.
-      const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
+      const timeline = stageSchedulesForUnit(arch?.beta_lifecycle?.format_plan ?? null, d?.label);
       if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish: st.rrFinish ?? null, criteria: resolveTieBreaks(spec, d), swissSequencing: spec.swissSequencing };
       const roundDates = timeline.map((t) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
       // The stage's own configured Swiss round count wins when set — the timeline can span later

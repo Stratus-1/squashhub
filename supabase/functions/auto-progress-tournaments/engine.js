@@ -6571,23 +6571,6 @@ var DefinitionSchema = objectType({
   notUnderstood: arrayType(stringType()).default([])
 });
 
-// src/lib/tournaments/swiss-riverside-aabb-charts.ts
-var RIVERSIDE_CLUB_ID = "11111111-1111-1111-1111-111111111111";
-function sixteenPlayerChart() {
-  const half = [
-    [],
-    [[1, 8], [2, 7], [3, 6], [4, 5]],
-    [[1, 4], [2, 3], [5, 8], [6, 7]],
-    [[1, 3], [2, 4], [5, 7], [6, 8]],
-    [[1, 2], [3, 4], [5, 6], [7, 8]]
-  ];
-  const r1 = Array.from({ length: 8 }, (_, i) => [i + 1, 16 - i]);
-  return half.map((ps, i) => {
-    const pairs = i === 0 ? r1 : [...ps, ...ps.map(([a, b]) => [a + 8, b + 8])];
-    return { round: i + 1, bye: null, pairs: pairs.map(([a, b]) => ({ round: i + 1, a, b })) };
-  });
-}
-
 // src/lib/tournaments/withdraw.ts
 var FINISHED = new Set(["completed", "complete", "walkover", "forfeit", "cancelled"]);
 
@@ -7516,6 +7499,23 @@ var STAGE_KINDS2 = [
   { kind: "cross_league", label: "Cross-league", rounds: false }
 ];
 var KNOWN = new Set(STAGE_KINDS2.map((s) => s.kind));
+
+// src/lib/tournaments/swiss-riverside-aabb-charts.ts
+var RIVERSIDE_CLUB_ID = "11111111-1111-1111-1111-111111111111";
+function sixteenPlayerChart() {
+  const half = [
+    [],
+    [[1, 8], [2, 7], [3, 6], [4, 5]],
+    [[1, 4], [2, 3], [5, 8], [6, 7]],
+    [[1, 3], [2, 4], [5, 7], [6, 8]],
+    [[1, 2], [3, 4], [5, 6], [7, 8]]
+  ];
+  const r1 = Array.from({ length: 8 }, (_, i) => [i + 1, 16 - i]);
+  return half.map((ps, i) => {
+    const pairs = i === 0 ? r1 : [...ps, ...ps.map(([a, b]) => [a + 8, b + 8])];
+    return { round: i + 1, bye: null, pairs: pairs.map(([a, b]) => ({ round: i + 1, a, b })) };
+  });
+}
 
 // src/lib/smart-builder/step-draw.ts
 var INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);

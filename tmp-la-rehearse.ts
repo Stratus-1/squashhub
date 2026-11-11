@@ -21,3 +21,4 @@ console.log("applied", d.rounds.map((r: any) => [r.round_number, appliedRoundPla
 console.log("TL", JSON.stringify(tl.map((t: any) => ({ ...t, windows: t.windows?.length }))));
 console.log("STAGES", JSON.stringify((d.arch.beta_lifecycle.format_plan.stages ?? []).map((s: any) => ({ id: s.id, name: s.name, phase: s.phase, scope: s.scope ?? s.categories, mode: s.mode }))));
 console.log("FULL", JSON.stringify((d.arch.beta_lifecycle.format_plan.stages ?? []).filter((s: any) => s.phase !== "playoff").map((s: any) => { const { id, name, ...rest } = s; return { id, name, keys: Object.keys(rest), cat: rest.category ?? rest.categories ?? rest.scope ?? rest.units ?? rest.unitKeys ?? rest.appliesTo }; })));
+console.log("UNITS", JSON.stringify((d.arch.beta_lifecycle.format_plan.stages ?? []).map((s: any) => [s.name, s.unit ?? null, s.phase])));

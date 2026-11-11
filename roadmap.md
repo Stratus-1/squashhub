@@ -49,3 +49,5 @@
 
 - [x] Uitsig Men's B Round 4 (Gerhard, 9 Nov): preview now follows the frozen 25 Oct chart (R4 1v3, 10v12; R5 3v5/4v6, 9v12/10v11). Display only; saved games unchanged.
 - [x] Checked: frozen 24-player Swiss chart document and the game-creating rules unchanged since 25 Oct.
+
+- [x] Nelspruit: let Leagues-permission holders (Vian) edit submitted league scores, see the Standings edit pencil and adjust bonus points (BP).

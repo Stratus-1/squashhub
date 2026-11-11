@@ -74,8 +74,28 @@ export function buildPlayoffChain(main: PlannedStage, version: string, planned: 
 export function withThirdPlace(res: ChainResult): ChainResult {
   const final = res.stages[res.stages.length - 1];
   if (!final || final.mapping?.source !== "stage_winners") return { ...res, notes: [...res.notes, "3rd/4th place needs a semifinal before the final."] };
-  const third: PlannedStage = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order, mapping: { ...final.mapping, losers: true } };
+  // Bottom-half games carry their own place names: the 5th/6th place game's losers play for 7th/8th.
+  const matches = final.mapping.matches.map((m) => (m.label ? { ...m, label: shiftPlaceLabel(m.label, 2) } : m));
+  const third: PlannedStage = { ...final, id: `${final.id}-3p`, name: "3rd place", order: final.order, mapping: { ...final.mapping, losers: true, matches } };
   return { ...res, stages: [...res.stages.slice(0, -1), third, { ...final, order: final.order + 1 }] };
+}
+
+/** 1 → "1st", 5 → "5th", 22 → "22nd". */
+export const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+/** "5th/6th place" shifted by 2 → "7th/8th place"; other labels unchanged. */
+function shiftPlaceLabel(label: string, by: number): string {
+  const m = /^(\d+)\w\w\/(\d+)\w\w place$/.exec(label);
+  return m ? `${ordinal(Number(m[1]) + by)}/${ordinal(Number(m[2]) + by)} place` : label;
+}
+/**
+ * "Bottom half too": the lower-half games (second half of every stage's games) get their own names so
+ * they are never read as the real semifinal / final, e.g. "Semifinal (5th–8th)", then "5th/6th place".
+ * `top` = number of places in the top bracket (4 for semifinals).
+ */
+function labelBottomHalf(mapping: StageMapping, stageName: string, top: number, last: boolean): StageMapping {
+  const half = mapping.matches.length / 2;
+  const label = last ? `${ordinal(top + 1)}/${ordinal(top + 2)} place` : `${stageName} (${ordinal(top + 1)}–${ordinal(2 * top)})`;
+  return { ...mapping, matches: mapping.matches.map((m, i) => (i >= half ? { ...m, label } : m)) };
 }
 
 function buildPlayoffChainCore(main: PlannedStage, version: string, planned: PlannedEntry[], opts: { forceConfirm?: boolean; qualifiers?: { perPool: number | null; runnersUp: number } | null; bottomHalf?: boolean } = {}): ChainResult {
@@ -170,6 +190,7 @@ function buildPlayoffChainCore(main: PlannedStage, version: string, planned: Pla
     games = [...top, ...lower];
   }
   else if (opts.bottomHalf) notes.push(`${first.name}: "Bottom half too" is only set up automatically for one ranked list or two pools.`);
+  const bottomTop = opts.bottomHalf && (pools === 1 || pools === 2) ? 2 * g : 0;
   const need = Math.max(...games.flat().map(([, pos]) => pos));
   if (poolSize && need > poolSize) return { stages: [], reason: `${first.name} needs ${need} qualifiers per group, but groups have only ${poolSize}.`, notes };
   const stages: PlannedStage[] = [];
@@ -186,7 +207,7 @@ function buildPlayoffChainCore(main: PlannedStage, version: string, planned: Pla
       })();
     const st: PlannedStage = {
       id: `${version}-po${i + 1}`, order: main.order + i + 1, kind: "mapped", name: e.name, discipline: main.discipline,
-      schedule, mapping, progression: { mode: "all_continue", standings: "reset" } as any,
+      schedule, mapping: bottomTop ? labelBottomHalf(mapping, e.name, bottomTop, i === planned.length - 1) : mapping, progression: { mode: "all_continue", standings: "reset" } as any,
       generation: !opts.forceConfirm && e.plan.trigger === "auto" ? "automatic" : "owner_approval",
       waitForOrganiser: !(!opts.forceConfirm && e.plan.trigger === "auto"),
     };

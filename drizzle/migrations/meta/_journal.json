@@ -2759,6 +2759,13 @@
       "when": 1794405194630,
       "tag": "0393_gl_account_other_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 394,
+      "version": "7",
+      "when": 1794411785508,
+      "tag": "0394_stage_round_guard_allow_settled_playoff_games",
+      "breakpoints": true
     }
   ]
 }

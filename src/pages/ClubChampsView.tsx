@@ -1369,7 +1369,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                   <div className="text-xs text-muted-foreground">
                     {!pairingSet
                       ? "Who plays whom in the first play-off round isn't chosen yet (\"Decide pairing later\"). Choose a pairing, e.g. Pool crossover, in the play-off settings and the qualifiers fill in here."
-                      : done ? "Qualifiers confirmed from the final pool standings." : "Pool standings are live; bracket names fill in once every pool game is complete."}
+                      : done ? "Qualifiers confirmed from the final pool standings." : "Pool standings are live; each play-off game fills in as soon as both its places are certain."}
                   </div>
                   <PlannedPlayoffBracketView rows={rows} pools={poolCards} confirmed={done && pairingSet} champion={(() => {
                     const fin = ko.find((m: any) => String(m.stage_label ?? "").toLowerCase().replace(/[^a-z]/g, "") === "final" && m.winner_member_id);

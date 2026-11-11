@@ -270,6 +270,9 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const key = `${f.divisionId}/${f.stageId}/${f.roundId}`;
     if (roundIds[key]) continue;
     const sk = `${f.divisionId}/${f.stageId}`;
+    // A play-off stage round may already exist from games created earlier (settled places): add to it.
+    const prior = ids.stage[sk] ? (await db.select("club_champs_rounds", { champ_id: tid, stage_id: ids.stage[sk], round_number: f.round ?? 1 }))[0] : null;
+    if (prior?.id && f.stageKind === "mapped") { roundIds[key] = prior.id; continue; }
     const [r] = await db.insert("club_champs_rounds", [{
       champ_id: tid, group_number: divisionGroup(spec, spec.divisions.find((d) => d.divisionId === f.divisionId)!), round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
@@ -711,21 +714,130 @@ export function stageWinners(src: PlannedStage, matches: Array<Record<string, an
 }
 
 /** Mapped stage fed by finishing positions of an earlier pool stage: positions → units → fixtures. */
+/* ───── early play-off games: create a game as soon as both its places are settled ───── */
+
+const isPoolKind = (k: string) => k === "round_robin" || k === "pools";
+
+const rowDecided = (x: Record<string, any>) => isDecided({ status: x.status, winner: x.winner_member_id, score: x.score } as any);
+
+/**
+ * Pure: pool positions of a round-robin source stage that are already certain, `"pool:position" → unit`.
+ * A finished pool uses the full ranking (wins → tie-breaks → organiser order); a position still in an
+ * unresolved tie is NOT settled. An unfinished pool settles a position only when the player holds it on
+ * WINS ALONE, strictly apart from everybody, in every possible outcome of the pool's open games — wins
+ * always rank first, so no tie-break can ever move them. Never guesses.
+ */
+export function settledPoolPositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, criteria: TieBreakCriterion[] = resolveTieBreaks(null, d), maxOpen = 12): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!isPoolKind(src.kind)) return out;
+  const rows = matches.filter((x) => x.stage_key === src.id && !x.is_bye);
+  const byPool = new Map<number, Array<Record<string, any>>>();
+  for (const x of rows) { const pn = x.pool_number ?? 1; byPool.set(pn, [...(byPool.get(pn) ?? []), x]); }
+  const complete = [...byPool.values()].every((l) => l.every(rowDecided));
+  const ranked = rankSourcePools(d, src, matches, orders, undefined, criteria);
+  [...byPool.entries()].sort((a, b) => a[0] - b[0]).forEach(([, list], pi) => {
+    const pool = ranked[pi];
+    if (!pool) return;
+    const open = list.filter((x) => !rowDecided(x) && x.player_a_member_id && x.player_b_member_id);
+    if (!open.length || complete) {
+      const tied = new Set(pool.result.ties.flatMap((t) => t.ids));
+      pool.result.order.forEach((id, i) => { if (!tied.has(id)) out.set(`${pi}:${i + 1}`, id); });
+      return;
+    }
+    if (open.length > maxOpen) return;
+    const members = pool.members;
+    const base = new Map(members.map((m) => [m, 0]));
+    for (const x of list) {
+      if (!rowDecided(x) || !x.winner_member_id) continue;
+      const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+      const w = String(a).split("+").includes(x.winner_member_id) ? a : b;
+      if (base.has(w)) base.set(w, base.get(w)! + 1);
+    }
+    const sides = open.map((x) => [unitOfRow(x, "a"), unitOfRow(x, "b")] as const);
+    const place = new Map<string, number | null>(members.map((m) => [m, undefined as any]));
+    for (let mask = 0; mask < 1 << open.length; mask++) {
+      const wins = new Map(base);
+      sides.forEach(([a, b], i) => { const w = mask & (1 << i) ? b : a; if (wins.has(w)) wins.set(w, wins.get(w)! + 1); });
+      for (const m of members) {
+        if (place.get(m) === null) continue;
+        const mine = wins.get(m)!;
+        const above = members.filter((o) => o !== m && wins.get(o)! > mine).length;
+        const level = members.some((o) => o !== m && wins.get(o)! === mine);
+        const p = level ? null : above + 1;
+        const prev = place.get(m);
+        place.set(m, prev === undefined ? p : prev === p ? p : null);
+      }
+    }
+    for (const [m, p] of place) if (p) out.set(`${pi}:${p}`, m);
+  });
+  return out;
+}
+
+/** Pure: slots of a stage_winners stage already known, `"0:n" → unit` (n = game n of the source stage, playing order). */
+export function settledWinnerSlots(src: PlannedStage, matches: Array<Record<string, any>>, losers = false): Map<string, string> {
+  const out = new Map<string, string>();
+  const games = [...(src.mapping?.matches ?? [])].sort((a, b) => a.round - b.round || a.order - b.order);
+  const rows = matches.filter((x) => x.stage_key === src.id);
+  games.forEach((g, i) => {
+    const x = rows.find((r) => (r.round_number ?? 1) === g.round && Number(r.bracket_position) === g.order);
+    if (!x?.winner_member_id) return;
+    const a = unitOfRow(x, "a"), b = unitOfRow(x, "b");
+    const aWon = String(a).split("+").includes(x.winner_member_id);
+    out.set(`0:${i + 1}`, aWon !== losers ? a : b);
+  });
+  return out;
+}
+
+/** Whether a mapped stage may create single games before its source stage is finished. */
+export const earlyGamesSupported = (st: PlannedStage, src: PlannedStage | null | undefined) =>
+  !!src && st.kind === "mapped" && ((st.mapping?.source === "stage_standings" && isPoolKind(src.kind)) || (st.mapping?.source === "stage_winners" && src.kind === "mapped" && !!src.mapping?.matches?.length));
+
+const gameKey = (round: number | null | undefined, order: number | null | undefined) => `${round ?? 1}:${Number(order) || 0}`;
+
 async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: SpecDivision, st: PlannedStage, matches: Array<Record<string, any>>, existing: FixtureRow[], ownerConfirmed: boolean) {
   const m = st.mapping;
   if (!m || m.source === "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: its games were created with the tournament.`);
-  if (existing.some((f) => f.stageId === st.id)) throw new IntegrityError("exists", `${st.name} already has games.`);
   if (st.generation !== "automatic" && !ownerConfirmed) throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
   const src = d.stages.find((s) => s.id === m.sourceStageId);
   if (!src) throw new IntegrityError("mapping_source", `${st.name}: source stage not found.`);
+  // Games of this stage already created early (identity = round + game order).
+  const mine = matches.filter((x) => x.stage_key === st.id);
+  if (mine.some((x) => !Number(x.bracket_position))) throw new IntegrityError("exists", `${st.name} already has games.`);
+  const have = new Map(mine.map((x) => [gameKey(x.round_number, x.bracket_position), x]));
+  if (have.size >= m.matches.length) throw new IntegrityError("exists", `${st.name} already has games.`);
   const done = existing.filter((f) => f.stageId === src.id);
-  if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
-  if (src.kind === "swiss" && Math.max(...done.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) throw new IntegrityError("prereq", `${src.name}: not all Swiss rounds are played yet.`);
-  const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
-  const positions = m.source === "stage_winners"
-    ? [stageWinners(src, matches, !!m.losers)]
-    : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
-  const fixtures = mappedFixtures(tid, d, st, positions);
+  const srcFinished = done.length > 0 && done.every(isDecided)
+    && !(src.kind === "swiss" && Math.max(...done.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1))
+    && !(src.kind === "mapped" && src.mapping && src.mapping.source !== "seed_pools" && done.length < src.mapping.matches.length);
+  let fixtures: EngineFixture[];
+  if (srcFinished) {
+    const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
+    const positions = m.source === "stage_winners"
+      ? [stageWinners(src, matches, !!m.losers)]
+      : sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used, false, resolveTieBreaks(spec, d), st.name);
+    const all = mappedFixtures(tid, d, st, positions);
+    // Games created early must be exactly the games the finished stage resolves to — never silently different.
+    for (const f of all) {
+      const x = have.get(gameKey(f.round, f.slot));
+      if (x && [unitOfRow(x, "a"), unitOfRow(x, "b")].sort().join("|") !== [f.a, f.b].sort().join("|"))
+        throw new IntegrityError("early_mismatch", `${st.name} game ${f.slot}: the game already created does not match the final ${src.name} result. Check it before continuing.`);
+    }
+    fixtures = all.filter((f) => !have.has(gameKey(f.round, f.slot)));
+  } else {
+    if (!earlyGamesSupported(st, src) || !done.length) throw new IntegrityError("prereq", `${src.name} is not finished.`);
+    const settled = m.source === "stage_winners"
+      ? settledWinnerSlots(src, matches, !!m.losers)
+      : settledPoolPositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], resolveTieBreaks(spec, d));
+    const unit = new Map(m.units.map((u) => [u.id, u]));
+    const known = (uid: string) => !!unit.get(uid)?.slots.every((s) => settled.has(`${s.pool}:${s.position}`));
+    const pick = m.matches.filter((x) => !have.has(gameKey(x.round, x.order)) && known(x.a) && known(x.b));
+    if (!pick.length) throw new IntegrityError("prereq", `${src.name} is not finished.`);
+    const positions: string[][] = Array.from({ length: m.pools }, () => []);
+    for (const [k, id] of settled) { const [pl, pos] = k.split(":").map(Number); (positions[pl] ??= [])[pos - 1] = id; }
+    const units = m.units.filter((u) => pick.some((x) => x.a === u.id || x.b === u.id));
+    fixtures = mappedFixtures(tid, d, { ...st, mapping: { ...m, units, matches: pick } }, positions);
+  }
+  if (!fixtures.length) throw new IntegrityError("exists", `${st.name} already has games.`);
   const known = new Set(d.entrants.map((e) => e.id));
   const units = [...new Set(fixtures.flatMap((f) => [f.a!, f.b!]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));
   const withUnits: TournamentSpec = { ...spec, divisions: spec.divisions.map((x) => x === d ? { ...x, entrants: [...x.entrants, ...units] } : x) };

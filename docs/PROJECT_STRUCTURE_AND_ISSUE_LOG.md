@@ -4457,3 +4457,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Test: `supabase/tests/mobile-finance-family-payer/run.sh` (throwaway local PostgreSQL) passes on 0396 and fails on 0395.
 - Live impact at apply time: 0 GL rows excluded under either rule, 0 unpaid payer fees above R0, 0 payer fees with a GL row on the payer's own account; no member payload money values or statements changed.
 - Remaining web-only statement lines (not in Player payload): directly-paid bar purchases shown as net-zero item/payment pairs.
+
+### 2026-11-11 — Player finance payerFees shows paid family fees (0397)
+- Gap: web MyAccount payerFees lists paid and unpaid family fees; `mobile_member_finance_payload` still filtered `payerFees` to unpaid and hardcoded method "Not paid yet".
+- Fix: forward-only `supabase/migrations/20261111210000_mobile_member_finance_payer_fees_paid_history.sql` (applied as drizzle 0397) removes the paid filter from the `payerFees` display array only; method = "Recorded by club" when paid, else "Not paid yet". Family sums, outstanding, unpaid totals, booking eligibility and synthetic `family-fee-<id>` statement rows remain unpaid-only (amount > 0 where 0396 applied it).
+- Test: `supabase/tests/mobile-finance-family-payer/run.sh` (paid family fee listed once with paidAt/method, no totals/statement effect; fails with `SKIP_0397=1`).

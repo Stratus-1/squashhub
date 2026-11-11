@@ -13,3 +13,8 @@ console.log("rounds", model.rounds.map((r: any) => [r.round, r.created, r.comple
 const grid = buildProposedSwissGrid(model, { appliedPlayBy: { 3: "2026-11-05", 4: "2026-11-12" }, exactLadiesAChart: true, partialGeneration: true, noRepeats: true, schedule: st.schedule });
 console.log("issues", grid.issues);
 for (const rd of grid.rounds) console.log(rd.round, rd.blocks.map((b: any) => b.rows.map((r: any) => `${r.pos}:${r.name}${r.id ? "" : "(noid)"}`).join(" v ")).join(" | "));
+import { stageSchedules } from "@/lib/tournaments/round-scheduling";
+import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
+const tl = stageSchedules(d.arch.beta_lifecycle?.format_plan ?? null);
+console.log("timeline len", tl.length, tl.map((t: any) => t.deadline));
+console.log("applied", d.rounds.map((r: any) => [r.round_number, appliedRoundPlayBy(r)]));

@@ -12,7 +12,7 @@ import { StageProgressPanel } from "./StageProgressPanel";
 import { schedulePlannedPlayoffGames } from "@/lib/smart-builder/playoff-schedule";
 import { assertNotDiamondTournament } from "@/lib/tournaments/diamond-guard";
 import {
-  atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
+  atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructuredPlayer, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
 import { progressionOf, type PlannedStage } from "@/lib/tournaments/contract";
 import { buildReplacementStage, replaceUnplayedStage } from "@/lib/tournaments/replace-stage";

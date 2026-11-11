@@ -24748,6 +24748,15 @@ export type Database = {
         Args: { p_sync_secret: string }
         Returns: boolean
       }
+      mobile_mark_notifications_read: {
+        Args: {
+          p_club_id: string
+          p_member_id: string
+          p_notification_ids: string[]
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
       mobile_member_finance_payload: {
         Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
         Returns: Json
@@ -24819,6 +24828,17 @@ export type Database = {
       mobile_scoring_side_label: {
         Args: { p_partner: string; p_primary: string }
         Returns: string
+      }
+      mobile_tournament_notification: {
+        Args: {
+          p_action?: string
+          p_club_id: string
+          p_divisions?: number[]
+          p_member_id: string
+          p_notification_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
       }
       mobile_tournament_sync_payload: {
         Args: { sync_secret: string }

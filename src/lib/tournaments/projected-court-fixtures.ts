@@ -7,7 +7,7 @@
  * date/time/court. Nothing is written: no fixtures, no bookings. Rounds that
  * already have saved fixtures are skipped (the saved fixture is shown instead).
  */
-import { stageSchedules } from "@/lib/tournaments/round-scheduling";
+import { stageSchedules, stageSchedulesForUnit } from "@/lib/tournaments/round-scheduling";
 import { scheduleDraws, slotOnlyDraw, timeSlots, fixtureKey, type FixtureSchedule } from "@/lib/tournaments/swiss-positional-draw";
 import { appliedRoundPlayBy } from "@/lib/tournaments/stage-schedule";
 import { divisionGroup } from "@/lib/tournaments/engine-service";
@@ -54,7 +54,7 @@ function swissStage(champ: any, arch: any, gn: number): { rounds: number | null;
     const st = [...(d?.stages ?? [])].sort((x: any, y: any) => x.order - y.order)[0];
     if (st?.kind !== "swiss") return null;
     const rrFinish = st.rrFinish?.enabled ? st.rrFinish : undefined;
-    const timeline = stageSchedules(arch?.beta_lifecycle?.format_plan ?? null);
+    const timeline = stageSchedulesForUnit(arch?.beta_lifecycle?.format_plan ?? null, d?.label);
     if (!timeline.length) return { tieBreaks: st.tieBreaks, rounds: st.swissRounds ?? null, schedule: st.schedule ?? null, rrFinish };
     const roundDates = timeline.map((t: any) => t.deadline ?? t.windows[t.windows.length - 1]?.date ?? null);
     // The stage's configured Swiss round count wins when set (same rule as the tournament page): the timeline

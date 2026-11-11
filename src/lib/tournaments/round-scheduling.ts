@@ -110,6 +110,21 @@ export function stageSchedules(formatPlan: any): StageSchedule[] {
   }));
 }
 
+/**
+ * Main-phase stages that apply to one category: shared rows (no unit) plus rows scoped to this
+ * category ("Ladies A" matches the division label "Ladies A · Singles"). Without units this equals
+ * `stageSchedules`; why: a timeline holding one "Round 4" per category must not shift later round dates.
+ */
+export function stageSchedulesForUnit(formatPlan: any, divisionLabel: string | null | undefined): StageSchedule[] {
+  const all = ((formatPlan?.stages ?? []) as any[]);
+  if (!all.some((s) => String(s.unit ?? "").trim())) return stageSchedules(formatPlan);
+  const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const label = norm(divisionLabel);
+  const base = norm(String(divisionLabel ?? "").split(" · ")[0]);
+  const mine = all.filter((s) => { const u = norm(s.unit); return !u || u === label || u === base; });
+  return stageSchedules({ ...formatPlan, stages: mine });
+}
+
 /** Live round rows (every category) belonging to a saved stage: label match first, else round number = position. */
 export function roundsForStage(stage: StageSchedule, rounds: LiveRound[]): LiveRound[] {
   const norm = (s: string | null) => String(s ?? "").trim().toLowerCase();

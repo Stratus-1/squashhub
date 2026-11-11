@@ -4462,3 +4462,9 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Gap: web MyAccount payerFees lists paid and unpaid family fees; `mobile_member_finance_payload` still filtered `payerFees` to unpaid and hardcoded method "Not paid yet".
 - Fix: forward-only `supabase/migrations/20261111210000_mobile_member_finance_payer_fees_paid_history.sql` (applied as drizzle 0397) removes the paid filter from the `payerFees` display array only; method = "Recorded by club" when paid, else "Not paid yet". Family sums, outstanding, unpaid totals, booking eligibility and synthetic `family-fee-<id>` statement rows remain unpaid-only (amount > 0 where 0396 applied it).
 - Test: `supabase/tests/mobile-finance-family-payer/run.sh` (paid family fee listed once with paidAt/method, no totals/statement effect; fails with `SKIP_0397=1`).
+
+### 2026-11-11 — Player finance includes unposted own fees (0398)
+- Gap: own unpaid fees with no linked member GL row were missing from the Player statement and outstanding after mobile removed its Fee Activity section.
+- Fix: forward-only `supabase/migrations/20261111220000_mobile_member_finance_unposted_own_fees.sql` (applied as drizzle 0398, byte-identical) adds eligible own unpaid fees (payer NULL/self, amount > 0, not club-payable, no debtors/member_credits row for the same fee/member/club) once to totalBilled/outstanding and as a `fee-<uuid>` statement debit. Uses the negated posting predicate from `journal_fee_assessment()` (skip when `invoice_issued_at IS NULL AND invoice_due_date IS NOT NULL AND invoice_due_date > CURRENT_DATE`), so unissued future-due drafts (e.g. Riverside 2027 renewals) stay excluded until `journal_fee_issued()` posts them.
+- Test: `supabase/tests/mobile-finance-family-payer/run.sh` passes on 0398; fails with `SKIP_0398=1` and on a version without the draft predicate.
+- Live impact at apply time: 1 fee (Nelspruit R5 tournament entry, 25 May 2026), 1 member.

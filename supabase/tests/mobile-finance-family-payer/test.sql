@@ -138,3 +138,26 @@ BEGIN
   ASSERT p->'statement'->0->>'id' = 'family-fee-00000000-0000-0000-0000-0000000001b1', 'penny family row';
   ASSERT (p->>'outstanding')::numeric = 35 AND (p->>'totalBilled')::numeric = 35, 'penny totals';
 END $$;
+
+-- 0398 posting rule (journal_fee_assessment): Vera (v1) has an unissued
+-- future-due draft D1 R500 (excluded), an unissued past-due fee D2 R7 and an
+-- issued future-due fee D3 R3 (both included).
+insert into club_members values
+ ('00000000-0000-0000-0000-0000000000c4','00000000-0000-0000-0000-00000000000c','Vera Drafts');
+insert into club_member_fee_payments(id, club_member_id, paid_by_member_id, amount, paid, fee_type, fee_label, invoice_due_date, invoice_issued_at, created_at) values
+ ('00000000-0000-0000-0000-0000000001d1','00000000-0000-0000-0000-0000000000c4',null,500,false,'renewal','Renewal 2099 draft',current_date + 30,null,'2026-01-10'),
+ ('00000000-0000-0000-0000-0000000001d2','00000000-0000-0000-0000-0000000000c4',null,7,false,'tournament_entry','Past due','2020-01-01',null,'2026-01-11'),
+ ('00000000-0000-0000-0000-0000000001d3','00000000-0000-0000-0000-0000000000c4',null,3,false,'renewal','Issued future',current_date + 30,'2026-01-12','2026-01-12');
+
+DO $$
+DECLARE v jsonb; ids text[];
+BEGIN
+  v := public.mobile_member_finance_payload('ok','00000000-0000-0000-0000-00000000000c','00000000-0000-0000-0000-0000000000c4');
+  SELECT array_agg(e->>'id' ORDER BY ord) INTO ids FROM jsonb_array_elements(v->'statement') WITH ORDINALITY t(e, ord);
+  ASSERT ids = ARRAY['fee-00000000-0000-0000-0000-0000000001d3','fee-00000000-0000-0000-0000-0000000001d2'], 'vera rows ' || COALESCE(ids::text, 'null');
+  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v->'statement') e WHERE e->>'id' = 'fee-00000000-0000-0000-0000-0000000001d1'), 'future-due draft excluded';
+  ASSERT (v->>'outstanding')::numeric = 10 AND (v->>'totalBilled')::numeric = 10, 'vera totals ' || (v->>'outstanding');
+  ASSERT (v->'statement'->0->>'balance')::numeric = 10, 'vera final balance';
+  -- Unpaid-fee total keeps its existing (0397) meaning: all own unpaid fees.
+  ASSERT (v->>'unpaidFeesTotal')::numeric = 510, 'vera unpaidFeesTotal ' || (v->>'unpaidFeesTotal');
+END $$;

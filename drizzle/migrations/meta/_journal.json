@@ -2787,6 +2787,13 @@
       "when": 1794422751934,
       "tag": "0397_mobile_member_finance_payer_fees_paid_history",
       "breakpoints": true
+    },
+    {
+      "idx": 398,
+      "version": "7",
+      "when": 1794423773905,
+      "tag": "0398_mobile_member_finance_unposted_own_fees",
+      "breakpoints": true
     }
   ]
 }

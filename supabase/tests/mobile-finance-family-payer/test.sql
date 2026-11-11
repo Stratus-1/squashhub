@@ -9,6 +9,9 @@ insert into club_member_fee_payments(id, club_member_id, paid_by_member_id, amou
  ('00000000-0000-0000-0000-0000000000f1','00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000a1',100,false,'membership','Junior 2026','2026-02-01'),
  ('00000000-0000-0000-0000-0000000000f0','00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000a1',0,false,'membership','Zero fee','2026-02-02'),
  ('00000000-0000-0000-0000-0000000000ff','00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-0000000000a1',75,false,'membership','Other club fee','2026-02-03');
+-- 0397: a PAID R60 family fee F2 that P paid for O. Display-only in payerFees.
+insert into club_member_fee_payments(id, club_member_id, paid_by_member_id, amount, paid, paid_at, fee_type, fee_label, created_at) values
+ ('00000000-0000-0000-0000-0000000000f2','00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000a1',60,true,'2026-02-15','membership','Junior 2025','2026-02-10');
 insert into club_journal_entries(id, club_id, club_member_id, account, debit, credit, description, created_at, fee_payment_id) values
  -- Owner: F1 posted on her account (must be excluded), plus her own bar charge R50.
  ('00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-00000000000c','00000000-0000-0000-0000-0000000000b1','debtors',100,0,'Fee raised: Junior 2026','2026-02-01','00000000-0000-0000-0000-0000000000f1'),
@@ -46,9 +49,20 @@ BEGIN
   ASSERT (p->>'outstanding')::numeric = 90, 'payer outstanding ' || (p->>'outstanding');
   ASSERT (p->>'outstanding')::numeric = (s->0->>'balance')::numeric, 'outstanding = final balance';
 
-  -- 4. payerFees fallback unchanged (club-scoped, includes R0 fee, has createdAt).
-  ASSERT jsonb_array_length(p->'payerFees') = 2, 'payerFees count';
+  -- 4. payerFees: club-scoped, includes R0 fee and (0397) the paid fee once, has createdAt.
+  ASSERT jsonb_array_length(p->'payerFees') = 3, 'payerFees count ' || jsonb_array_length(p->'payerFees');
   ASSERT (SELECT bool_and(e ? 'createdAt') FROM jsonb_array_elements(p->'payerFees') e), 'createdAt';
+  ASSERT (SELECT count(*) FROM jsonb_array_elements(p->'payerFees') e WHERE e->>'id' = '00000000-0000-0000-0000-0000000000f2') = 1, 'paid fee listed once';
+  ASSERT (SELECT (e->>'paid')::boolean AND (e->>'paidAt')::timestamptz = '2026-02-15'::timestamptz AND e->>'method' = 'Recorded by club'
+          FROM jsonb_array_elements(p->'payerFees') e WHERE e->>'id' = '00000000-0000-0000-0000-0000000000f2'), 'paid fee paid/paidAt/method';
+  ASSERT (SELECT bool_and(e->>'method' = 'Not paid yet' AND NOT (e->>'paid')::boolean)
+          FROM jsonb_array_elements(p->'payerFees') e WHERE e->>'id' <> '00000000-0000-0000-0000-0000000000f2'), 'unpaid rows say Not paid yet';
+  -- 4b. Paid family fee does not touch totals, eligibility or statement.
+  ASSERT NOT EXISTS (SELECT 1 FROM jsonb_array_elements(s) e WHERE e->>'id' = 'family-fee-00000000-0000-0000-0000-0000000000f2'), 'no statement row for paid fee';
+  ASSERT (p->>'unpaidFeesTotal')::numeric = 100, 'unpaidFeesTotal ' || (p->>'unpaidFeesTotal');
+  ASSERT (p->>'planAllowedDebt')::numeric = 100, 'planAllowedDebt ' || (p->>'planAllowedDebt');
+  ASSERT (p->>'bookingShortfall')::numeric = 10, 'bookingShortfall ' || (p->>'bookingShortfall');
+  ASSERT (p->>'totalBilled')::numeric = 120, 'totalBilled ' || (p->>'totalBilled');
 
   -- 5. Response keys unchanged.
   ASSERT (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(p) k) = ARRAY['bookingShortfall','canPlay','clubId','currencyCode','currencySymbol','fees','hasMonthlyMandate','memberCreditBalance','memberId','minimumPlayBalance','outstanding','payerFees','paymentMethods','paymentSetup','planAllowedDebt','playableBalance','statement','status','totalBilled','totalPaid','unpaidFeesTotal'], 'keys';

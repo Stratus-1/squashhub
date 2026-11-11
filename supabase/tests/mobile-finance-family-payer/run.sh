@@ -11,5 +11,9 @@ setpriv --reuid=1000 --regid=1000 --clear-groups pg_ctl -D "$D/data" -o "-p 5443
 P="psql -X -q -v ON_ERROR_STOP=1 -h $D -p 54431 -U lovable -d postgres"
 $P -f "$HERE/schema.sql"
 grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111200000_mobile_member_finance_family_payer_correction.sql" | $P
+# 0397 replaces the function; set SKIP_0397=1 to prove the paid-history checks fail on 0396 alone.
+if [ -z "${SKIP_0397:-}" ]; then
+  grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111210000_mobile_member_finance_payer_fees_paid_history.sql" | $P
+fi
 $P -f "$HERE/test.sql"
 echo 'MOBILE FINANCE FAMILY PAYER TESTS PASSED'

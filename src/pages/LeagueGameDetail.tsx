@@ -2846,6 +2846,9 @@ export default function LeagueGameDetail() {
     memberClubId: activeMember ? memberClub?.id : null,
     fixtureClubIds: [homeClubId, awayClubId],
   });
+  // Bonus-point (original players) adjustments and recalculated-points saves
+  // follow the same authority as editing submitted scores.
+  const canAdjustLeaguePoints = isClubAdmin || canEditSubmittedScores;
   const canEditLineup = !isSubmitted && !md && !isMarkOnly && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
@@ -3806,7 +3809,7 @@ export default function LeagueGameDetail() {
                           <tr className="bg-muted/40 font-semibold text-xs">
                             <td colSpan={bestOf} className="p-1 text-right">
                               ORIGINAL PLAYERS (×{displaySummary.opbValue})
-                              {isClubAdmin && (originalCountAdj.home !== 0 || originalCountAdj.away !== 0) && (
+                              {canAdjustLeaguePoints && (originalCountAdj.home !== 0 || originalCountAdj.away !== 0) && (
                                 <span className="ml-2 text-[10px] text-amber-700 dark:text-amber-300 font-normal">
                                   (admin adj H:{originalCountAdj.home >= 0 ? `+${originalCountAdj.home}` : originalCountAdj.home}, V:{originalCountAdj.away >= 0 ? `+${originalCountAdj.away}` : originalCountAdj.away})
                                 </span>
@@ -3814,7 +3817,7 @@ export default function LeagueGameDetail() {
                             </td>
                             <td className="text-center p-1">
                               <div className="flex items-center justify-center gap-1">
-                                {isClubAdmin && (
+                                {canAdjustLeaguePoints && (
                                   <button
                                     type="button"
                                     onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home - 1 }))}
@@ -3823,7 +3826,7 @@ export default function LeagueGameDetail() {
                                   >−</button>
                                 )}
                                 <span>{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</span>
-                                {isClubAdmin && (
+                                {canAdjustLeaguePoints && (
                                   <button
                                     type="button"
                                     onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home + 1 }))}
@@ -3835,7 +3838,7 @@ export default function LeagueGameDetail() {
                             </td>
                             <td className="text-center p-1">
                               <div className="flex items-center justify-center gap-1">
-                                {isClubAdmin && (
+                                {canAdjustLeaguePoints && (
                                   <button
                                     type="button"
                                     onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away - 1 }))}
@@ -3844,7 +3847,7 @@ export default function LeagueGameDetail() {
                                   >−</button>
                                 )}
                                 <span>{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</span>
-                                {isClubAdmin && (
+                                {canAdjustLeaguePoints && (
                                   <button
                                     type="button"
                                     onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away + 1 }))}
@@ -4006,10 +4009,10 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {(isClubAdmin || isHomeCaptain || isAwayCaptain) && (
+        {(canAdjustLeaguePoints || isHomeCaptain || isAwayCaptain) && (
           <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3 space-y-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-destructive">
-              {isClubAdmin ? "Admin tools" : "Captain shortcut"}
+              {isClubAdmin ? "Admin tools" : canEditSubmittedScores ? "League organiser tools" : "Captain shortcut"}
             </div>
             <p className="text-[11px] text-muted-foreground leading-snug">
               Skip the rubber-by-rubber workflow and enter the final total points directly. Useful for catch-up fixtures or results imported from outside (e.g. NSA scrape).
@@ -4038,7 +4041,7 @@ export default function LeagueGameDetail() {
 
 
             {/* Post-play correction: recalculated bonus / totals awaiting admin save */}
-            {isClubAdmin && existingResult && (() => {
+            {canAdjustLeaguePoints && existingResult && (() => {
               const savedHome = Number((existingResult as any).home_total_points ?? 0);
               const savedAway = Number((existingResult as any).away_total_points ?? 0);
               const savedHomeBonus = Number((existingResult as any).home_bonus_points ?? 0);
@@ -4277,7 +4280,7 @@ export default function LeagueGameDetail() {
 
 
 
-      {(isClubAdmin || isHomeCaptain || isAwayCaptain) && fixtureId && (
+      {(canAdjustLeaguePoints || isHomeCaptain || isAwayCaptain) && fixtureId && (
         <AdminManualScoreDialog
           open={adminManualOpen}
           onOpenChange={setAdminManualOpen}

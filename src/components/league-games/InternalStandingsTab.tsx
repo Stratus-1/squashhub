@@ -12,6 +12,10 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { useMatchDayDevice } from "@/contexts/MatchDayDevice";
+import { canEditSubmittedLeagueScores } from "@/lib/leagues/fixture-setup-access";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TeamLogo } from "./TeamLogo";
 import { rankTint } from "@/lib/rank-tint";
@@ -68,9 +72,21 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const isAdmin = isClubAdmin || isSuperAdmin;
+  const { club: memberClub } = useClubContext();
+  const hasLeaguePermission = useHasPermission("leagues");
+  const md = useMatchDayDevice();
+  // Same rule as the scorecard's "Edit Submitted Scores": club admins plus
+  // Leagues-permission holders for their own club's league.
+  const canEditScores = canEditSubmittedLeagueScores({
+    isDevice: !!md,
+    isClubAdmin: isAdmin,
+    hasLeaguePermission,
+    memberClubId: activeMember ? memberClub?.id : null,
+    fixtureClubIds: [clubId],
+  });
   const canEditCell = (_teamCode: string, dateStr: string) => {
     if (dateStr > todayStr) return false;
-    return isAdmin;
+    return canEditScores;
   };
 
   // Resolve the platform association id (fixtures live under platform_association_id,
@@ -366,7 +382,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />
         <span>
           Tap any score cell <span className="inline-flex items-center gap-1 mx-1 px-1.5 py-0.5 rounded bg-background border"><Eye className="w-3 h-3 text-primary/70" /></span>
-          to open the scoreboard. Captains and admins see <Pencil className="inline w-3 h-3 mx-1 opacity-60" /> to edit.
+          to open the scoreboard. Admins and league organisers see <Pencil className="inline w-3 h-3 mx-1 opacity-60" /> to edit.
         </span>
       </div>
 

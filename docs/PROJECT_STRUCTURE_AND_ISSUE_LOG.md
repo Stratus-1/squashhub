@@ -4412,3 +4412,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Request: the Enter Transaction account list was long to scroll on phones.
 - Fix: `src/components/club-admin/finance/SearchableAccountPicker.tsx` (inline cmdk list, no portal so typing/scrolling work inside the dialog) replaces the Select in `FinanceTab.tsx`; same account groups and values from `transactionAccountGroups`.
 - Verified on a 384px screen: typing "loan" filtered to "Loan Constance" and selecting it filled the field.
+
+### 2026-11-11 — Staff loan paid by EFT showed as positive Cash (Nelspruit)
+- Cause: club-made asset accounts without a parent were carried on the `cash` ledger account, so "Loan Constance" (R2,000 EFT) credited Bank correctly but debited Cash.
+- Fix: new `other_assets` carrier (`STANDALONE_FALLBACK_ACCOUNT.Asset`), the one existing line moved from `cash` to `other_assets`; "Petty Cash" relabelled "Cash". Test in `src/lib/finance/transaction-accounts.test.ts`.

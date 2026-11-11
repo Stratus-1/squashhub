@@ -2752,6 +2752,13 @@
       "when": 1794377145956,
       "tag": "0392_mobile_member_finance_payer_fee_created_at",
       "breakpoints": true
+    },
+    {
+      "idx": 393,
+      "version": "7",
+      "when": 1794405194630,
+      "tag": "0393_gl_account_other_assets",
+      "breakpoints": true
     }
   ]
 }

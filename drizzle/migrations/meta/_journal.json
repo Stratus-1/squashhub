@@ -2801,6 +2801,13 @@
       "when": 1794424316034,
       "tag": "0399_club_public_fees_include_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 400,
+      "version": "7",
+      "when": 1794425295311,
+      "tag": "0400_joining_fee_calendar_months",
+      "breakpoints": true
     }
   ]
 }

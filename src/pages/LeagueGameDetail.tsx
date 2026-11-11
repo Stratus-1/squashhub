@@ -4280,7 +4280,7 @@ export default function LeagueGameDetail() {
 
 
 
-      {(isClubAdmin || isHomeCaptain || isAwayCaptain) && fixtureId && (
+      {(canAdjustLeaguePoints || isHomeCaptain || isAwayCaptain) && fixtureId && (
         <AdminManualScoreDialog
           open={adminManualOpen}
           onOpenChange={setAdminManualOpen}

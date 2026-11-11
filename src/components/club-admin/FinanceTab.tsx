@@ -49,7 +49,7 @@ import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
 /* ─── Chart of Accounts definition ─── */
 
 type GLAccount =
-  | "debtors" | "creditors" | "bank_current" | "cash" | "bar_stock_on_hand"
+  | "debtors" | "creditors" | "bank_current" | "cash" | "bar_stock_on_hand" | "other_assets"
   | "opening_balance_equity" | "member_credits" | "association_payable"
   | "fee_income" | "shop_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income" | "bar_stock_gain"
   | "shop_expense" | "bar_expense" | "bar_cost_of_sales" | "shop_cost_of_sales" | "league_fees_expense" | "national_body_expense" | "bar_stock_loss" | "club_stock_expense"
@@ -65,9 +65,11 @@ interface AccountMeta {
 const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   // Balance Sheet – Assets
   bank_current:      { label: "Current Account",     type: "BS", category: "Asset",     normal: "Dr" },
-  cash:              { label: "Petty Cash",          type: "BS", category: "Asset",     normal: "Dr" },
+  cash:              { label: "Cash",                type: "BS", category: "Asset",     normal: "Dr" },
   debtors:           { label: "Accounts Receivable", type: "BS", category: "Asset",     normal: "Dr" },
   bar_stock_on_hand: { label: "Bar Stock Adjustments", type: "BS", category: "Asset",   normal: "Dr" },
+  // Carrier for club-made asset accounts (loans etc.) — never a money account.
+  other_assets:      { label: "Other Assets",        type: "BS", category: "Asset",     normal: "Dr" },
   // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
   member_credits:    { label: "Member Credits",       type: "BS", category: "Liability", normal: "Cr" },
@@ -854,7 +856,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
           <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
             {money(cashBalance)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Petty cash</p>
+          <p className="text-[10px] text-muted-foreground">Cash on hand</p>
         </Card>
       </div>
 

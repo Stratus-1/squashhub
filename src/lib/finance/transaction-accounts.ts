@@ -6,14 +6,14 @@
  * because money in/out often settles a balance-sheet item (paying a supplier,
  * refunding member credit, a loan repayment, a utility receivable).
  *
- * Never offered: the money accounts themselves (Current Account / Petty Cash),
+ * Never offered: the money accounts themselves (Current Account / Cash),
  * Accounts Receivable (member settlement has its own linked flow) and the
  * stock-engine cost-of-sales accounts.
  */
 export type TxDirection = "income" | "expense";
 export type TxAccountCategory = "Asset" | "Liability" | "Income" | "Expense";
 
-export const TX_EXCLUDED_ACCOUNTS = ["bank", "bank_current", "cash", "debtors", "bar_cost_of_sales", "shop_cost_of_sales"];
+export const TX_EXCLUDED_ACCOUNTS = ["bank", "bank_current", "cash", "debtors", "bar_cost_of_sales", "shop_cost_of_sales", "other_assets"];
 
 export function transactionAccountGroups<K extends string, C extends { category: string }>(
   direction: TxDirection,

@@ -26,7 +26,7 @@ export interface ClubGLAccount {
 
 /** Ledger account used to carry standalone (parentless) custom accounts per category. */
 export const STANDALONE_FALLBACK_ACCOUNT: Record<GLCategory, string> = {
-  Asset: "cash",
+  Asset: "other_assets",
   Liability: "creditors",
   Income: "fee_income",
   Expense: "general_expense",

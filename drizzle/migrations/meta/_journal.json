@@ -2780,6 +2780,13 @@
       "when": 1794422469279,
       "tag": "0396_mobile_member_finance_family_payer_correction",
       "breakpoints": true
+    },
+    {
+      "idx": 397,
+      "version": "7",
+      "when": 1794422751934,
+      "tag": "0397_mobile_member_finance_payer_fees_paid_history",
+      "breakpoints": true
     }
   ]
 }

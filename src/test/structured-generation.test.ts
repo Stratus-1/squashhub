@@ -3,7 +3,7 @@ import {
   confirmStructuredPlayoffs, generateStructuredTournament, nextKnockoutRound, persistStructure,
   previewStructuredPlayoffs, specFromDefinition, type Db,
 } from "@/lib/tournaments/structured-persist";
-import { atomically, rebuildStructured, withdrawStructured, type CommitOp } from "@/lib/tournaments/structured-persist";
+import { atomically, rebuildStructured, withdrawStructured, withdrawStructuredPlayer, type CommitOp } from "@/lib/tournaments/structured-persist";
 import { applyEdit, classifyEdit, serializeSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { DefinitionSchema } from "@/lib/smart-builder/definition";
 import { generateRotatingDoublesSchedule } from "@/lib/tournaments/rotating-doubles";
@@ -295,7 +295,7 @@ describe("rebuild + withdrawal", () => {
     finish([m1Games[0]], (m) => m.player_a_member_id);
     const before = env.t.club_champs_matches.length;
     env.t.club_champs_registrations = [{ id: "reg-m1", champ_id: TID, club_member_id: "m1" }];
-    await atomically(env.db, TID, send, (db) => withdrawStructured(db, TID, "m1"));
+    await withdrawStructuredPlayer(env.db, TID, "m1", send);
     const left = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
     expect(left).toHaveLength(m1Games.length);
     expect(left.find((m) => m.id === m1Games[0].id)?.winner_member_id).toBe("m1");

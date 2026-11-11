@@ -545,6 +545,27 @@ export function withdrawKeepPositionGroups(matches: Array<Record<string, any>>, 
   return [...new Set(entryGroups)].filter((g) => played.has(g) || swiss.has(g));
 }
 
+/** Which of this player's categories keep their position on withdrawal (empty = not entered / pre-play removal). */
+export async function withdrawKeepGroups(db: Db, tid: string, memberId: string): Promise<number[]> {
+  const entries = (await db.select("club_champs_entries", { champ_id: tid })).filter((e) => e.club_member_id === memberId || e.partner_member_id === memberId);
+  if (!entries.length) return [];
+  const [tour] = await db.select("tournaments", { id: tid });
+  const spec = tour?.builder_spec as TournamentSpec | undefined;
+  const swissGroups = (spec?.divisions ?? []).filter((d) => d.stages[0]?.kind === "swiss").flatMap((d) => divisionEntryGroups(spec as TournamentSpec, d)).map(Number);
+  const matches = await db.select("club_champs_matches", { champ_id: tid });
+  return withdrawKeepPositionGroups(matches, entries.map((e) => Number(e.group_number)), swissGroups);
+}
+
+/**
+ * Organiser "Withdraw a player": keep-position withdrawals write directly (registration flag + walkovers,
+ * the same writes as "Pull a player out"); a pre-play removal + rebuild runs as one atomic commit.
+ */
+export async function withdrawStructuredPlayer(base: Db, tid: string, memberId: string, send: (tid: string, ops: CommitOp[]) => Promise<unknown>): Promise<RebuildReport> {
+  assertTournamentPairingWritable(tid);
+  if ((await withdrawKeepGroups(base, tid, memberId)).length) return withdrawStructured(base, tid, memberId);
+  return atomically(base, tid, send, (db) => withdrawStructured(db, tid, memberId));
+}
+
 export async function withdrawStructured(db: Db, tid: string, memberId: string): Promise<RebuildReport> {
   if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
   const entries = (await db.select("club_champs_entries", { champ_id: tid })).filter((e) => e.club_member_id === memberId || e.partner_member_id === memberId);
@@ -555,9 +576,7 @@ export async function withdrawStructured(db: Db, tid: string, memberId: string):
   // and later games against them are walked over automatically (DB trigger champ_auto_walkover_withdrawn).
   // Removing the entry would renumber every position and rebuild other players' unplayed games.
   const allMatches = (await db.select("club_champs_matches", { champ_id: tid })).flatMap((m) => typeof m.id === "string" ? [{ ...m, id: m.id, status: m.status }] : []);
-  const spec = tour?.builder_spec as TournamentSpec | undefined;
-  const swissGroups = (spec?.divisions ?? []).filter((d) => d.stages[0]?.kind === "swiss").flatMap((d) => divisionEntryGroups(spec as TournamentSpec, d)).map(Number);
-  const keepGroups = withdrawKeepPositionGroups(allMatches, entries.map((e) => Number(e.group_number)), swissGroups);
+  const keepGroups = await withdrawKeepGroups(db, tid, memberId);
   if (keepGroups.length) {
     if (keepGroups.length !== new Set(entries.map((e) => Number(e.group_number))).size) throw new IntegrityError("unsupported", "Withdraw this player's not-yet-started categories separately; categories already in play keep their position.");
     const registrations = await db.select("club_champs_registrations", { champ_id: tid, club_member_id: memberId });

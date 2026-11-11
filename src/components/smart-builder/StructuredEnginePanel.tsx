@@ -74,8 +74,8 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf, collapsi
         {matches.length > 0 && (
           <select className="h-8 rounded-md border bg-background px-2 text-xs" value="" disabled={!!busy} onChange={(e) => {
             const id = e.target.value; if (!id) return;
-            if (!confirm(`Withdraw ${nameOf(id)}? Their played results stay; only their unplayed games are removed.`)) return;
-            run("wd", () => atomically(supabaseDb, champId, commitStructured, (db) => withdrawStructured(db, champId, id)), "Player withdrawn");
+            if (!confirm(`Withdraw ${nameOf(id)}? Their played results stay; their remaining games become walkovers (bye) for their opponents.`)) return;
+            run("wd", () => withdrawStructuredPlayer(supabaseDb, champId, id, commitStructured), "Player withdrawn");
           }}>
             <option value="">Withdraw a player…</option>
             {[...new Set(matches.flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))].map((id: string) => <option key={id} value={id}>{nameOf(id)}</option>)}

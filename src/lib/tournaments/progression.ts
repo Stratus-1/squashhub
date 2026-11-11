@@ -87,12 +87,12 @@ export function setupStartsAutomatically(rows: any[] | undefined, divisionLabel:
 }
 
 /** Dry run: how many games of a mapped stage the engine would create right now (0 = none / not possible). */
-async function earlyGames(db: Db, tid: string, d: SpecDivision, st: PlannedStage): Promise<number> {
+async function earlyGames(db: Db, tid: string, d: SpecDivision, st: PlannedStage, onError?: (e: unknown) => void): Promise<number> {
   try {
     const b = bufferedDb(db);
     await startStage(b.db, tid, d, st);
     return b.ops.reduce((n, o: any) => n + (o.op === "insert" && o.table === "club_champs_matches" ? o.rows.length : 0), 0);
-  } catch { return 0; }
+  } catch (e) { onError?.(e); return 0; }
 }
 
 /** Seed-pool mapped stages are created with the tournament — never "progressed into". */
@@ -120,7 +120,12 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
         done.set(st.id, c);
         if (partial) {
           const auto = setupStartsAutomatically(t?.beta_lifecycle?.answers?.stages, d.label, st.name) ?? !st.waitForOrganiser;
-          const more = auto ? await earlyGames(db, tid, d, st) : 0;
+          // The stage it takes players from is finished but the rest can't be resolved (e.g. a tie): say why.
+          const src = sourceOf(d, st);
+          let why: string | null = null;
+          const more = auto || (src && done.get(src.id)) ? await earlyGames(db, tid, d, st, (e: any) => { why = e?.message ?? String(e); }) : 0;
+          if (!more && why && src && done.get(src.id) && !/already/i.test(why)) { out.push({ ...base, state: "blocked", automatic: false, detail: why }); continue; }
+          if (more && !auto) { out.push({ ...base, state: "ready", automatic: false, afterStageKey: src?.id ?? null, detail: `${src?.name ?? "The stage before"} is finished — confirm to create the remaining ${st.name} games.` }); continue; }
           if (more) { out.push({ ...base, state: "ready", automatic: true, plannedDate: st.schedule?.date ?? st.schedule?.deadline ?? null, detail: `${more} more ${st.name} game${more === 1 ? "" : "s"} can be created now — both players are known.` }); continue; }
         }
         out.push({ ...base, state: c ? "completed" : "active", automatic: false, detail: c ? "All games decided." : partial ? `${rows.length} of ${st.mapping!.matches.length} games created (the rest once their players are known); ${played} decided.` : `${played} of ${rows.length} games decided.` });

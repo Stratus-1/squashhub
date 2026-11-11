@@ -288,7 +288,7 @@ describe("rebuild + withdrawal", () => {
     expect(men.some((m) => [m.player_a_member_id, m.player_b_member_id].includes("m8"))).toBe(false);
     expect(men.every((m) => m.division_id && m.stage_id && m.round_id && m.pool_id)).toBe(true);
   });
-  it("withdrawal after play keeps results and removes only that player's unplayed games", async () => {
+  it("withdrawal after play keeps results and walks over only that player's unplayed games", async () => {
     const send = sendTo(env.db, []);
     await atomically(env.db, TID, send, (db) => generateStructuredTournament(db, TID));
     const m1Games = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
@@ -296,9 +296,11 @@ describe("rebuild + withdrawal", () => {
     const before = env.t.club_champs_matches.length;
     await atomically(env.db, TID, send, (db) => withdrawStructured(db, TID, "m1"));
     const left = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
-    expect(left).toHaveLength(1);
-    expect(left[0].winner_member_id).toBeTruthy();
-    expect(env.t.club_champs_matches.length).toBe(before - (m1Games.length - 1));
+    expect(left).toHaveLength(m1Games.length);
+    expect(left.find((m) => m.id === m1Games[0].id)?.winner_member_id).toBe("m1");
+    expect(left.filter((m) => m.id !== m1Games[0].id).every((m) => m.winner_member_id && m.winner_member_id !== "m1")).toBe(true);
+    expect(env.t.club_champs_matches.length).toBe(before);
+    expect(env.t.club_champs_entries.some((e) => e.club_member_id === "m1")).toBe(true);
     expect(env.t.club_champs_matches.filter((m) => m.group_number === 2)).toHaveLength(12); // ladies untouched
   });
 });

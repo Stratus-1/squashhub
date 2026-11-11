@@ -38,3 +38,11 @@ describe("Enter Transaction account choices", () => {
     }
   });
 });
+
+import { STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
+describe("club-made asset accounts", () => {
+  it("never post to the bank or cash money accounts", () => {
+    expect(["bank", "bank_current", "cash"]).not.toContain(STANDALONE_FALLBACK_ACCOUNT.Asset);
+    expect(STANDALONE_FALLBACK_ACCOUNT.Asset).toBe("other_assets");
+  });
+});

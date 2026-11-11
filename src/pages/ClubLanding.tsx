@@ -133,6 +133,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     if (!period || period === "annual" || period === "yearly") return `${value} / year`;
     if (period === "monthly") return `${value} / month`;
     if (period === "quarterly") return `${value} / quarter`;
+    if (period === "once_off") return `${value} once-off`;
     return value;
   };
 

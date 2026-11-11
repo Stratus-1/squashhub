@@ -250,10 +250,10 @@ Deno.serve(async (req) => {
       const { data: userData } = await admin.auth.getUser(bearer);
       const userId = userData?.user?.id;
       if (!userId) return json({ error: "Not authenticated" }, 401);
-      const { data: isAdmin } = await admin.rpc("is_club_admin", {
+      const { data: canSend } = await admin.rpc("can_manage_club_comms", {
         _user_id: userId, _club_id: campaign.club_id,
       });
-      if (!isAdmin) return json({ error: "Not a club admin" }, 403);
+      if (!canSend) return json({ error: "You don't have permission to send member communications for this club" }, 403);
     }
 
     // Large sends run in time-boxed chunks; a chunk hands over to the next by

@@ -15,5 +15,9 @@ grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111200000_mobile_member_financ
 if [ -z "${SKIP_0397:-}" ]; then
   grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111210000_mobile_member_finance_payer_fees_paid_history.sql" | $P
 fi
+# 0398 adds unposted own unpaid fees; set SKIP_0398=1 to prove the checks fail on 0397 alone.
+if [ -z "${SKIP_0397:-}" ] && [ -z "${SKIP_0398:-}" ]; then
+  grep -v '^NOTIFY' "$ROOT/supabase/migrations/20261111220000_mobile_member_finance_unposted_own_fees.sql" | $P
+fi
 $P -f "$HERE/test.sql"
 echo 'MOBILE FINANCE FAMILY PAYER TESTS PASSED'

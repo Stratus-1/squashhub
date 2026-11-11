@@ -26115,6 +26115,7 @@ export type Database = {
         | "squashhub_subscription"
         | "internet_software"
         | "salary_wages"
+        | "other_assets"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -26304,6 +26305,7 @@ export const Constants = {
         "squashhub_subscription",
         "internet_software",
         "salary_wages",
+        "other_assets",
       ],
       integration_provider: [
         "strava",

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 
 /**
  * The player's actual events (with per-event prices) and the authoritative total
@@ -18,6 +19,7 @@ export function useChampEntrySummary(champ: any, registration: any, money: (cent
     },
     enabled: !!champId,
   });
+  const tiers = useChampFeeTiers(champId);
   const { data: totalDueCents } = useQuery({
     queryKey: ["my-champ-reg-due", registration?.id, registration?.division_choices, registration?.partner_member_id, registration?.status],
     queryFn: async () => {
@@ -33,7 +35,8 @@ export function useChampEntrySummary(champ: any, registration: any, money: (cent
     ? Array.from(new Set((registration.division_choices as any[]).map(Number))).filter(Number.isFinite)
     : [];
   const eventLabels = groups.map((g) => {
-    const cents = divisionFees?.[String(g)] ?? flat;
+    // Package prices are per number of categories, so no single category has its own price.
+    const cents = tiers ? 0 : divisionFees?.[String(g)] ?? flat;
     return `${labels[String(g)] || `Event ${g}`}${cents > 0 ? ` (${money(cents)})` : ""}`;
   });
   return { eventLabels, totalDueCents: totalDueCents ?? null, hasDivisionFees: !!divisionFees };

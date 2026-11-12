@@ -1,6 +1,7 @@
 import { ChampFeesPanel } from "./ChampFeesPanel";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
-import { entryDueCents } from "@/lib/tournaments/entry-fee";
+import { entryDueCents, tierSummary } from "@/lib/tournaments/entry-fee";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
@@ -59,6 +60,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const champId = champ?.id;
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
+  const feeTiers = useChampFeeTiers(champ?.id);
   const isDoubles = champ?.match_type === "doubles";
   const champGender = champ?.gender as "men" | "ladies" | "mixed";
   const typedCategories = (champ?.beta_lifecycle?.category_types ?? null) as Record<string, CompetitionCategory> | null;
@@ -380,7 +382,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
               </Badge>
             )}
             <Badge variant="secondary">
-              Entry fee: {entryFee > 0 ? `R${entryFee.toFixed(2)} per event` : "Free"}
+              Entry fee: {entryFee > 0 ? (feeTiers ? tierSummary(feeTiers, (c) => `R${(c / 100).toFixed(2)}`) : `R${entryFee.toFixed(2)} per event`) : "Free"}
             </Badge>
             {champ?.payment_required && entryFee > 0 && <Badge variant="outline">Payment required</Badge>}
             {champ?.entries_locked && <Badge><Lock className="w-3 h-3 mr-1" />Entries locked</Badge>}
@@ -506,7 +508,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                             else lines.push(`Hi ${first}, a quick reminder about *${title}*.`);
                             if (tLink) lines.push("", `View the tournament, your draw and score your match:`, tLink);
                             if (owes) {
-                              const due = entryDueCents(Math.round(entryFee * 100), (r as any).division_choices) / 100;
+                              const due = entryDueCents(Math.round(entryFee * 100), (r as any).division_choices, [], feeTiers) / 100;
                               const pay = payLinks[r.club_member_id];
                               lines.push("", `Please pay your outstanding entry fee of R${due.toFixed(2)}.`);
                               if (pay) lines.push(`Pay here (no login needed): ${pay}`);

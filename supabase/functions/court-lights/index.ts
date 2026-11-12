@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
         const { data: b } = await supabase.from("bookings").select("club_id").eq("id", body.booking_id).maybeSingle();
         lightClubId = (b as any)?.club_id ?? null;
       } else if (action === "transfer" && body.session_id) {
-        const { data: s } = await supabase.from("court_light_sessions").select("club_id").eq("id", body.session_id).maybeSingle();
+        const { data: s } = await supabase.from("light_sessions").select("club_id").eq("id", body.session_id).maybeSingle();
         lightClubId = (s as any)?.club_id ?? null;
       }
       if (lightClubId) {

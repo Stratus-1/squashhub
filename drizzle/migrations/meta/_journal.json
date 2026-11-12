@@ -2843,6 +2843,13 @@
       "when": 1794481126977,
       "tag": "0405_subscription_finance_view_access",
       "breakpoints": true
+    },
+    {
+      "idx": 406,
+      "version": "7",
+      "when": 1794482640234,
+      "tag": "0406_comms_settle_account_template",
+      "breakpoints": true
     }
   ]
 }

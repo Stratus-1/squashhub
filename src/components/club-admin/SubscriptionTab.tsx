@@ -902,6 +902,7 @@ function renderInvoiceHtml(
   const vatNo = bank.vat_number ? `VAT No: ${bank.vat_number}` : "";
   return `<!doctype html>
 <html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Invoice ${inv.invoice_number}</title>
 <style>
   *{box-sizing:border-box}
@@ -926,6 +927,7 @@ function renderInvoiceHtml(
   .actions button{padding:8px 16px;border-radius:6px;border:1px solid #1E3A5F;background:#1E3A5F;color:#fff;cursor:pointer;font-weight:600}
   .actions button.ghost{background:#fff;color:#1E3A5F}
   @media print{.actions{display:none}body{padding:0}}
+  @media (max-width:600px){body{padding:16px}.grid{grid-template-columns:1fr}.head{flex-direction:column;gap:12px}.head>div:last-child{text-align:left!important}.totals{width:100%}th,td{padding:6px;font-size:12px}}
 </style></head>
 <body>
   ${opts.embedded ? "" : `<div class="actions">

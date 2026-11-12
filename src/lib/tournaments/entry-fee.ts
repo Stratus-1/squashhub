@@ -48,3 +48,28 @@ export function feeBreakdownLabel(eventFeeCents: number, events: number, money: 
   if (events <= 1) return money(eventFeeCents);
   return `${events} events × ${money(eventFeeCents)} = ${money(eventFeeCents * events)}`;
 }
+
+/**
+ * Amount shown next to an entrant in the organiser's registrations list:
+ * "R300.00 paid", "R200.00 due" or "Fee waived". Paid rows show what was
+ * actually settled (fee_paid_cents) when recorded.
+ */
+export function entrantFeeText(
+  r: { status?: string | null; fee_status?: string | null; fee_paid_cents?: number | null; division_choices?: unknown; covered_events?: unknown },
+  opts: { entryFeeCents: number; feeRequired: boolean; tiers?: FeeTiers | null },
+): { text: string; paid: boolean } | null {
+  if (!opts.feeRequired || opts.entryFeeCents <= 0) return null;
+  const status = String(r.status ?? "").toLowerCase();
+  const feeStatus = String(r.fee_status ?? "").toLowerCase();
+  if (status === "cancelled" || status === "withdrawn") return null;
+  if (feeStatus === "waived" || status === "waived") return { text: "Fee waived", paid: true };
+  const covered = Array.isArray(r.covered_events) ? (r.covered_events as Array<number | string>) : [];
+  const due = entryDueCents(opts.entryFeeCents, r.division_choices, covered, opts.tiers);
+  const money = (c: number) => `R${(c / 100).toFixed(2)}`;
+  if (feeStatus === "paid" || status === "paid") {
+    const paid = Number(r.fee_paid_cents) > 0 ? Number(r.fee_paid_cents) : due;
+    return { text: `${money(paid)} paid`, paid: true };
+  }
+  if (feeStatus === "not_required") return null;
+  return { text: `${money(due)} due`, paid: false };
+}

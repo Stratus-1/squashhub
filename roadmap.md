@@ -64,3 +64,5 @@
 - [x] Stock purchase invoice: finance staff can add non-stock 'Other items' (e.g. cleaning materials) posted to a chosen expense account, paid the same way as the invoice. 4 tests pass; screen checked at Nelspruit without saving. Not published.
 - [x] Tournament package price by number of categories (e.g. 1 = R200, 2 = R300) in Step-by-Step Fees step, charged by the server.
 - [x] Doubles: a player entering two doubles categories picks a partner for each category (in-app entry window fixed; invite link already did).
+- [ ] Reset Willem's No Frills Doubles Week entry to unregistered + unpaid for retesting.
+- [ ] Partner registrations pick up categories from pairs (Paid button 'Choose an eligible category').

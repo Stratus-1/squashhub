@@ -4515,3 +4515,6 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - New default comms template seeded to all 799 clubs and new clubs (`seed_club_settle_account_template`, migration 0406): email/WhatsApp/SMS/in-app, polite request to settle soonest, "if already paid, ignore".
 - New merge fields `greeting_name` (first name, or full name when the first word is initials/title/single word) and `outstanding_amount` (sender reads member ledger at send time; zero-balance recipients skipped).
 - "Members with an outstanding balance" audience now lists owing members with tick boxes (Tick all / Untick all); unticked IDs saved as `audience_filter.exclude_member_ids` and excluded server-side.
+
+### 2026-11-12 — Nelspruit Checkers INV231963205 corrected to bank amount (data fix)
+- Captured R2,624.79 (9 lines, EFT) vs bank R2,225.93 on 7 Nov; no slip. Owner chose pro rata: all lines × 0.84804, journal legs, item cost prices and single-source avg costs updated (quantities unchanged). Audited `bank_recon_invoice_corrected`. Possible cause was 48 instead of 24 Castle Lite — a stock take will show if Castle Lite is 24 over.

@@ -170,6 +170,8 @@ export function TournamentInviteRegisterDialog({
         .map((d) => ({ group_number: d.group_number, label: d.label, match_type: "doubles" as const })),
     [divisionOptions, chosenDivisions, isDoubles],
   );
+  /** One saved partner only completes a single-doubles entry; with several doubles categories each one gets its own partner choice. */
+  const partnerDone = !!registration?.partner_member_id && doublesPickerDivisions.length <= 1;
 
   // Who is already in the draw (used to hide paired-up members and, when a fee
   // applies, to restrict the list to players who registered and paid).
@@ -524,15 +526,15 @@ export function TournamentInviteRegisterDialog({
 
           {/* Step 2 — partner (required for every doubles entry) */}
           {canPickPartner && (
-            <div className={registration.partner_member_id
+            <div className={partnerDone
               ? "pt-2 border-t border-border/60 space-y-1.5"
               : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>
-              <p className={registration.partner_member_id
+              <p className={partnerDone
                 ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                 : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
-                Step 2 — select your doubles partner (required)
+                {doublesPickerDivisions.length > 1 ? "Step 2 — select a partner for each doubles category (required)" : "Step 2 — select your doubles partner (required)"}
               </p>
-              {registration.partner_member_id ? (
+              {partnerDone ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>

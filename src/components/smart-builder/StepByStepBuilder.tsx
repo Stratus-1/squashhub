@@ -85,7 +85,7 @@ const StructSection = ({ title }: { title: string; children?: null }) => <h3 cla
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
-import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
+import { removePick, unmarkRemoved, shouldAutoAdd, shouldFillEntryPlaces, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
@@ -909,9 +909,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       let picks = prev.picks; let changed = false;
       enteredPlaces.forEach((ks, id) => {
         // Only add people not yet picked; an organiser's own placement is never overridden by older saved entries.
-        if (!shouldAutoAdd(picks, prev.removedPicks, id)) return;
-        picks = { ...picks, [id]: [] }; changed = true;
-        ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+        if (shouldAutoAdd(picks, prev.removedPicks, id)) {
+          picks = { ...picks, [id]: [] }; changed = true;
+          ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+          return;
+        }
+        // Picked but still "Not placed": use the categories from their entry (e.g. a partner named them).
+        if (id in picks && shouldFillEntryPlaces(placesOf(picks, id).filter((k) => unitKeySet.has(k)), prev.removedPicks, id, ks)) {
+          changed = true;
+          ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+        }
       });
       return changed ? { ...prev, picks } : prev;
     });

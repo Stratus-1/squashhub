@@ -20,6 +20,15 @@ export function shouldAutoAdd(picks: Picks, removed: string[] | undefined, id: s
   return !(id in picks) && !(removed ?? []).includes(id);
 }
 
+/**
+ * An entered player sitting in "Not placed" (picked with no current category) takes the
+ * categories from their actual entry, e.g. once a partner's pair adds the category.
+ * Players already placed somewhere keep the organiser's placement.
+ */
+export function shouldFillEntryPlaces(currentPlaces: string[], removed: string[] | undefined, id: string, entered: string[]): boolean {
+  return currentPlaces.length === 0 && entered.length > 0 && !(removed ?? []).includes(id);
+}
+
 /** Stable signature of the player list, used for the Saved / Unsaved changes label. */
 export function picksSignature(picks: Picks, removed: string[] | undefined): string {
   const p = Object.keys(picks).sort().map((id) => {

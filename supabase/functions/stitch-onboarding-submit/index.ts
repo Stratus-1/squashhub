@@ -50,9 +50,12 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Verify caller is admin of this club
-    const { data: adminCheck } = await admin.rpc("is_club_admin", { _user_id: userId, _club_id: club_id });
-    if (!adminCheck) return json({ error: "Only club admins can submit this application." }, 403);
+    // Verify caller is a club admin or holds the club's Finance permission (treasurer)
+    const [{ data: adminCheck }, { data: financeCheck }] = await Promise.all([
+      admin.rpc("is_club_admin", { _user_id: userId, _club_id: club_id }),
+      admin.rpc("is_club_finance_writer", { _user_id: userId, _club_id: club_id }),
+    ]);
+    if (!adminCheck && !financeCheck) return json({ error: "Only club admins or the treasurer can submit this application." }, 403);
 
     const { data: club } = await admin
       .from("clubs").select("id, name, subdomain")

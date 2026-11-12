@@ -23122,6 +23122,10 @@ export type Database = {
         Returns: number
       }
       champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
+      champ_pair_sync_partner_categories: {
+        Args: { p_pair_id: string }
+        Returns: undefined
+      }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
       champ_payment_claim_review: {
         Args: {

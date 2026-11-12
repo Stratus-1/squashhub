@@ -62,7 +62,7 @@ export function useMemberAccessGate(): MemberAccessGate {
       const [memberRes, feesRes, mandateRes] = await Promise.all([
         supabase
           .from("club_members")
-          .select("suspension_status, suspension_reason, suspension_outstanding, suspension_manual")
+          .select("status, suspension_status, suspension_reason, suspension_outstanding, suspension_manual")
           .eq("id", memberId!)
           .maybeSingle(),
         supabase
@@ -112,7 +112,13 @@ export function useMemberAccessGate(): MemberAccessGate {
   let status: SuspensionStatus = "active";
   let reason: string | null = null;
 
-  if (manualFlag && (manualStatus === "suspended" || manualStatus === "manual_hold")) {
+  const memberStatus = String(data?.member?.status || "active");
+  if (memberStatus === "suspended" || memberStatus === "resigned") {
+    // Mirrors the server's member_access_blocked(): a suspended/resigned
+    // membership loses access even without a manual hold.
+    status = "suspended";
+    reason = data?.member?.suspension_reason || `Membership ${memberStatus}`;
+  } else if (manualFlag && (manualStatus === "suspended" || manualStatus === "manual_hold")) {
     status = manualStatus;
     reason = data?.member?.suspension_reason || "Manually suspended by club admin";
   } else if (rules.enabled) {

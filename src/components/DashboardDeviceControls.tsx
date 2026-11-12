@@ -17,6 +17,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { pulseAccessDeviceBle } from "@/lib/shelly-door";
 import { formatLatLngDM } from "@/lib/geo-format";
 import { useGeofenceAutoUnlock } from "@/hooks/use-geofence-auto-unlock";
+import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { DoorCompatibilityCheck } from "@/components/DoorCompatibilityCheck";
 import {
   DEVICE_CATEGORY_LIST,
@@ -45,6 +46,8 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
   const door = useDoorControl();
   const { data: devices } = useClubDevices(clubId);
   const courtLightsOn = useHasCapability("lights", clubId);
+  const gate = useMemberAccessGate();
+  const isClubAdmin = useIsClubAdmin();
 
   const grouped = groupDevices((devices || []) as ClubDevice[]);
   // Dashboard actions are only for direct-access devices and staff gadgets.
@@ -65,6 +68,23 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
 
   const visibleGroups = DEVICE_CATEGORY_LIST.filter((g) => groupHasContent(g.slug));
   if (!clubId || visibleGroups.length === 0) return null;
+
+  // Suspended members may not use any club device. The server refuses every
+  // command too; this only replaces the buttons with a clear explanation.
+  if (gate.suspended && !isClubAdmin) {
+    return (
+      <section className={cn("space-y-2", className)} aria-label="Club controls">
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold font-heading">Club Controls</h2>
+        </div>
+        <p className="text-[12px] text-muted-foreground">
+          Your membership is suspended, so club doors, lights and other controls are unavailable.
+          Please contact the club committee.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className={cn("space-y-3", className)} aria-label="Club controls">

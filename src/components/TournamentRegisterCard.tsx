@@ -1,5 +1,6 @@
 import { ReportPaymentButton } from "@/components/tournaments/ReportPaymentDialog";
-import { entryDueCents } from "@/lib/tournaments/entry-fee";
+import { entryDueCents, tierSummary } from "@/lib/tournaments/entry-fee";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { PartnerFeeOptions, type PartnerPayScope } from "@/components/tournaments/PartnerFeeOptions";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -196,6 +197,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     enabled: !!champ?.id,
   });
+  const feeTiers = useChampFeeTiers(champ?.id);
   const { data: serverDueCents } = useQuery({
     queryKey: ["my-champ-reg-due", myReg?.id, myReg?.division_choices, myReg?.partner_member_id, myReg?.status],
     queryFn: async () => {
@@ -207,13 +209,13 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     refetchOnWindowFocus: true,
     enabled: !!myReg?.id,
   });
-  const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices)) / 100;
+  const entryFee = (serverDueCents ?? entryDueCents(Math.round(eventFee * 100), (myReg as any)?.division_choices, [], feeTiers)) / 100;
   const feeState = deriveEntryFeeState(myReg as any, linkedCharge, Math.round(entryFee * 100), { chargeLoaded: !feePaymentId || chargeLoaded });
   const myEventLabels = (() => {
     const groups = Array.isArray(myReg?.division_choices) ? Array.from(new Set((myReg.division_choices as any[]).map(Number))) : [];
     const labels = (champ?.group_labels || {}) as Record<string, string>;
     return groups.map((g) => {
-      const cents = divisionFees?.[String(g)] ?? Math.round(eventFee * 100);
+      const cents = feeTiers ? 0 : divisionFees?.[String(g)] ?? Math.round(eventFee * 100);
       return `${labels[String(g)] || `Event ${g}`}${cents > 0 ? ` (${money(cents / 100)})` : ""}`;
     });
   })();
@@ -477,7 +479,8 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             {myEventLabels.length > 0
               ? myEventLabels.join(" · ")
               : <>{GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
-                  {eventFee > 0 && !divisionFees && <> · {money(eventFee)} entry fee per event</>}</>}
+                  {eventFee > 0 && feeTiers && <> · Entry fee: {tierSummary(feeTiers, (c) => money(c / 100))}</>}
+                  {eventFee > 0 && !feeTiers && !divisionFees && <> · {money(eventFee)} entry fee per event</>}</>}
             {closesAt && <> · Closes {closesAt.toLocaleDateString()}</>}
           </p>
         </div>

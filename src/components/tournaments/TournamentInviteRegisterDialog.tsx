@@ -1,5 +1,6 @@
 import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,10 +129,11 @@ export function TournamentInviteRegisterDialog({
     },
     enabled: !!registration?.id,
   });
+  const feeTiers = useChampFeeTiers(champ?.id);
   const eventFeeCents = Number(champ?.entry_fee_cents || 0);
   const localEvents = chosenDivisions.length ? chosenDivisions : (registration as any)?.division_choices;
   const confirmedEntry = !!(registration as any)?.confirmed_at;
-  const entryFeeCents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, localEvents);
+  const entryFeeCents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, localEvents, [], feeTiers);
   const feeEvents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_events || 0) : ownEvents(localEvents);
   const paymentRequired = !!champ?.payment_required && eventFeeCents > 0;
   const methods = (champ?.payment_methods || []) as string[];
@@ -168,6 +170,8 @@ export function TournamentInviteRegisterDialog({
         .map((d) => ({ group_number: d.group_number, label: d.label, match_type: "doubles" as const })),
     [divisionOptions, chosenDivisions, isDoubles],
   );
+  /** One saved partner only completes a single-doubles entry; with several doubles categories each one gets its own partner choice. */
+  const partnerDone = !!registration?.partner_member_id && doublesPickerDivisions.length <= 1;
 
   // Who is already in the draw (used to hide paired-up members and, when a fee
   // applies, to restrict the list to players who registered and paid).
@@ -349,7 +353,7 @@ export function TournamentInviteRegisterDialog({
       : `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
     !paymentRequired ? "No entry fee — just accept"
       : entrySummary.totalDueCents != null && entrySummary.eventLabels.length ? `Total due: ${money(entrySummary.totalDueCents)}`
-      : `${feeBreakdownLabel(eventFeeCents, feeEvents, money)} entry fee${feeEvents > 1 ? "" : " (per event)"}`,
+      : `${feeBreakdownLabel(eventFeeCents, feeEvents, money, feeTiers)} entry fee${feeEvents > 1 || feeTiers ? "" : " (per event)"}`,
   ];
 
   return (
@@ -522,22 +526,22 @@ export function TournamentInviteRegisterDialog({
 
           {/* Step 2 — partner (required for every doubles entry) */}
           {canPickPartner && (
-            <div className={registration.partner_member_id
+            <div className={partnerDone
               ? "pt-2 border-t border-border/60 space-y-1.5"
               : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>
-              <p className={registration.partner_member_id
+              <p className={partnerDone
                 ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                 : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
-                Step 2 — select your doubles partner (required)
+                {doublesPickerDivisions.length > 1 ? "Step 2 — select a partner for each doubles category (required)" : "Step 2 — select your doubles partner (required)"}
               </p>
-              {registration.partner_member_id ? (
+              {partnerDone ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>
               ) : doublesPickerDivisions.length > 0 ? (
                 <>
                   <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                    Your doubles entry is only complete once you name a partner.
+                    {doublesPickerDivisions.length > 1 ? "Your entry is only complete once you name a partner in every doubles category." : "Your doubles entry is only complete once you name a partner."}
                     {paymentRequired
                       ? " You'll also say who is paying — if your partner pays their own entry we send them a confirmation with a payment link."
                       : ""}

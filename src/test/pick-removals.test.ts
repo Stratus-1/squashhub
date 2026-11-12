@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact , shouldFillEntryPlaces } from "@/lib/smart-builder/pick-removals";
+import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact, shouldFillEntryPlaces } from "@/lib/smart-builder/pick-removals";
 
 describe("pick removals stick", () => {
   it("removed player is not auto-added back from an active entry", () => {

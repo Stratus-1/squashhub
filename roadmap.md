@@ -59,3 +59,5 @@
 - [x] "Members with an outstanding balance" campaign audience
 - [x] Default templates (Activate account, Pay outstanding balance) seeded for every new club
 - [x] Nelspruit: Rachel can't see comms templates — admins/office bearers now get full member comms access (AGM ballot admin unchanged)
+- [ ] Nelspruit bank recon 31 Oct–10 Nov: findings ready (app R2,854.11 low, fully itemised); awaiting Willem's approval on fixes (opening balance, Checkers duplicate/slip, Martin/Umar R100s, Quintin R450, Jacques R300).
+- [x] Explained how to switch on the Shop option for Nelspruit (Divisions & categories → add "Shop"); no changes made.

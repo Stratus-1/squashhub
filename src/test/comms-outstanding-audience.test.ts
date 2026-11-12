@@ -35,3 +35,38 @@ describe("outstanding-balance campaign audience", () => {
     expect(isOutstandingAudienceMember({ status: "suspended" })).toBe(false);
   });
 });
+
+import { excludeMembers, formatRand, greetingName, usesOutstandingAmount } from "../../supabase/functions/_shared/comms-outstanding";
+import { buildMergeVars } from "@/lib/comms/merge-fields";
+
+describe("settle outstanding account reminder", () => {
+  it("greets by first name when it is a real name", () => {
+    expect(greetingName("Martin Strydom")).toBe("Martin");
+  });
+
+  it("uses the full name when the first word is initials or a title", () => {
+    expect(greetingName("WD Gertenbach")).toBe("WD Gertenbach");
+    expect(greetingName("J. Smith")).toBe("J. Smith");
+    expect(greetingName("Mr Smith")).toBe("Mr Smith");
+  });
+
+  it("uses the whole name for a single-word name", () => {
+    expect(greetingName("Lucas")).toBe("Lucas");
+  });
+
+  it("shows the amount owed in rand with cents", () => {
+    expect(buildMergeVars({ member: { name: "Umar Akoojee" }, outstandingAmount: 545 }).outstanding_amount).toBe(formatRand(545));
+    expect(formatRand(545)).toMatch(/^R545[.,]00$/);
+  });
+
+  it("leaves out members the admin unticked", () => {
+    const owing = [{ id: "a" }, { id: "b" }, { id: "c" }];
+    expect(excludeMembers(owing, ["b"]).map((m) => m.id)).toEqual(["a", "c"]);
+    expect(excludeMembers(owing, undefined)).toHaveLength(3);
+  });
+
+  it("detects templates that quote the outstanding amount", () => {
+    expect(usesOutstandingAmount({ email: { subject: "x", body: "You owe {{ outstanding_amount }}" } })).toBe(true);
+    expect(usesOutstandingAmount({ email: { subject: "Hi", body: "{{first_name}}" } })).toBe(false);
+  });
+});

@@ -25480,6 +25480,10 @@ export type Database = {
         Args: { p_club_id: string }
         Returns: string
       }
+      seed_club_settle_account_template: {
+        Args: { p_club_id: string }
+        Returns: string
+      }
       seed_club_welcome_template: {
         Args: { p_club_id: string }
         Returns: string

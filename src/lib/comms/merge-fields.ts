@@ -5,6 +5,8 @@
  * the tokens once and reuse them everywhere.
  */
 
+import { formatRand, greetingName } from "../../../supabase/functions/_shared/comms-outstanding";
+
 export type MergeField = {
   key: string;
   label: string;
@@ -16,6 +18,8 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "first_name", label: "First name", group: "member" },
   { key: "surname", label: "Surname", group: "member" },
   { key: "name", label: "Full name", group: "member" },
+  { key: "greeting_name", label: "First name (or full name)", group: "member" },
+  { key: "outstanding_amount", label: "Outstanding amount", group: "member" },
   { key: "member_number", label: "Member #", group: "member" },
   { key: "email", label: "Email", group: "member" },
   { key: "phone", label: "Phone", group: "member" },
@@ -46,6 +50,8 @@ export function buildMergeVars(opts: {
   club?: { name?: string | null; email?: string | null; phone?: string | null } | null;
   leagueName?: string;
   leagueNumber?: string;
+  /** Member statement balance owed (preview only; the sender recalculates at send time). */
+  outstandingAmount?: number | null;
   actionLabel?: string;
   actionUrl?: string;
 }): MergeVars {
@@ -56,6 +62,8 @@ export function buildMergeVars(opts: {
     first_name: first || "",
     surname: rest.join(" "),
     name: full,
+    greeting_name: greetingName(full),
+    outstanding_amount: formatRand(Math.max(0, Number(opts.outstandingAmount ?? 0))),
     member_number: String(opts.member?.club_member_number || ""),
     email: String(opts.member?.email || ""),
     phone: String(opts.member?.phone || ""),

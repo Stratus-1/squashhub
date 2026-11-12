@@ -22,7 +22,7 @@ export type SendCommsOptions = {
   audience:
     | { type: "all" }
     | { type: "unlinked" }
-    | { type: "outstanding" }
+    | { type: "outstanding"; excludeMemberIds?: string[] }
     | { type: "selected"; memberIds: string[] }
     | { type: "league"; leagueId: string }
     | { type: "skills"; filter: Record<string, unknown> };
@@ -62,6 +62,7 @@ export async function upsertCampaign(opts: SendCommsOptions, campaignId?: string
     audience_member_ids: opts.audience.type === "selected" ? opts.audience.memberIds : [],
     audience_league_id: opts.audience.type === "league" ? opts.audience.leagueId : null,
     audience_filter: opts.audience.type === "skills" ? (opts.audience.filter as any)
+      : opts.audience.type === "outstanding" ? ({ exclude_member_ids: opts.audience.excludeMemberIds ?? [] } as any)
       : opts.audience.type === "selected" && (opts.memberVars || opts.meta) ? ({ ...(opts.meta ?? {}), member_vars: opts.memberVars ?? {} } as any) : {},
     content: opts.content as any,
     action: (opts.action ?? { key: "none" }) as any,

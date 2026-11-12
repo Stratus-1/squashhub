@@ -54,6 +54,11 @@ import { ComponentPicker } from "./bar/ComponentPicker";
 import { categoryLabel } from "@/lib/bar-categories";
 import { StockItemPicker } from "./bar/StockItemPicker";
 import { PurchaseInvoiceFiles } from "./bar/PurchaseInvoiceFiles";
+import { PurchaseOtherLines } from "./bar/PurchaseOtherLines";
+import { buildOtherLinesJournal, otherLineAmount, touchedOtherLines, validateOtherLines, type OtherLineInput } from "@/lib/bar/invoice-other-lines";
+import { postJournal } from "@/lib/post-journal";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
+import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
 import { saveWithInvoiceFiles, openInvoiceFile, type InvoiceFile } from "@/lib/bar-invoice-files";
 
 const SPECIAL_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) =>
@@ -1124,6 +1129,9 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [lines, setLines] = useState<InvoiceLine[]>([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
   const [submitting, setSubmitting] = useState(false);
+  const [otherLines, setOtherLines] = useState<OtherLineInput[]>([]);
+  const { canChange: canPostLedger } = useFinancialAccess(clubId);
+  const { data: glAccounts = [] } = useClubGLAccounts(canPostLedger ? clubId : undefined);
 
   /** Only real stock lines can be bought in — specials and option rows are left out. */
   const [invoiceFiles, setInvoiceFiles] = useState<File[]>([]);
@@ -1138,15 +1146,22 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
     setLines(prev => prev.map((l, i) => i === idx ? { ...l, [field]: value } : l));
   };
 
-  const invoiceTotal = lines.reduce((sum, l) => {
+  const stockTotal = lines.reduce((sum, l) => {
     const qty = parseFloat(l.quantity) || 0;
     const cost = parseFloat(l.unit_cost) || 0;
     return sum + qty * cost;
   }, 0);
+  const otherTotal = canPostLedger ? otherLines.reduce((sum, l) => sum + otherLineAmount(l), 0) : 0;
+  const invoiceTotal = stockTotal + otherTotal;
 
   const handleSubmit = async () => {
     const validLines = lines.filter(l => l.bar_item_id && parseFloat(l.quantity) > 0);
     if (validLines.length === 0) { toast.error("Add at least one item line"); return; }
+    const otherError = canPostLedger ? validateOtherLines(otherLines) : null;
+    if (otherError) { toast.error(otherError); return; }
+    const other = canPostLedger
+      ? buildOtherLinesJournal(otherLines, { paymentMethod, supplier, invoiceNumber, customAccounts: glAccounts })
+      : { lines: [], total: 0, description: "" };
 
     setSubmitting(true);
     try {
@@ -1179,9 +1194,20 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         if (error) throw error;
       });
 
+      // Non-stock items (cleaning materials etc.) on the same invoice: one balanced expense posting.
+      if (other.lines.length > 0) {
+        try {
+          const ref = await postJournal(clubId, other.lines, { description: other.description });
+          const { error: dErr } = await (supabase as any).rpc("set_journal_entry_date", { _club_id: clubId, _ref: ref, _date: invoiceDate });
+          if (dErr) toast.error(`Other items recorded, but the invoice date could not be set: ${dErr.message}`);
+        } catch (e: any) {
+          toast.error(`Stock was recorded, but the other items were not (${e?.message || "error"}). Record them in Finance → Enter Transaction; don't re-enter the stock.`, { duration: 15000 });
+        }
+      }
+
       qc.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
       qc.invalidateQueries({ queryKey: ["income-statement", clubId] });
-      toast.success(`Invoice recorded — ${money(invoiceTotal)} across ${validLines.length} item(s)`);
+      toast.success(`Invoice recorded — ${money(invoiceTotal)} across ${validLines.length} item(s)${other.lines.length ? ` + ${touchedOtherLines(otherLines).length} other item(s)` : ""}`);
       setOpen(false);
       setInvoiceNumber("");
       setSupplier("");
@@ -1189,6 +1215,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       setPaymentMethod("cash");
       setInvoiceFiles([]);
       setLines([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
+      setOtherLines([]);
       qc.invalidateQueries({ queryKey: ["bar-items"] });
       qc.invalidateQueries({ queryKey: ["bar-stock-purchases", clubId] });
     } catch (err: any) {
@@ -1339,8 +1366,13 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
               </div>
             </div>
 
+            {canPostLedger && (
+              <PurchaseOtherLines lines={otherLines} onChange={setOtherLines} customAccounts={glAccounts} money={money} disabled={submitting} />
+            )}
+
             {/* Invoice total */}
-            <div className="flex justify-end border-t pt-3">
+            <div className="flex flex-col items-end border-t pt-3">
+              {otherTotal > 0 && <span className="text-xs text-muted-foreground">Stock {money(stockTotal)} · Other items {money(otherTotal)}</span>}
               <span className="text-sm font-semibold">Invoice Total: {money(invoiceTotal)}</span>
             </div>
 

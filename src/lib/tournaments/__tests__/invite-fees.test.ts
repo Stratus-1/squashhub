@@ -55,3 +55,26 @@ describe("inviteTotalFeeCents", () => {
     expect(inviteFeeCents({ ...base, payment_required: false })).toBe(0);
   });
 });
+
+describe("inviteTotalFeeCents package prices", () => {
+  const tiered: InvitePayload = {
+    ...base,
+    entry_fee_cents: 20000,
+    entry_fee_basis: "tiered",
+    entry_fee_tiers: { "1": 20000, "2": 30000 },
+    divisions: [
+      { group_number: 1, label: "Mens Doubles", fee_cents: 20000 },
+      { group_number: 2, label: "Mixed Doubles", fee_cents: 20000 },
+      { group_number: 3, label: "Open Doubles", fee_cents: 20000 },
+    ],
+  };
+  it("one category costs R200", () => {
+    expect(inviteTotalFeeCents(tiered, [1])).toBe(20000);
+  });
+  it("two categories cost R300, not 2 × R200", () => {
+    expect(inviteTotalFeeCents(tiered, [1, 2])).toBe(30000);
+  });
+  it("more categories than the last package row pay the last row's price", () => {
+    expect(inviteTotalFeeCents(tiered, [1, 2, 3])).toBe(30000);
+  });
+});

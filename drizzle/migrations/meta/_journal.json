@@ -2857,6 +2857,13 @@
       "when": 1794489389515,
       "tag": "0407_treasurer_finance_parity",
       "breakpoints": true
+    },
+    {
+      "idx": 408,
+      "version": "7",
+      "when": 1794489656256,
+      "tag": "0408_restrict_gateway_fee_defaults_read",
+      "breakpoints": true
     }
   ]
 }

@@ -40,14 +40,11 @@ Deno.serve(async (req) => {
 
     let allowed = mandate.user_id === userId;
     if (!allowed) {
-      const { data: adminRow } = await admin
-        .from("club_members")
-        .select("id")
-        .eq("club_id", mandate.club_id)
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-      allowed = !!adminRow;
+      // Club admins and Finance-permission holders (treasurer) may cancel on a member's behalf.
+      const { data: financeWriter } = await admin.rpc("is_club_finance_writer", {
+        _user_id: userId, _club_id: mandate.club_id,
+      });
+      allowed = financeWriter === true;
     }
     if (!allowed) return json({ error: "Not allowed" }, 403);
 

@@ -2850,6 +2850,13 @@
       "when": 1794482640234,
       "tag": "0406_comms_settle_account_template",
       "breakpoints": true
+    },
+    {
+      "idx": 407,
+      "version": "7",
+      "when": 1794489389515,
+      "tag": "0407_treasurer_finance_parity",
+      "breakpoints": true
     }
   ]
 }

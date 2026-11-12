@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import {
   lightsPaymentBody, lightsReference, lightsTransferLines, mapGoBookPaymentStatus,
 } from "../_shared/gobook-lights-topup.ts";
+import { cardTopupExpiryCutoff } from "../_shared/lights-topup-expiry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

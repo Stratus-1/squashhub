@@ -15,7 +15,10 @@ import { clubWebBase, renderChannel, resolveAction, type CommsChannel } from "..
 import { matchDayEmailBlock, matchDayLinks } from "../_shared/match-day.ts";
 import { tournamentMessageAction, noticeTemplateVariables, loginEmailButton } from "../_shared/match-day-cta.ts";
 import { isActiveCommsMember, isEligibleNominationMember } from "../_shared/comms-active-members.ts";
-import { isOutstandingAudienceMember, owingMemberIds, type LedgerRow } from "../_shared/comms-outstanding.ts";
+import {
+  balancesByMember, excludeMembers, formatRand, greetingName, isOutstandingAudienceMember, OUTSTANDING_MIN,
+  usesOutstandingAmount, type LedgerRow,
+} from "../_shared/comms-outstanding.ts";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { template as nominationTemplate } from "../_shared/transactional-email-templates/club-notification.tsx";
@@ -104,11 +107,12 @@ async function expandRecipients(clubId: string, campaign: any) {
     q = q.is("user_id", null).eq("status", "active");
   } else if (audience === "outstanding") {
     // Authoritative: balances evaluated now (at send time) from the member ledger.
-    const owing = await clubOwingMemberIds(clubId);
-    if (!owing.size) return [];
+    const balances = await clubMemberBalances(clubId);
     q = q.eq("status", "active");
     const { data } = await q;
-    return (data ?? []).filter((m: any) => owing.has(m.id) && isOutstandingAudienceMember(m));
+    const owing = (data ?? []).filter((m: any) => (balances.get(m.id) ?? 0) > OUTSTANDING_MIN && isOutstandingAudienceMember(m));
+    // Members the admin unticked on the Recipients step are never sent to.
+    return excludeMembers(owing, campaign.audience_filter?.exclude_member_ids);
   }
 
   const { data } = await q;
@@ -134,7 +138,7 @@ async function expandRecipients(clubId: string, campaign: any) {
   return members;
 }
 
-async function clubOwingMemberIds(clubId: string): Promise<Set<string>> {
+async function clubMemberBalances(clubId: string): Promise<Map<string, number>> {
   const rows: LedgerRow[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await admin.from("club_journal_entries")
@@ -148,7 +152,7 @@ async function clubOwingMemberIds(clubId: string): Promise<Set<string>> {
     rows.push(...((data ?? []) as LedgerRow[]));
     if (!data || data.length < 1000) break;
   }
-  return owingMemberIds(rows);
+  return balancesByMember(rows);
 }
 
 async function mergeVarsFor(member: any, club: any, leagueId: string | null) {
@@ -168,6 +172,7 @@ async function mergeVarsFor(member: any, club: any, leagueId: string | null) {
   }
   return {
     name: full,
+    greeting_name: greetingName(full),
     first_name: first || "",
     surname: rest.join(" "),
     title: "",
@@ -375,6 +380,10 @@ Deno.serve(async (req) => {
       payTemplateReady = payTpl?.approval_status === "approved";
     }
 
+    // {{outstanding_amount}}: each member's statement balance, read at send time (read-only).
+    const needsAmount = usesOutstandingAmount(campaign.content);
+    const sendBalances = needsAmount ? await clubMemberBalances(campaign.club_id) : null;
+
     for (const m of recipients) {
       if (Date.now() > deadline && channels.some((c) => !alreadySent.has(`${m.id}:${c}`))) { outOfTime = true; break; }
       // Scheduled sends/retries re-expand the audience; also catch suspensions mid-send.
@@ -394,7 +403,21 @@ Deno.serve(async (req) => {
           continue;
         }
       }
+      if (sendBalances) {
+        const owed = sendBalances.get(m.id) ?? 0;
+        if (owed <= OUTSTANDING_MIN) {
+          // Never tell a member they owe R0 (or that they owe when they've paid since).
+          for (const ch of channels) {
+            if (alreadySent.has(`${m.id}:${ch}`)) continue;
+            skipped++;
+            await logDelivery({ campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id, channel: ch,
+              recipient_name: m.name ?? null, target: null, status: "skipped", error_message: "No outstanding balance" });
+          }
+          continue;
+        }
+      }
       const vars = await mergeVarsFor(m, club, campaign.audience_league_id);
+      if (sendBalances) vars.outstanding_amount = formatRand(sendBalances.get(m.id) ?? 0);
       for (const [k, v] of Object.entries(memberVars[m.id] ?? {})) {
         if (/^[a-z_]{1,40}$/.test(k) && (typeof v === "string" || typeof v === "number")) vars[k] = String(v).slice(0, 4000);
       }

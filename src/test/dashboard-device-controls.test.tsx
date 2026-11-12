@@ -8,11 +8,17 @@ const mocks = vi.hoisted(() => ({
   courtLightsOn: false,
   mutateAsync: vi.fn(),
   openDoor: vi.fn(),
+  suspended: false,
+  isAdmin: false,
 }));
 
 vi.mock("@/hooks/use-club", () => ({
   useMyClub: () => ({ data: { club: { id: "club-1" } } }),
-  useIsClubAdmin: () => false,
+  useIsClubAdmin: () => mocks.isAdmin,
+}));
+
+vi.mock("@/hooks/use-member-access-gate", () => ({
+  useMemberAccessGate: () => ({ suspended: mocks.suspended, isBlocked: () => mocks.suspended }),
 }));
 
 vi.mock("@/hooks/use-club-capabilities", () => ({
@@ -77,6 +83,31 @@ describe("DashboardDeviceControls", () => {
     mocks.courtLightsOn = false;
     mocks.mutateAsync = vi.fn().mockResolvedValue({ ok: true, state: true, online: true });
     mocks.openDoor = vi.fn().mockResolvedValue(undefined);
+    mocks.suspended = false;
+    mocks.isAdmin = false;
+  });
+
+  it("gives a suspended member no door, light or gadget controls", () => {
+    mocks.suspended = true;
+    mocks.doorAvailable = true;
+    mocks.devices = [
+      device({ id: "b", category: "access", name: "Bar door", control_mode: "pulse" }),
+      device({ id: "c", category: "gadgets", name: "Clubhouse geyser" }),
+    ];
+    render(<DashboardDeviceControls />);
+    expect(screen.queryByText("Bar door")).toBeNull();
+    expect(screen.queryByText("Main door")).toBeNull();
+    expect(screen.queryByText("Clubhouse geyser")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText(/membership is suspended/i)).toBeTruthy();
+  });
+
+  it("keeps controls for a club admin even when flagged suspended", () => {
+    mocks.suspended = true;
+    mocks.isAdmin = true;
+    mocks.devices = [device({ id: "b", category: "access", name: "Bar door", control_mode: "pulse" })];
+    render(<DashboardDeviceControls />);
+    expect(screen.getByText("Bar door")).toBeTruthy();
   });
 
   it("renders nothing when the club has no controls at all", () => {

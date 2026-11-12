@@ -2,7 +2,9 @@
  * Tournament entry-fee basis — one calculation used by setup, summaries, posting previews and claims.
  * Mirrors DB `champ_registration_fee_lines`. A null basis means "Needs confirmation": no amounts, no charges.
  */
-export type FeeBasis = "per_player" | "per_category";
+import { tierFeeCents, type FeeTiers } from "./entry-fee";
+
+export type FeeBasis = "per_player" | "per_category" | "tiered";
 export type MixedRule = "highest" | "first";
 
 export type FeeSettings = {
@@ -11,6 +13,8 @@ export type FeeSettings = {
   flatCents: number;
   /** Division number (1-based, as string) → fee in cents. */
   divisionFees?: Record<string, number> | null;
+  /** Package prices by number of categories (basis "tiered"). */
+  tiers?: FeeTiers | null;
 };
 
 export type FeeEntrant = { memberId: string; divisions: number[] };
@@ -21,6 +25,8 @@ export const feesVary = (s: Pick<FeeSettings, "divisionFees">) =>
 /** Why the basis cannot be applied yet, or null when amounts can be computed. */
 export function basisProblem(s: FeeSettings): string | null {
   if (!s.basis) return "Needs confirmation: choose how the entry fee is charged in Tournament Setup → Fees & Payment.";
+  if (s.basis === "tiered" && tierFeeCents(s.tiers, 1) == null)
+    return "Enter the package price for 1 category.";
   if (s.basis === "per_player" && feesVary(s) && !s.mixedRule)
     return "Categories have different fees: choose which fee applies to a player in several categories.";
   return null;
@@ -35,6 +41,7 @@ const divFee = (s: FeeSettings, d: number) => {
 export function entrantFeeCents(s: FeeSettings, e: FeeEntrant): number | null {
   if (basisProblem(s)) return null;
   const divs = e.divisions.length ? e.divisions : [];
+  if (s.basis === "tiered") return tierFeeCents(s.tiers, Math.max(1, divs.length)) ?? 0;
   if (s.basis === "per_category") return divs.reduce((t, d) => t + divFee(s, d), 0);
   if (!feesVary(s)) {
     const vals = Object.values(s.divisionFees ?? {});

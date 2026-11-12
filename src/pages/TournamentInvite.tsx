@@ -20,6 +20,7 @@ import {
   defaultDivisionSelection,
   inviteDivisions,
   inviteTotalFeeCents,
+  inviteFeeTiers,
   inviteLoginPath,
   inviteSignupPath,
   inviteState,
@@ -139,6 +140,7 @@ export default function TournamentInvite() {
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
   // Total follows the ticked events — events may be priced differently.
   const feeCents = useMemo(() => inviteTotalFeeCents(data, chosenDivisions), [data, chosenDivisions]);
+  const feeTiers = useMemo(() => inviteFeeTiers(data), [data]);
   const [divisionError, setDivisionError] = useState("");
 
   // Pre-tick what the invitee already chose (or the only division on offer).
@@ -725,7 +727,7 @@ export default function TournamentInvite() {
                   onCheckedChange={() => toggleDivision(d.group_number)}
                 />
                 <span className="flex-1">{d.label}</span>
-                {d.fee_cents != null && d.fee_cents > 0 && (
+                {!feeTiers && d.fee_cents != null && d.fee_cents > 0 && (
                   <span className="text-xs text-muted-foreground">{money(d.fee_cents)}</span>
                 )}
                 {d.match_type === "doubles" && (
@@ -734,6 +736,9 @@ export default function TournamentInvite() {
               </label>
             ))}
           </div>
+          {feeTiers && data?.payment_required && (
+            <p className="text-[11px] text-muted-foreground">Package price: {tierSummary(feeTiers, money)}</p>
+          )}
           {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
         </div>
       )}

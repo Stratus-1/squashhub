@@ -276,18 +276,18 @@ export function inviteFeeCents(payload: InvitePayload | null | undefined): numbe
   return Math.max(0, Number(payload.entry_fee_cents || 0));
 }
 
-/**
- * Total entry fee for the divisions the invitee has ticked. Events may be
- * priced differently (division fee_cents); otherwise the flat fee applies per
- * event. Mirrors the server's champ_reg_own_due_cents (partner-covered doubles
- * events are excluded server-side — the invitee always pays for what they tick).
- */
 /** Package prices when the organiser chose "Package price by number of categories". */
 export function inviteFeeTiers(payload: InvitePayload | null | undefined): FeeTiers | null {
   if (payload?.entry_fee_basis !== "tiered" || !payload.entry_fee_tiers) return null;
   return tierFeeCents(payload.entry_fee_tiers, 1) == null ? null : payload.entry_fee_tiers;
 }
 
+/**
+ * Total entry fee for the divisions the invitee has ticked. Events may be
+ * priced differently (division fee_cents); otherwise the flat fee applies per
+ * event. Mirrors the server's champ_reg_own_due_cents (partner-covered doubles
+ * events are excluded server-side — the invitee always pays for what they tick).
+ */
 export function inviteTotalFeeCents(payload: InvitePayload | null | undefined, chosen: number[]): number {
   const flat = inviteFeeCents(payload);
   if (!payload?.payment_required) return 0;

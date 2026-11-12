@@ -104,7 +104,7 @@ export function buildPlatformInvoicePdf(
     (billTo?.emails || []).length ? (billTo.emails || []).join(", ") : null,
     billTo?.vat_number ? `VAT / Tax No: ${billTo.vat_number}` : null,
     billTo?.po_number ? `PO No: ${billTo.po_number}` : null,
-    `Billing period: ${fmtDate(inv.period_start)} → ${fmtDate(inv.period_end)}`,
+    `Billing period: ${fmtDate(inv.period_start)} to ${fmtDate(inv.period_end)}`,
     `Cycle: ${inv.billing_cycle}`,
   ].filter(Boolean) as string[];
   const payLines = [
@@ -121,13 +121,13 @@ export function buildPlatformInvoicePdf(
 
   const lines = Array.isArray(inv.line_items) && inv.line_items.length
     ? inv.line_items.map((l) => [
-        l.period_start ? `${l.description}\n${fmtDate(l.period_start)} → ${fmtDate(l.period_end)}` : l.description,
+        l.period_start ? `${l.description}\n${fmtDate(l.period_start)} to ${fmtDate(l.period_end)}` : l.description,
         String(Number(l.quantity ?? 1)),
         money(Number(l.unit_price || 0)),
         money(Number(l.amount || 0)),
       ])
     : [[
-        `${inv.plan_name}\nSubscription — ${fmtDate(inv.period_start)} → ${fmtDate(inv.period_end)}`,
+        `${inv.plan_name}\nSubscription — ${fmtDate(inv.period_start)} to ${fmtDate(inv.period_end)}`,
         String(inv.member_count),
         money(Number(inv.price_per_member)),
         money(Number(inv.subtotal)),

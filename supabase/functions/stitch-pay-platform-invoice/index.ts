@@ -52,8 +52,18 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
     const { data: isSuper } = await admin.rpc("has_role", { _user_id: userId, _role: "admin" });
-    if (!isSuper && (!membership || membership.role !== "admin")) {
-      return json({ error: "Only club admins can pay this invoice" }, 200);
+    // Club admins and Finance-permission holders (e.g. treasurer) may pay.
+    // A chairman without the admin role stays view-only for payments.
+    let canPay = !!isSuper || membership?.role === "admin";
+    if (!canPay && membership) {
+      const [{ data: finance }, { data: chair }] = await Promise.all([
+        admin.rpc("is_club_admin_or_permitted", { _user_id: userId, _club_id: inv.club_id, _permission: "finance" }),
+        admin.rpc("is_club_chairman", { _user_id: userId, _club_id: inv.club_id }),
+      ]);
+      canPay = finance === true && chair !== true;
+    }
+    if (!canPay) {
+      return json({ error: "Only club admins or the treasurer can pay this invoice" }, 200);
     }
 
     // Stitch only supports ZAR. Convert non-ZAR invoices at the current FX rate from app_settings.

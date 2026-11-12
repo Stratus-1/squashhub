@@ -909,9 +909,16 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       let picks = prev.picks; let changed = false;
       enteredPlaces.forEach((ks, id) => {
         // Only add people not yet picked; an organiser's own placement is never overridden by older saved entries.
-        if (!shouldAutoAdd(picks, prev.removedPicks, id)) return;
-        picks = { ...picks, [id]: [] }; changed = true;
-        ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+        if (shouldAutoAdd(picks, prev.removedPicks, id)) {
+          picks = { ...picks, [id]: [] }; changed = true;
+          ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+          return;
+        }
+        // Picked but still "Not placed": use the categories from their entry (e.g. a partner named them).
+        if (id in picks && shouldFillEntryPlaces(placesOf(picks, id).filter((k) => unitKeySet.has(k)), prev.removedPicks, id, ks)) {
+          changed = true;
+          ks.forEach((k) => { picks = addPlace(picks, id, k, singleEvent); });
+        }
       });
       return changed ? { ...prev, picks } : prev;
     });

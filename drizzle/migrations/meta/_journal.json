@@ -2899,6 +2899,13 @@
       "when": 1794495095078,
       "tag": "0413_suspended_members_no_devices",
       "breakpoints": true
+    },
+    {
+      "idx": 414,
+      "version": "7",
+      "when": 1794495477136,
+      "tag": "0414_step_sync_keeps_player_pairs",
+      "breakpoints": true
     }
   ]
 }

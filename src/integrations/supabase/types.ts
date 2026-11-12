@@ -20066,6 +20066,7 @@ export type Database = {
           entry_fee_basis_set_at: string | null
           entry_fee_basis_set_by: string | null
           entry_fee_mixed_rule: string | null
+          entry_fee_tiers: Json | null
           event_type: string
           expected_players: Json | null
           gender: string
@@ -20187,6 +20188,7 @@ export type Database = {
           entry_fee_basis_set_at?: string | null
           entry_fee_basis_set_by?: string | null
           entry_fee_mixed_rule?: string | null
+          entry_fee_tiers?: Json | null
           event_type?: string
           expected_players?: Json | null
           gender: string
@@ -20308,6 +20310,7 @@ export type Database = {
           entry_fee_basis_set_at?: string | null
           entry_fee_basis_set_by?: string | null
           entry_fee_mixed_rule?: string | null
+          entry_fee_tiers?: Json | null
           event_type?: string
           expected_players?: Json | null
           gender?: string
@@ -23169,7 +23172,12 @@ export type Database = {
         Returns: string
       }
       champ_set_entry_fee_basis: {
-        Args: { p_basis: string; p_champ: string; p_mixed_rule: string }
+        Args: {
+          p_basis: string
+          p_champ: string
+          p_mixed_rule: string
+          p_tiers?: Json
+        }
         Returns: undefined
       }
       champ_set_final_ladder_mode: {
@@ -23188,6 +23196,10 @@ export type Database = {
           p_group_number: number
         }
         Returns: undefined
+      }
+      champ_tier_fee_cents: {
+        Args: { p_count: number; p_tiers: Json }
+        Returns: number
       }
       champ_user_can_act_for_member: {
         Args: { p_member: string; p_user: string }

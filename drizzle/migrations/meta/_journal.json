@@ -2864,6 +2864,13 @@
       "when": 1794489656256,
       "tag": "0408_restrict_gateway_fee_defaults_read",
       "breakpoints": true
+    },
+    {
+      "idx": 409,
+      "version": "7",
+      "when": 1794491942506,
+      "tag": "0409_tournament_fee_package_tiers",
+      "breakpoints": true
     }
   ]
 }

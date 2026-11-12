@@ -541,7 +541,7 @@ export function TournamentInviteRegisterDialog({
               ) : doublesPickerDivisions.length > 0 ? (
                 <>
                   <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                    Your doubles entry is only complete once you name a partner.
+                    {doublesPickerDivisions.length > 1 ? "Your entry is only complete once you name a partner in every doubles category." : "Your doubles entry is only complete once you name a partner."}
                     {paymentRequired
                       ? " You'll also say who is paying — if your partner pays their own entry we send them a confirmation with a payment link."
                       : ""}

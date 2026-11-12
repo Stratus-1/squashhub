@@ -1,4 +1,5 @@
 import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
@@ -123,8 +124,9 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     },
     enabled: !!registration?.id,
   });
+  const feeTiers = useChampFeeTiers(champ?.id);
   const eventFeeCents = Number(champ?.entry_fee_cents || 0);
-  const entryFeeCents = (registration as any)?.confirmed_at && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, (registration as any)?.division_choices);
+  const entryFeeCents = (registration as any)?.confirmed_at && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, (registration as any)?.division_choices, [], feeTiers);
   const feeEvents = (registration as any)?.confirmed_at && feeBreakdown ? Number(feeBreakdown.own_events || 0) : ownEvents((registration as any)?.division_choices);
   const paymentRequired = !!champ?.payment_required && eventFeeCents > 0;
   const paymentMethods = (champ?.payment_methods || []) as string[];
@@ -331,10 +333,10 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       `${champ.start_date} to ${champ.end_date}`,
       ...scheduleRows,
       paymentRequired
-        ? `${useTotal ? `Total due: ${formatMoney(entrySummary.totalDueCents!)}` : `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney)} entry fee`}${acceptsEft ? " · EFT accepted" : ""}`
+        ? `${useTotal ? `Total due: ${formatMoney(entrySummary.totalDueCents!)}` : `${feeBreakdownLabel(eventFeeCents, feeEvents, formatMoney, feeTiers)} entry fee`}${acceptsEft ? " · EFT accepted" : ""}`
         : "No entry fee",
     ].filter(Boolean);
-  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, paymentRequired, entrySummary.eventLabels.join("|"), entrySummary.totalDueCents]);
+  }, [acceptsEft, champ, entryFeeCents, eventFeeCents, feeEvents, feeTiers, paymentRequired, entrySummary.eventLabels.join("|"), entrySummary.totalDueCents]);
 
 
   if (champLoading || regLoading) {

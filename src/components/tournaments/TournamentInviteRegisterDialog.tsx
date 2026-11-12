@@ -1,5 +1,6 @@
 import { useChampEntrySummary } from "@/hooks/use-champ-entry-summary";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
+import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,10 +129,11 @@ export function TournamentInviteRegisterDialog({
     },
     enabled: !!registration?.id,
   });
+  const feeTiers = useChampFeeTiers(champ?.id);
   const eventFeeCents = Number(champ?.entry_fee_cents || 0);
   const localEvents = chosenDivisions.length ? chosenDivisions : (registration as any)?.division_choices;
   const confirmedEntry = !!(registration as any)?.confirmed_at;
-  const entryFeeCents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, localEvents);
+  const entryFeeCents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_due_cents || 0) : entryDueCents(eventFeeCents, localEvents, [], feeTiers);
   const feeEvents = confirmedEntry && feeBreakdown ? Number(feeBreakdown.own_events || 0) : ownEvents(localEvents);
   const paymentRequired = !!champ?.payment_required && eventFeeCents > 0;
   const methods = (champ?.payment_methods || []) as string[];
@@ -349,7 +351,7 @@ export function TournamentInviteRegisterDialog({
       : `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
     !paymentRequired ? "No entry fee — just accept"
       : entrySummary.totalDueCents != null && entrySummary.eventLabels.length ? `Total due: ${money(entrySummary.totalDueCents)}`
-      : `${feeBreakdownLabel(eventFeeCents, feeEvents, money)} entry fee${feeEvents > 1 ? "" : " (per event)"}`,
+      : `${feeBreakdownLabel(eventFeeCents, feeEvents, money, feeTiers)} entry fee${feeEvents > 1 || feeTiers ? "" : " (per event)"}`,
   ];
 
   return (

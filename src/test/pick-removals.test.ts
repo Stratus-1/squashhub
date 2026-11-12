@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
+import { removePick, unmarkRemoved, shouldAutoAdd, picksSignature, removalImpact , shouldFillEntryPlaces } from "@/lib/smart-builder/pick-removals";
 
 describe("pick removals stick", () => {
   it("removed player is not auto-added back from an active entry", () => {
@@ -22,5 +22,17 @@ describe("pick removals stick", () => {
     expect(removalImpact([{ status: "scheduled", winner_member_id: null, score: null, is_bye: false }]).kind).toBe("unplayed");
     expect(removalImpact([{ status: "completed", winner_member_id: "x", score: "3-0", is_bye: false }]).kind).toBe("played");
     expect(removalImpact([{ status: "scheduled", winner_member_id: null, score: null, is_bye: true }]).kind).toBe("none");
+  });
+});
+
+describe("shouldFillEntryPlaces", () => {
+  it("places a Not-placed entrant into the category their pair gave them", () => {
+    expect(shouldFillEntryPlaces([], [], "pieter", ["mens-doubles"])).toBe(true);
+  });
+  it("keeps the organiser's placement once a player is in any category", () => {
+    expect(shouldFillEntryPlaces(["mixed"], [], "willem", ["mens-doubles", "mixed"])).toBe(false);
+  });
+  it("never restores a player the organiser removed", () => {
+    expect(shouldFillEntryPlaces([], ["pieter"], "pieter", ["mens-doubles"])).toBe(false);
   });
 });

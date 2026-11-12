@@ -2871,6 +2871,13 @@
       "when": 1794491942506,
       "tag": "0409_tournament_fee_package_tiers",
       "breakpoints": true
+    },
+    {
+      "idx": 410,
+      "version": "7",
+      "when": 1794493567603,
+      "tag": "0410_invite_fee_package_tiers",
+      "breakpoints": true
     }
   ]
 }

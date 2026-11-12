@@ -6,7 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw, History } from "lucide-react";
+import { Landmark, FileText, ExternalLink, Copy, Loader2, Printer, RefreshCw, History, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { buildPlatformInvoicePdf } from "@/lib/billing/platform-invoice-pdf";
+import { deliverFile } from "@/lib/deliver-file";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BillingInfoTab } from "@/components/club-admin/BillingInfoTab";
 import { useClubBillingAudit, useClubBillingProfile, BILLING_FIELD_LABELS } from "@/hooks/use-club-billing";
@@ -159,19 +162,29 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     [invoices, eftInvoiceId]
   );
 
-  const openInvoice = (inv: Invoice) => {
-    // Past invoices keep the billing details captured when they were issued.
-    const billTo = (inv as any).billing_details || billingProfile || null;
-    const html = renderInvoiceHtml(inv, club?.name || "Your Club", bank || {}, billTo);
-    const w = window.open("", "_blank", "width=900,height=1100");
-    if (!w) {
-      toast.error("Popup blocked — allow popups to view the invoice");
-      return;
+  // Past invoices keep the billing details captured when they were issued.
+  const billToFor = (inv: Invoice) => (inv as any).billing_details || billingProfile || null;
+  // Shown inside the app (no popup), so it works on phones and in the installed app.
+  const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
+  const viewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const openInvoice = (inv: Invoice) => setViewInvoice(inv);
+  const downloadInvoice = async (inv: Invoice) => {
+    try {
+      const doc = buildPlatformInvoicePdf(inv, club?.name || "Your Club", bank || {}, billToFor(inv));
+      const blob = doc.output("blob") as Blob;
+      await deliverFile(new Blob([blob], { type: "application/pdf" }), `${inv.invoice_number}.pdf`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not create the invoice PDF");
     }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
   };
+  const viewHtml = useMemo(
+    () =>
+      viewInvoice
+        ? renderInvoiceHtml(viewInvoice, club?.name || "Your Club", bank || {}, billToFor(viewInvoice), { embedded: true })
+        : "",
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewInvoice, club?.name, bank, billingProfile]
+  );
 
   const handlePayStitch = async (inv: Invoice) => {
     const t = toast.loading("Creating Stitch payment link…");
@@ -396,9 +409,18 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                         variant="outline"
                         className="h-7 text-xs"
                         onClick={() => openInvoice(inv)}
-                        title="View / Print / Download"
+                        title="View / Print"
                       >
                         <Printer className="w-3 h-3 mr-1" /> View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => downloadInvoice(inv)}
+                        title="Download PDF"
+                      >
+                        <Download className="w-3 h-3 mr-1" /> Download
                       </Button>
                       {awaitingEft && (
                         <Button
@@ -465,6 +487,31 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
         currency={outstandingCurrency}
         outstandingCount={outstanding.length}
       />
+
+      <Dialog open={!!viewInvoice} onOpenChange={(o) => !o && setViewInvoice(null)}>
+        <DialogContent className="max-w-3xl w-[96vw] h-[90vh] p-0 flex flex-col gap-0">
+          <DialogHeader className="px-4 py-3 border-b">
+            <DialogTitle className="text-sm">Invoice {viewInvoice?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          <iframe
+            ref={viewFrameRef}
+            title={`Invoice ${viewInvoice?.invoice_number || ""}`}
+            srcDoc={viewHtml}
+            className="flex-1 w-full bg-background"
+          />
+          <div className="flex flex-wrap gap-2 justify-end px-4 py-3 border-t">
+            <Button size="sm" variant="outline" onClick={() => viewFrameRef.current?.contentWindow?.print()}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+            <Button size="sm" onClick={() => viewInvoice && downloadInvoice(viewInvoice)}>
+              <Download className="w-4 h-4 mr-1" /> Download PDF
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setViewInvoice(null)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PlatformInvoiceEftDialog
         open={!!eftInvoice}
@@ -846,7 +893,8 @@ function renderInvoiceHtml(
   inv: Invoice,
   clubName: string,
   bank: Record<string, string>,
-  billTo?: any
+  billTo?: any,
+  opts: { embedded?: boolean } = {}
 ) {
   const money = (n: number) => fmtMoney(n, inv.currency);
   const platformName = bank.company_name || "SquashHub / Stratus Software Solutions (Pty) Ltd";
@@ -880,10 +928,10 @@ function renderInvoiceHtml(
   @media print{.actions{display:none}body{padding:0}}
 </style></head>
 <body>
-  <div class="actions">
+  ${opts.embedded ? "" : `<div class="actions">
     <button onclick="window.print()">🖨 Print / Save as PDF</button>
     <button class="ghost" onclick="window.close()">Close</button>
-  </div>
+  </div>`}
   <div class="head">
     <div>
       <h1>TAX INVOICE</h1>

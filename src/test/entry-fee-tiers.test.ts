@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tierFeeCents, entryDueCents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
+import { tierFeeCents, entryDueCents, feeBreakdownLabel, entrantFeeText } from "@/lib/tournaments/entry-fee";
 import { entrantFeeCents, basisProblem } from "@/lib/tournaments/entry-fees";
 import { tiersFromFee } from "@/components/smart-builder/FeeBasisQuestion";
 
@@ -34,5 +34,21 @@ describe("package price by number of categories", () => {
   });
   it("label shows the package price", () => {
     expect(feeBreakdownLabel(20000, 2, money, tiers)).toBe("2 categories: R300");
+  });
+});
+
+describe("entrantFeeText (registrations list amount)", () => {
+  const opts = { entryFeeCents: 20000, feeRequired: true, tiers: { "1": 20000, "2": 30000 } };
+  it("two categories show R300 due", () => {
+    expect(entrantFeeText({ status: "pending_payment", fee_status: "due", division_choices: [1, 3] }, opts)?.text).toBe("R300.00 due");
+  });
+  it("a paid two-category entry shows R300 paid", () => {
+    expect(entrantFeeText({ status: "paid", fee_status: "paid", fee_paid_cents: 30000, division_choices: [1, 3] }, opts)?.text).toBe("R300.00 paid");
+  });
+  it("one category shows R200 due", () => {
+    expect(entrantFeeText({ status: "pending_payment", fee_status: "due", division_choices: [1] }, opts)?.text).toBe("R200.00 due");
+  });
+  it("shows nothing when no fee is required", () => {
+    expect(entrantFeeText({ status: "registered" }, { ...opts, feeRequired: false })).toBeNull();
   });
 });

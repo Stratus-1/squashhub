@@ -1,6 +1,6 @@
 import { ChampFeesPanel } from "./ChampFeesPanel";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
-import { entryDueCents, tierSummary } from "@/lib/tournaments/entry-fee";
+import { entryDueCents, entrantFeeText, tierSummary } from "@/lib/tournaments/entry-fee";
 import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -438,7 +438,13 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                 <div key={r.id} className="p-2 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium break-words">{getName(r.member)}</p>
+                      <p className="font-medium break-words">
+                        {getName(r.member)}
+                        {(() => {
+                          const fee = entrantFeeText(r, { entryFeeCents: Math.round(entryFee * 100), feeRequired, tiers: feeTiers });
+                          return fee ? <span className={`ml-2 text-xs font-semibold ${fee.paid ? "text-emerald-600" : "text-muted-foreground"}`}>{fee.text}</span> : null;
+                        })()}
+                      </p>
                       {isDoubles && (
                         <p className="text-xs text-muted-foreground truncate">
                           Partner: {r.partner ? getName(r.partner) : <span className="italic">none</span>}

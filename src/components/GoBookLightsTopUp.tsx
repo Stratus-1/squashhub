@@ -57,9 +57,12 @@ export function GoBookLightsTopUp({ clubId, memberId, onStartTopUp }: {
     queryKey: ["gobook-lights-topups", memberId],
     queryFn: async () => {
       const { data } = await supabase.from("gobook_lights_topups")
-        .select("id, amount, status, reference, cancellation_reason, created_at")
-        .eq("club_member_id", memberId).neq("status", "abandoned").order("created_at", { ascending: false }).limit(3);
-      return data ?? [];
+        .select("id, amount, method, status, reference, cancellation_reason, created_at")
+        .eq("club_member_id", memberId).neq("status", "abandoned").order("created_at", { ascending: false }).limit(6);
+      // Unpaid card checkouts expire after 24h (the hourly job marks them "Not paid"); hide them now.
+      const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
+      return (data ?? []).filter((r: any) => !(r.method === "card" && r.status === "awaiting_payment"
+        && new Date(r.created_at).getTime() < expiredBefore)).slice(0, 3);
     },
   });
 

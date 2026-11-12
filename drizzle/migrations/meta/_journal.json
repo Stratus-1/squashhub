@@ -2885,6 +2885,13 @@
       "when": 1794494168859,
       "tag": "0411_pair_syncs_partner_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 412,
+      "version": "7",
+      "when": 1794494277554,
+      "tag": "0412_fee_paid_journal_includes_adjustments",
+      "breakpoints": true
     }
   ]
 }

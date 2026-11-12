@@ -4494,3 +4494,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Hourly cron `gobook-lights-topups-hourly` only fired while ready/submitting/submitted rows existed, so unpaid card top-ups past 24h were never expired. Drizzle 0404 also fires it for stale `awaiting_payment` card rows; the two R15 requests expired on a manual run.
 - Willem's R100 Lights top-up SH-L-D06F77FD4EB7 had been released by a Stitch TEST payment and its transfer journal was missing after the test cleanup. Recorded the real EFT (7 Nov, bank Dr / debtors Cr) and restored the 9 Nov transfer journal (debtors Dr / light_fees_income Cr). Member nets R0; audited as `lights_topup_correction`.
 - GL rule (unchanged): Lights top-up paid by card/EFT = Dr bank / Cr debtors; sent to GoBook = Dr debtors / Cr light_fees_income. Member nets zero, club keeps Lights income.
+
+### 2026-11-12 — Nelspruit bank recon: two member EFTs (data only)
+- Martin Strydom (NSC148): bank 6 Nov "NSC148 - Top-up" R100 was missing; added as confirmed EFT member payment (bank Dr / debtors Cr), dated 6 Nov.
+- Umar Akoojee (NSC292): 10 Nov "UMAR SQUASH" R375 was captured as R275; both legs corrected to R375. Both audited (`bank_recon_payment_added` / `bank_recon_payment_corrected`).

@@ -2892,6 +2892,13 @@
       "when": 1794494277554,
       "tag": "0412_fee_paid_journal_includes_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 413,
+      "version": "7",
+      "when": 1794495095078,
+      "tag": "0413_suspended_members_no_devices",
+      "breakpoints": true
     }
   ]
 }

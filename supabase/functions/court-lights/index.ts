@@ -243,6 +243,35 @@ Deno.serve(async (req) => {
     }
     const userId = claimsData.claims.sub as string;
 
+    // Suspended / resigned members may not switch on or move court lights.
+    // Switching lights off (terminate) stays allowed. Club admins are exempt.
+    if (action === "turn_on" || action === "transfer") {
+      let lightClubId: string | null = null;
+      if (action === "turn_on" && body.booking_id) {
+        const { data: b } = await supabase.from("bookings").select("club_id").eq("id", body.booking_id).maybeSingle();
+        lightClubId = (b as any)?.club_id ?? null;
+      } else if (action === "transfer" && body.session_id) {
+        const { data: s } = await supabase.from("light_sessions").select("club_id").eq("id", body.session_id).maybeSingle();
+        lightClubId = (s as any)?.club_id ?? null;
+      }
+      if (lightClubId) {
+        const { data: isAdmin } = await supabase.rpc("is_club_admin", { _user_id: userId, _club_id: lightClubId });
+        if (!isAdmin) {
+          const { data: blocked } = await supabase.rpc("member_access_blocked", {
+            _user_id: userId,
+            _club_id: lightClubId,
+            _member_id: null,
+          });
+          if (blocked) {
+            return new Response(JSON.stringify({
+              error: "Your membership is suspended — court lights are disabled. Please contact the club committee.",
+              code: "member_suspended",
+            }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+      }
+    }
+
     // ── turn_on: create a light session for an active booking ──
     if (action === "turn_on") {
       const bookingId = body.booking_id;

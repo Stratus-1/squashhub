@@ -4510,3 +4510,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Cause: manual Enter Transaction "Checkers Bar stock purchase" R939.89 (bank Cr) plus Bar stock invoice 231411396 (5 lines, R961.87, payment method EFT → bank Cr per line). Bank paid R939.89 once.
 - Fix: deleted manual journal 073b3153; kept stock invoice, spread R21.98 slip discount proportionally across the 5 lines (total R939.89), updated line unit costs, journal legs (description now "Bar purchases — Checkers 231411396"), item cost prices, and avg cost where it equalled the old invoice price (guard bypass via sh.bar_cost_apply). Audited (`bank_recon_duplicate_removed`, `bank_recon_cost_corrected`).
 - Note: stock invoices post one journal per line (journal_ref = purchase id, used by division margins), so the bank shows per-line credits; do not merge them.
+
+### 2026-11-12 — "Please settle your outstanding account" template (all clubs)
+- New default comms template seeded to all 799 clubs and new clubs (`seed_club_settle_account_template`, migration 0406): email/WhatsApp/SMS/in-app, polite request to settle soonest, "if already paid, ignore".
+- New merge fields `greeting_name` (first name, or full name when the first word is initials/title/single word) and `outstanding_amount` (sender reads member ledger at send time; zero-balance recipients skipped).
+- "Members with an outstanding balance" audience now lists owing members with tick boxes (Tick all / Untick all); unticked IDs saved as `audience_filter.exclude_member_ids` and excluded server-side.

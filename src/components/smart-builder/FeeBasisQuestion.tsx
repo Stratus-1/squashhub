@@ -1,9 +1,12 @@
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, X } from "lucide-react";
 import { feeTotals, rand, type FeeBasis, type MixedRule, type FeeEntrant } from "@/lib/tournaments/entry-fees";
 
 type Props = {
-  fee: { basis?: FeeBasis | null; mixedRule?: MixedRule | null };
-  setFee: (p: { basis?: FeeBasis | null; mixedRule?: MixedRule | null }) => void;
+  fee: { basis?: FeeBasis | null; mixedRule?: MixedRule | null; amount?: string; tiers?: string[] };
+  setFee: (p: { basis?: FeeBasis | null; mixedRule?: MixedRule | null; tiers?: string[] }) => void;
   vary: boolean;
   uniquePlayers: number;
   categoryEntries: number;
@@ -22,6 +25,19 @@ function Card({ active, onClick, title, desc }: { active: boolean; onClick: () =
   );
 }
 
+/** Package prices in cents keyed "1","2"…: row 1 is the entry fee above, later rows the organiser's prices. */
+export function tiersFromFee(amount: string | undefined, tiers: string[] | undefined): Record<string, number> | null {
+  const base = Number(amount);
+  if (amount === "" || amount == null || !Number.isFinite(base) || base < 0) return null;
+  const out: Record<string, number> = { "1": Math.round(base * 100) };
+  for (const [i, v] of (tiers ?? []).entries()) {
+    const n = Number(v);
+    if (v === "" || !Number.isFinite(n) || n < 0) return null;
+    out[String(i + 2)] = Math.round(n * 100);
+  }
+  return out;
+}
+
 /** Required Step 17 question: once per player vs per category entered, with a live total using actual picks. */
 export function FeeBasisQuestion({ fee, setFee, vary, uniquePlayers, categoryEntries, entrants, divisionFees, existing }: Props) {
   const flat = Math.max(0, ...Object.values(divisionFees));
@@ -29,6 +45,10 @@ export function FeeBasisQuestion({ fee, setFee, vary, uniquePlayers, categoryEnt
     feeTotals({ basis, mixedRule, flatCents: flat, divisionFees }, entrants).totalCents;
   const perPlayer = total("per_player", vary ? fee.mixedRule ?? null : null);
   const perCat = total("per_category", null);
+  const tiers = tiersFromFee(fee.amount, fee.tiers);
+  const tiered = tiers ? feeTotals({ basis: "tiered", mixedRule: null, flatCents: flat, divisionFees, tiers }, entrants).totalCents : null;
+  const rows = fee.tiers ?? [];
+  const setRow = (i: number, v: string) => setFee({ tiers: rows.map((r, n) => (n === i ? v : r)) });
   return (
     <div className="mt-4 space-y-2 border-t pt-4" data-testid="fee-basis">
       <div className="text-sm font-semibold">How is the entry fee charged? <span className="text-destructive">*</span></div>
@@ -37,12 +57,40 @@ export function FeeBasisQuestion({ fee, setFee, vary, uniquePlayers, categoryEnt
           <b>Needs confirmation.</b> {existing ? "This tournament has no saved choice. Nothing will be charged to member accounts until you choose and then separately approve posting charges." : "Choose one before completing setup."}
         </p>
       )}
-      <div role="radiogroup" className="grid gap-2 sm:grid-cols-2">
+      <div role="radiogroup" className="grid gap-2 sm:grid-cols-3">
         <Card active={fee.basis === "per_player"} onClick={() => setFee({ basis: "per_player" })}
           title="Once per player (for the whole tournament)" desc="A player in several categories pays one fee." />
         <Card active={fee.basis === "per_category"} onClick={() => setFee({ basis: "per_category", mixedRule: null })}
           title="Per category entered" desc="A player in two categories owes two fees." />
+        <Card active={fee.basis === "tiered"} onClick={() => setFee({ basis: "tiered", mixedRule: null, tiers: rows.length ? rows : [""] })}
+          title="Package price by number of categories" desc="E.g. 1 category R200, 2 categories R300." />
       </div>
+      {fee.basis === "tiered" && (
+        <div className="space-y-2 rounded-md border p-2" data-testid="fee-tiers">
+          {vary ? (
+            <p className="text-xs text-destructive">Package prices need one entry fee for every category. Untick "Different fee for different categories" above, or choose another option.</p>
+          ) : (
+            <>
+              <div className="text-xs font-semibold">Price for the number of categories a player enters <span className="text-destructive">*</span></div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-28">1 category</span><span>R</span>
+                <span className="font-semibold">{fee.amount || "—"}</span><span className="text-xs text-muted-foreground">(the entry fee above)</span>
+              </div>
+              {rows.map((v, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <span className="w-28">{i + 2} categories</span><span>R</span>
+                  <Input type="number" min={0} className="max-w-[120px]" aria-label={`Price for ${i + 2} categories`} value={v} onChange={(e) => setRow(i, e.target.value)} />
+                  {i === rows.length - 1 && (
+                    <Button type="button" variant="ghost" size="icon" aria-label="Remove this row" onClick={() => setFee({ tiers: rows.slice(0, -1) })}><X className="h-4 w-4" /></Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setFee({ tiers: [...rows, ""] })}><Plus className="mr-1 h-3.5 w-3.5" />Add {rows.length + 2} categories</Button>
+              <p className="text-xs text-muted-foreground">A player entering more than {rows.length + 1} categor{rows.length ? "ies" : "y"} pays the {rows.length + 1}-category price. If a partner pays for a doubles category, that category doesn't count towards the player's number.</p>
+            </>
+          )}
+        </div>
+      )}
       {fee.basis === "per_player" && vary && (
         <div className="space-y-1 rounded-md border p-2">
           <div className="text-xs font-semibold">Categories have different fees — which fee does a player in several categories pay? <span className="text-destructive">*</span></div>
@@ -56,6 +104,7 @@ export function FeeBasisQuestion({ fee, setFee, vary, uniquePlayers, categoryEnt
         <div>Currently picked: <b>{uniquePlayers}</b> unique player{uniquePlayers === 1 ? "" : "s"} · <b>{categoryEntries}</b> category entr{categoryEntries === 1 ? "y" : "ies"}</div>
         <div className={cn(fee.basis === "per_player" && "font-semibold")}>Once per player: {perPlayer == null ? "choose the rule above" : rand(perPlayer)}</div>
         <div className={cn(fee.basis === "per_category" && "font-semibold")}>Per category entered: {rand(perCat)}</div>
+        {fee.basis === "tiered" && <div className="font-semibold">Package price: {vary || tiered == null ? "enter the prices above" : rand(tiered)}</div>}
         {existing && <div className="mt-1 text-muted-foreground">Estimate only. Saving this choice never posts, changes or removes member account charges; posting is a separate, previewed step on the running tournament.</div>}
       </div>
     </div>

@@ -4537,3 +4537,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-12 — Invitation page showed 2 × R200 instead of the R300 package price
 - No Frills Doubles Week (Riverside) is set to package pricing (1 category R200, 2 categories R300). The server already charged R300 (`tournament_invite_payment_context` → `champ_reg_own_due_cents`), but the public invitation page summed per-category prices because its payload had no basis/tiers.
 - Drizzle 0410 adds private `champ_fee_pricing_json` and returns `entry_fee_basis`/`entry_fee_tiers` from `get_tournament_invite` and `get_tournament_invite_preview`; `inviteTotalFeeCents` uses `tierFeeCents`, and the page hides per-category prices and shows the package summary. Tests in `invite-fees.test.ts`.
+
+### 2026-11-12 — Registrations list shows each entrant's fee amount
+- Organiser Registrations dialog now shows "R300.00 paid" / "R200.00 due" / "Fee waived" beside each name via `entrantFeeText` (`entry-fee.ts`, package prices and partner-covered categories respected; paid rows use `fee_paid_cents`).
+- Note: Stitch test-mode payments never settle fees by design (`is_test`); Willem's R300 No Frills entry was settled with the admin Paid button (audit `admin_confirm_paid`, 14:32 UTC).

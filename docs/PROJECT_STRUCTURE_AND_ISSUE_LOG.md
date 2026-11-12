@@ -4499,3 +4499,4 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Martin Strydom (NSC148): bank 6 Nov "NSC148 - Top-up" R100 was missing; added as confirmed EFT member payment (bank Dr / debtors Cr), dated 6 Nov.
 - Umar Akoojee (NSC292): 10 Nov "UMAR SQUASH" R375 was captured as R275; both legs corrected to R375. Both audited (`bank_recon_payment_added` / `bank_recon_payment_corrected`).
 - Quintin Taljard: R450 "NSC purchased balls" (28 May) was booked as a bank receipt with no bank movement; the club bought balls from him. Debit leg moved bank → general_expense, his R450 credit unchanged (audited `bank_recon_reclassified`).
+- Jacques Knoetze: R300 "Top-up via EFT" (30 Oct) was a pending EFT request approved by an admin after he paid R500 by Stitch instead; not on any bank statement. Deleted the request and its bank/member_credits journal on owner instruction (audited `bank_recon_payment_deleted` with full before-copy).

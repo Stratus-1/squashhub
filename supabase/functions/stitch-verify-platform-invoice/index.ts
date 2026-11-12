@@ -51,7 +51,15 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
     const { data: isSuper } = await admin.rpc("has_role", { _user_id: userId, _role: "admin" });
-    if (!isSuper && (!membership || membership.role !== "admin")) {
+    // Club admins and Finance-permission holders may check a payment's status.
+    let canVerify = !!isSuper || membership?.role === "admin";
+    if (!canVerify && membership) {
+      const { data: finance } = await admin.rpc("is_club_admin_or_permitted", {
+        _user_id: userId, _club_id: inv.club_id, _permission: "finance",
+      });
+      canVerify = finance === true;
+    }
+    if (!canVerify) {
       return json({ error: "Forbidden" }, 200);
     }
 

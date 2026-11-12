@@ -4482,3 +4482,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Campaign wizard + `send-comms-campaign`: new "Members with an outstanding balance" audience (ledger net debtors + member_credits > R0, active members; re-checked at send). CSIR today: 2 members, R1,285.
 - New-club template seeding was broken (`seed_club_welcome_template` wrote non-existent `description`/`is_active` columns, which would make club creation fail). Fixed and added `seed_club_balance_template`; both run from the club-insert trigger. All 799 clubs already had both templates (no duplicates created). Migration 0401.
 - Nelspruit treasurer (Rachel Gates) saw "Templates (0)": comms RLS was `is_club_admin` only, which excludes the treasurer post and the `communications` permission. Added `can_manage_club_comms` for comms tables, sender and the Club Admin tile. Migration 0402.
+
+### 2026-11-12 — Unpaid card Lights top-ups expire after 24 hours
+- Issue: card Lights top-ups stayed "Waiting for your payment" forever; the member can't reopen the same card checkout, and a later card payment could release an old request.
+- Fix: hourly `gobook-lights-topup` process marks card `awaiting_payment` rows older than 24h as `abandoned` ("Card payment not completed within 24 hours"); `gobook_lights_mark_ready_from_payment` ignores card rows older than 24h (Drizzle 0403); the Lights panel hides them immediately. EFT unchanged. Rule in `supabase/functions/_shared/lights-topup-expiry.ts`, test `src/test/lights-topup-expiry.test.ts`.

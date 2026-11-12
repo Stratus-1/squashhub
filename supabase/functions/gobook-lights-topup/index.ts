@@ -119,6 +119,11 @@ async function sendOne(row: any) {
 
 async function processAll() {
   const results: Record<string, string> = {};
+  // Unpaid card checkouts older than 24h can't be resumed: close them as "Not paid".
+  const { data: expired } = await admin.from("gobook_lights_topups")
+    .update({ status: "abandoned", cancellation_reason: "Card payment not completed within 24 hours", updated_at: new Date().toISOString() })
+    .eq("method", "card").eq("status", "awaiting_payment").lt("created_at", cardTopupExpiryCutoff()).select("reference");
+  for (const row of expired ?? []) results[row.reference] = "expired";
   // Claim ready rows (and stale 'submitting' ones) atomically.
   const staleCut = new Date(Date.now() - 5 * 60_000).toISOString();
   await admin.from("gobook_lights_topups").update({ status: "ready" }).eq("status", "submitting").lt("updated_at", staleCut);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tierFeeCents, entryDueCents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
+import { tierFeeCents, entryDueCents, feeBreakdownLabel, entrantFeeText } from "@/lib/tournaments/entry-fee";
 import { entrantFeeCents, basisProblem } from "@/lib/tournaments/entry-fees";
 import { tiersFromFee } from "@/components/smart-builder/FeeBasisQuestion";
 

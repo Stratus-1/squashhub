@@ -23051,6 +23051,7 @@ export type Database = {
         Args: { p_champ: string; p_expected_total_cents: number }
         Returns: number
       }
+      champ_fee_pricing_json: { Args: { p_champ_id: string }; Returns: Json }
       champ_final_ladder: {
         Args: {
           p_apply?: boolean

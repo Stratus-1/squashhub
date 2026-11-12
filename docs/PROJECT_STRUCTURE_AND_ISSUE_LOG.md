@@ -4518,3 +4518,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 
 ### 2026-11-12 — Nelspruit Checkers INV231963205 corrected to bank amount (data fix)
 - Captured R2,624.79 (9 lines, EFT) vs bank R2,225.93 on 7 Nov; no slip. Owner chose pro rata: all lines × 0.84804, journal legs, item cost prices and single-source avg costs updated (quantities unchanged). Audited `bank_recon_invoice_corrected`. Possible cause was 48 instead of 24 Castle Lite — a stock take will show if Castle Lite is 24 over.
+
+### 2026-11-12 — Nelspruit bank recon 29 Oct–10 Nov closed (data fix)
+- Added (idempotent journal_refs md5('nsc-bank-recon-2026-11-12-<key>')): opening balance adjustment +R2,398.58 (Stitch-held R2,098.58 at 31 Oct + Jacques R300), snacks R195.30 and Mier gif R160 (general_expense, 7 Nov), Stitch payout fee R2.30 (6 Nov), bank e-mail fee R0.50, daily Stitch actual-fee corrections 31 Oct–11 Nov (R3.62). Audited `bank_recon_entries_added`.
+- Result: app bank (incl. Stitch in transit) at 10 Nov = R73,743.69 vs statement R70,361.39 + Stitch held R3,382.28 = R73,743.67 (R0.02 rounding). 11 Nov items (Leigh Holing R1,778 in, Constance loan R2,000 out) await next statement.

@@ -1,3 +1,4 @@
+import { tierFeeCents, type FeeTiers } from "./entry-fee";
 /**
  * Canonical tournament invitation links.
  *
@@ -65,6 +66,9 @@ export type InvitePayload = {
   end_date?: string | null;
   registration_closes_at?: string | null;
   entry_fee_cents?: number | null;
+  /** 'tiered' = package price by number of categories (entry_fee_tiers, cents). */
+  entry_fee_basis?: string | null;
+  entry_fee_tiers?: Record<string, number> | null;
   payment_required?: boolean | null;
   division_label?: string | null;
   /** Divisions this invitee may enter — a player may pick more than one. */
@@ -278,12 +282,20 @@ export function inviteFeeCents(payload: InvitePayload | null | undefined): numbe
  * event. Mirrors the server's champ_reg_own_due_cents (partner-covered doubles
  * events are excluded server-side — the invitee always pays for what they tick).
  */
+/** Package prices when the organiser chose "Package price by number of categories". */
+export function inviteFeeTiers(payload: InvitePayload | null | undefined): FeeTiers | null {
+  if (payload?.entry_fee_basis !== "tiered" || !payload.entry_fee_tiers) return null;
+  return tierFeeCents(payload.entry_fee_tiers, 1) == null ? null : payload.entry_fee_tiers;
+}
+
 export function inviteTotalFeeCents(payload: InvitePayload | null | undefined, chosen: number[]): number {
   const flat = inviteFeeCents(payload);
   if (!payload?.payment_required) return 0;
   const divs = inviteDivisions(payload);
   if (!divs.length) return flat;
   const picks = chosen.length ? chosen : divs.map((d) => d.group_number);
+  const tiered = inviteFeeTiers(payload);
+  if (tiered) return tierFeeCents(tiered, divs.length ? picks.length : 1) ?? flat;
   if (!divs.some((d) => d.fee_cents != null)) return flat * picks.length;
   return picks.reduce((sum, g) => {
     const d = divs.find((x) => x.group_number === g);

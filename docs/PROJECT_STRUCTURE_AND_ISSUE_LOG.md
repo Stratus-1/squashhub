@@ -4489,3 +4489,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-12 — Unpaid card Lights top-ups expire after 24 hours
 - Issue: card Lights top-ups stayed "Waiting for your payment" forever; the member can't reopen the same card checkout, and a later card payment could release an old request.
 - Fix: hourly `gobook-lights-topup` process marks card `awaiting_payment` rows older than 24h as `abandoned` ("Card payment not completed within 24 hours"); `gobook_lights_mark_ready_from_payment` ignores card rows older than 24h (Drizzle 0403); the Lights panel hides them immediately. EFT unchanged. Rule in `supabase/functions/_shared/lights-topup-expiry.ts`, test `src/test/lights-topup-expiry.test.ts`.
+
+### 2026-11-12 — Lights card top-ups not expiring; Willem CSIR R100 Lights correction
+- Hourly cron `gobook-lights-topups-hourly` only fired while ready/submitting/submitted rows existed, so unpaid card top-ups past 24h were never expired. Drizzle 0404 also fires it for stale `awaiting_payment` card rows; the two R15 requests expired on a manual run.
+- Willem's R100 Lights top-up SH-L-D06F77FD4EB7 had been released by a Stitch TEST payment and its transfer journal was missing after the test cleanup. Recorded the real EFT (7 Nov, bank Dr / debtors Cr) and restored the 9 Nov transfer journal (debtors Dr / light_fees_income Cr). Member nets R0; audited as `lights_topup_correction`.
+- GL rule (unchanged): Lights top-up paid by card/EFT = Dr bank / Cr debtors; sent to GoBook = Dr debtors / Cr light_fees_income. Member nets zero, club keeps Lights income.

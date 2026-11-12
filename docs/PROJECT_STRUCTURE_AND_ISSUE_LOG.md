@@ -4498,3 +4498,4 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-12 — Nelspruit bank recon: two member EFTs (data only)
 - Martin Strydom (NSC148): bank 6 Nov "NSC148 - Top-up" R100 was missing; added as confirmed EFT member payment (bank Dr / debtors Cr), dated 6 Nov.
 - Umar Akoojee (NSC292): 10 Nov "UMAR SQUASH" R375 was captured as R275; both legs corrected to R375. Both audited (`bank_recon_payment_added` / `bank_recon_payment_corrected`).
+- Quintin Taljard: R450 "NSC purchased balls" (28 May) was booked as a bank receipt with no bank movement; the club bought balls from him. Debit leg moved bank → general_expense, his R450 credit unchanged (audited `bank_recon_reclassified`).

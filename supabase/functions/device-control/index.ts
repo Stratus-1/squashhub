@@ -253,6 +253,27 @@ Deno.serve(async (req) => {
     }
     if (!device) return json({ error: "Device not found" }, 404);
 
+    // Suspended / resigned members may not operate any club device (doors,
+    // lights, geysers, gadgets) on any path, including legacy court relays.
+    // Club admins stay exempt, matching the main-door rule.
+    {
+      const { data: isAdmin } = await admin.rpc("is_club_admin", { _user_id: userId, _club_id: device.club_id });
+      if (!isAdmin) {
+        const { data: blocked, error: blockedErr } = await admin.rpc("member_access_blocked", {
+          _user_id: userId,
+          _club_id: device.club_id,
+          _member_id: null,
+        });
+        if (blockedErr) throw blockedErr;
+        if (blocked) {
+          return json({
+            error: "Your membership is suspended — club doors, lights and other controls are disabled. Please contact the club committee.",
+            code: "member_suspended",
+          }, 403);
+        }
+      }
+    }
+
     // Prefer the database policy function. If the registry migration has not
     // reached this project yet, use the same member-facing rule for legacy
     // lights/access and admin membership for all other devices.

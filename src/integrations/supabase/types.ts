@@ -22906,6 +22906,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_gateway_fee_defaults: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       can_view_member_stats: { Args: { _member_id: string }; Returns: boolean }
       can_view_org: {
         Args: { _org_id: string; _user_id: string }

@@ -178,7 +178,7 @@ export type CreateInput = {
   /** Messaging step "Draw notifications": tell players their opponents + play-by date when each round/stage is drawn. undefined = leave as is. */
   drawNotify?: boolean | "auto";
   /** Fees & Payment "How is the entry fee charged?". undefined = leave as is; basis null = needs confirmation. */
-  feeBasis?: { basis: "per_player" | "per_category" | null; mixedRule: "highest" | "first" | null };
+  feeBasis?: { basis: "per_player" | "per_category" | "tiered" | null; mixedRule: "highest" | "first" | null; tiers?: Record<string, number> | null };
   /** Per-tournament "Affect club ladder" opt-in. undefined = leave as is (existing tournaments). */
   ladderAffects?: boolean;
   /** Scheduling "Avoid back-to-back matches". undefined = leave as is. */
@@ -258,9 +258,11 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   }
   if (i.feeBasis && i.feeBasis.basis) {
     // Audited server setter; never touches posted charges.
-    const { data: cur } = await fromExt("tournaments").select("entry_fee_basis, entry_fee_mixed_rule").eq("id", tid).maybeSingle();
-    if ((cur as any)?.entry_fee_basis !== i.feeBasis.basis || ((cur as any)?.entry_fee_mixed_rule ?? null) !== i.feeBasis.mixedRule) {
-      const { error } = await (supabase as any).rpc("champ_set_entry_fee_basis", { p_champ: tid, p_basis: i.feeBasis.basis, p_mixed_rule: i.feeBasis.mixedRule });
+    const { data: cur } = await fromExt("tournaments").select("entry_fee_basis, entry_fee_mixed_rule, entry_fee_tiers").eq("id", tid).maybeSingle();
+    const tiers = i.feeBasis.basis === "tiered" ? i.feeBasis.tiers ?? null : null;
+    const tiersChanged = i.feeBasis.basis === "tiered" && JSON.stringify((cur as any)?.entry_fee_tiers ?? null) !== JSON.stringify(tiers);
+    if ((cur as any)?.entry_fee_basis !== i.feeBasis.basis || ((cur as any)?.entry_fee_mixed_rule ?? null) !== i.feeBasis.mixedRule || tiersChanged) {
+      const { error } = await (supabase as any).rpc("champ_set_entry_fee_basis", { p_champ: tid, p_basis: i.feeBasis.basis, p_mixed_rule: i.feeBasis.mixedRule, ...(tiers ? { p_tiers: tiers } : {}) });
       if (error) throw error;
     }
   }

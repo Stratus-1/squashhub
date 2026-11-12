@@ -27,7 +27,7 @@ export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string;
 
   const { data: basis } = useQuery({
     queryKey: ["champ-fee-basis", champId],
-    queryFn: async () => (await db.from("tournaments").select("entry_fee_basis, entry_fee_mixed_rule").eq("id", champId).maybeSingle()).data,
+    queryFn: async () => (await db.from("tournaments").select("entry_fee_basis, entry_fee_mixed_rule, entry_fee_tiers").eq("id", champId).maybeSingle()).data,
   });
   const { data: claims = [], refetch: refetchClaims } = useQuery({
     queryKey: ["champ-claims", champId],
@@ -83,7 +83,7 @@ export function ChampFeesPanel({ champId, clubId, entrants }: { champId: string;
   return (
     <details className="rounded-md border p-3 text-sm" data-testid="champ-fees-panel">
       <summary className="cursor-pointer font-semibold">
-        Fees & payments {needsConfirm ? <Badge variant="outline" className="ml-2">Fee basis: Needs confirmation</Badge> : <Badge variant="secondary" className="ml-2">{basis.entry_fee_basis === "per_player" ? "Once per player" : "Per category entered"}</Badge>}
+        Fees & payments {needsConfirm ? <Badge variant="outline" className="ml-2">Fee basis: Needs confirmation</Badge> : <Badge variant="secondary" className="ml-2">{basis.entry_fee_basis === "per_player" ? "Once per player" : basis.entry_fee_basis === "tiered" ? "Package price by number of categories" : "Per category entered"}</Badge>}
         {open.length > 0 && <Badge className="ml-2">{open.length} payment report{open.length === 1 ? "" : "s"} to verify</Badge>}
       </summary>
       <div className="mt-3 space-y-4">

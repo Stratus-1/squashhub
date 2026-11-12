@@ -19,7 +19,7 @@ import { validateCampaign, CHANNEL_LABEL } from "@/lib/comms/validation";
 import { dispatchCampaign, upsertCampaign } from "@/lib/comms/send";
 import { summariseUnlinkedAudience } from "@/lib/comms/onboarding-audience";
 import { isActiveCommsMember } from "../../../../supabase/functions/_shared/comms-active-members";
-import { balancesByMember, isOutstandingAudienceMember, OUTSTANDING_MIN } from "../../../../supabase/functions/_shared/comms-outstanding";
+import { balancesByMember, excludeMembers, formatRand, isOutstandingAudienceMember, OUTSTANDING_MIN, usesOutstandingAmount } from "../../../../supabase/functions/_shared/comms-outstanding";
 import { fromExt } from "@/lib/supabase-ext";
 import { CommsActionPicker } from "./CommsActionPicker";
 import type { TemplateRecord } from "./CommsTemplateEditor";
@@ -56,6 +56,7 @@ export function CommsCampaignWizard({
   const [audienceType, setAudienceType] = useState<AudienceType>("all");
   const [leagueId, setLeagueId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [excludedIds, setExcludedIds] = useState<string[]>([]);
   const [memberFilter, setMemberFilter] = useState("");
   const [volunteersOnly, setVolunteersOnly] = useState(false);
   const [skillText, setSkillText] = useState("");
@@ -75,7 +76,8 @@ export function CommsCampaignWizard({
     if (isOnboarding) setAudienceType((a) => (a === "all" ? "unlinked" : a));
   }, [isOnboarding]);
   // Balance reminders default to members who actually owe the club.
-  const isBalanceTemplate = /outstanding balance/i.test(template?.name ?? "");
+  const needsAmount = usesOutstandingAmount(template?.versions);
+  const isBalanceTemplate = /outstanding (balance|account)/i.test(template?.name ?? "") || needsAmount;
   useEffect(() => {
     if (isBalanceTemplate) setAudienceType((a) => (a === "all" ? "outstanding" : a));
   }, [isBalanceTemplate]);
@@ -131,7 +133,7 @@ export function CommsCampaignWizard({
       }
       return balancesByMember(rows);
     },
-    enabled: !!clubId && audienceType === "outstanding",
+    enabled: !!clubId && (audienceType === "outstanding" || needsAmount),
   });
 
   const wantedSkills = useMemo(
@@ -144,12 +146,15 @@ export function CommsCampaignWizard({
     [members, channels],
   );
 
+  // Everyone who owes (before the admin unticks anyone).
+  const owingMembers = useMemo(() => {
+    if (!balances) return [];
+    return members.filter((m: any) => isOutstandingAudienceMember(m) && (balances.get(m.id) ?? 0) > OUTSTANDING_MIN);
+  }, [members, balances]);
+
   const recipients = useMemo(() => {
     if (audienceType === "unlinked") return unlinkedSummary.included;
-    if (audienceType === "outstanding") {
-      if (!balances) return [];
-      return members.filter((m: any) => isOutstandingAudienceMember(m) && (balances.get(m.id) ?? 0) > OUTSTANDING_MIN);
-    }
+    if (audienceType === "outstanding") return excludeMembers(owingMembers as any[], excludedIds);
     if (audienceType === "selected") return members.filter((m: any) => selectedIds.includes(m.id));
     if (audienceType === "league") return members.filter((m: any) => leagueMemberIds.includes(m.id));
     if (audienceType === "skills") {
@@ -163,7 +168,7 @@ export function CommsCampaignWizard({
       });
     }
     return members.filter(isActiveCommsMember);
-  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary, balances]);
+  }, [audienceType, members, selectedIds, leagueMemberIds, volunteersOnly, wantedSkills, unlinkedSummary, owingMembers, excludedIds]);
 
   const warnings = useMemo(
     () =>
@@ -182,6 +187,7 @@ export function CommsCampaignWizard({
   const previewVars = buildMergeVars({
     member: sample,
     club,
+    outstandingAmount: sample ? balances?.get(sample.id) ?? 0 : 0,
     actionLabel: resolved.label,
     actionUrl: resolved.webUrl,
   });
@@ -209,7 +215,7 @@ export function CommsCampaignWizard({
                 : audienceType === "unlinked"
                   ? { type: "unlinked" }
                   : audienceType === "outstanding"
-                    ? { type: "outstanding" }
+                    ? { type: "outstanding", excludeMemberIds: excludedIds.filter((id) => owingMembers.some((m: any) => m.id === id)) }
                     : { type: "all" },
         scheduledFor: mode === "schedule" ? new Date(scheduleFor).toISOString() : null,
         draft: mode === "draft",
@@ -358,7 +364,13 @@ export function CommsCampaignWizard({
             {audienceType === "unlinked" ? (
               <UnlinkedSummary s={unlinkedSummary} />
             ) : audienceType === "outstanding" ? (
-              <OutstandingSummary loading={balancesLoading} recipients={recipients as any[]} balances={balances} />
+              <OutstandingSummary
+                loading={balancesLoading}
+                owing={owingMembers as any[]}
+                excludedIds={excludedIds}
+                onExcludedChange={setExcludedIds}
+                balances={balances}
+              />
             ) : (
               <p className="text-xs text-muted-foreground">{recipients.length} recipient(s) match.</p>
             )}
@@ -512,33 +524,57 @@ function UnlinkedSummary({ s }: { s: ReturnType<typeof summariseUnlinkedAudience
 
 function OutstandingSummary({
   loading,
-  recipients,
+  owing,
+  excludedIds,
+  onExcludedChange,
   balances,
 }: {
   loading: boolean;
-  recipients: any[];
+  owing: any[];
+  excludedIds: string[];
+  onExcludedChange: (ids: string[]) => void;
   balances?: Map<string, number>;
 }) {
   if (loading || !balances) return <p className="text-xs text-muted-foreground">Checking member balances…</p>;
-  const total = recipients.reduce((s, m) => s + (balances.get(m.id) ?? 0), 0);
-  const fmt = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const excluded = new Set(excludedIds);
+  const included = owing.filter((m) => !excluded.has(m.id));
+  const total = included.reduce((s, m) => s + (balances.get(m.id) ?? 0), 0);
+  const allTicked = included.length === owing.length;
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        <strong className="text-foreground">{recipients.length}</strong> member(s) owe the club (total {fmt(total)}). Balances are checked again
-        when the campaign is sent, so anyone who pays before then is left out. Resigned members are never included.
+        <strong className="text-foreground">{included.length}</strong> of {owing.length} member(s) who owe the club are ticked (total {formatRand(total)}).
+        Untick anyone who shouldn't get this. Balances are checked again when the campaign is sent, so anyone who pays before then is left out.
+        Resigned members are never included.
       </p>
-      {recipients.length > 0 && (
-        <ScrollArea className="h-40 rounded border border-border p-2">
-          {[...recipients]
-            .sort((a, b) => (balances.get(b.id) ?? 0) - (balances.get(a.id) ?? 0))
-            .map((m) => (
-              <div key={m.id} className="flex items-center gap-2 py-0.5 text-xs">
-                <span className="flex-1 truncate">{m.name}</span>
-                <span className="text-destructive tabular-nums">{fmt(balances.get(m.id) ?? 0)}</span>
-              </div>
-            ))}
-        </ScrollArea>
+      {owing.length > 0 && (
+        <>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={allTicked} onClick={() => onExcludedChange([])}>
+              Tick all
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={!included.length} onClick={() => onExcludedChange(owing.map((m) => m.id))}>
+              Untick all
+            </Button>
+          </div>
+          <ScrollArea className="h-56 rounded border border-border p-2">
+            {[...owing]
+              .sort((a, b) => (balances.get(b.id) ?? 0) - (balances.get(a.id) ?? 0))
+              .map((m) => (
+                <label key={m.id} className="flex items-center gap-2 py-1 text-xs">
+                  <Checkbox
+                    checked={!excluded.has(m.id)}
+                    onCheckedChange={(v) =>
+                      onExcludedChange(v ? excludedIds.filter((i) => i !== m.id) : [...excludedIds, m.id])
+                    }
+                    aria-label={`Send to ${m.name}`}
+                  />
+                  <span className={`flex-1 truncate ${excluded.has(m.id) ? "text-muted-foreground line-through" : ""}`}>{m.name}</span>
+                  <span className="text-destructive tabular-nums">{formatRand(balances.get(m.id) ?? 0)}</span>
+                </label>
+              ))}
+          </ScrollArea>
+        </>
       )}
     </div>
   );

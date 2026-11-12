@@ -4541,3 +4541,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-12 — Registrations list shows each entrant's fee amount
 - Organiser Registrations dialog now shows "R300.00 paid" / "R200.00 due" / "Fee waived" beside each name via `entrantFeeText` (`entry-fee.ts`, package prices and partner-covered categories respected; paid rows use `fee_paid_cents`).
 - Note: Stitch test-mode payments never settle fees by design (`is_test`); Willem's R300 No Frills entry was settled with the admin Paid button (audit `admin_confirm_paid`, 14:32 UTC).
+
+### 2026-11-12 — Partner Paid blocked + paid fee missed later increases
+- Paid on Pieter/Donique (No Frills Doubles Week) failed with "Choose an eligible category": Willem named them as partners, but their entries had no categories. Drizzle 0411 `trg_pair_sync_partner_categories` adds the pair's category + partner to both entries (category-typed tournaments only, add-only) and backfilled open pairs.
+- `journal_fee_payment_received` banked only the first "Fee raised" amount (R200), ignoring the audited +R100 package adjustment, leaving R100 owing on a paid R300 fee. Drizzle 0412 sums all raised debits, capped at the fee amount. Rollback test: bank R300, debtors 0. One older Nelspruit paid tournament entry still shows R150 owing — left unchanged pending owner approval.
+- Willem's test entry reset on request (invited, unpaid, pairs and test fee/journals removed; audit `test_entry_reset`).

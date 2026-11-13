@@ -1,0 +1,1 @@
+create unique index if not exists platform_update_recipients_campaign_member_channel_ux on public.platform_update_recipients (campaign_id, club_member_id, channel);

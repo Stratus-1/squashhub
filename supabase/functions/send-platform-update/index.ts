@@ -296,7 +296,9 @@ Deno.serve(async (req) => {
             const res = await sendAppEmail({
               templateName: "club-notification",
               recipientEmail: r.email,
-              clubId: r.club_id,
+              // Platform updates are always sent as SquashHub. Passing clubId
+              // would route them through the club's own SMTP and show the
+              // club's address as the sender.
               idempotencyKey: `platform-update-${campaignId}-${r.id}`,
               templateData: {
                 clubName: "SquashHub Platform Updates",

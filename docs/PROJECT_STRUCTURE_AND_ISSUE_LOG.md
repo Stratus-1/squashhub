@@ -4582,3 +4582,6 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - New admin-only, read-only `admin_client_balance` action returns a client's Lights balance, used to pick the live account among duplicate GoBook records.
 - Uitsig: 172 → 204/246 linked (16 automatic; 14 by hand: Rico Coetsee #4945, Michiel Jnr #14096, Etienne Langeveld #17365, and 11 duplicate-account members linked to the only duplicate holding a Lights account, e.g. Barend Lourens #5212). Danie Naude left (both duplicates have no Lights account).
 - CSIR: 57 → 61/121 (4 email-confirmed). CSIR's GoBook returns no account at all for the remaining 58.
+
+### 2026-11-13 — Durbanville Squash Club trial
+- Durbanville (`dsc`, 334 member records) had no subscription row and no signed SLA, so new membership applications were blocked. Added a `trial` subscription ending 2027-01-31 23:59:59 Johannesburg, with a `club_billing_audit` entry (Willem). Editable in Super Admin → Subscriptions.

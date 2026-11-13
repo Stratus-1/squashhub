@@ -69,3 +69,4 @@
 
 - [x] GoBook: auto-link more Uitsig members + sort Gerhard's cases (Richard, Rico, Barend)
 - [x] GoBook: auto-link more CSIR members (preview first)
+- [x] Durbanville Squash Club put on trial to 31 Jan 2027 (Willem, 13 Nov).

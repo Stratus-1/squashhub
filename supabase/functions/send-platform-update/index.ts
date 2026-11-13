@@ -9,6 +9,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { renderMerge, htmlToPlainText } from "../_shared/comms-render.ts";
 import { sendAppEmail } from "../_shared/send-app-email.ts";
 
+// Platform letters carry the Stratus logo top-left (SquashHub stays top-right)
+// and one fixed SquashHub/Stratus signature at the bottom.
+const PLATFORM_LOGO_BASE = "https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform";
+const STRATUS_LOGO_URL = `${PLATFORM_LOGO_BASE}/stratus-logo.png`;
+const PLATFORM_SIGNATURE_HTML = `<table role="presentation" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;color:#1d2733;font-size:13px;line-height:19px">
+<tr><td style="padding:0 0 10px"><div style="font-size:14px;font-weight:700;color:#1e3a5f">Willem Pretorius</div>
+<div>SquashHub | Stratus Software Solutions (Pty) Ltd</div>
+<div><a href="https://squashhub.co.za" style="color:#1e3a5f;text-decoration:none">squashhub.co.za</a></div></td></tr>
+<tr><td><img src="${PLATFORM_LOGO_BASE}/squashhub-logo.png" alt="SquashHub" height="34" style="height:34px;vertical-align:middle;margin-right:18px" /><img src="${STRATUS_LOGO_URL}" alt="Stratus Software" height="64" style="height:64px;vertical-align:middle" /></td></tr>
+</table>`;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -349,6 +359,8 @@ Deno.serve(async (req) => {
                 url: actionUrl || undefined,
                 ctaLabel: actionLabel || "Open SquashHub",
                 recipientName: r.name || undefined,
+                clubLogoUrl: STRATUS_LOGO_URL,
+                signatureHtml: PLATFORM_SIGNATURE_HTML,
               },
             });
             if (res.ok && res.sent) { sent++; await log("sent", r.email); }

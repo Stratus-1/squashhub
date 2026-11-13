@@ -70,3 +70,5 @@
 - [x] GoBook: auto-link more Uitsig members + sort Gerhard's cases (Richard, Rico, Barend)
 - [x] GoBook: auto-link more CSIR members (preview first)
 - [x] Durbanville Squash Club put on trial to 31 Jan 2027 (Willem, 13 Nov).
+- [ ] Letter to trial/active clubs: Stitch fee down 0.3% to 2.7% + VAT from Tue 17 Nov 2026 — draft shown, awaiting Willem approval before sending; app Stitch rate update pending approval.
+- [ ] Uitsig 12 Nov Yoco vs cash-up: Wynand R140 / Zelda R136 card-vs-account — awaiting confirmation.

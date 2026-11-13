@@ -4558,3 +4558,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-13 — Uitsig Jagerbomb specials hidden after Jägermeister became a 37-tot bottle (data fix)
 - Cause: on 12 Nov Jägermeister was changed from a count item to bottles of 37 tots, but both specials still used the parent stock row ("1 Jagermeister"), which `bar_units_per_sale` reads as a whole bottle. X6 then needed 6 bottles (hidden at 3 bottles) and each X 1 sale took 37 tots (13 Nov 07:33: 111 tots for 3 Jagerbombs).
 - Fix: added hidden option "Jagermeister · Single" (consume 1 tot), repointed both specials to it, and returned the 108 over-deducted tots via `bar_stock_apply` (`special_sale`, same tab entry, cost reversed). Audited `bar_special_tot_fix`. No code change; editor already warns "whole bottles; pick the Single option".
+
+### 2026-11-13 — Monitoring fixes: arrears-only members kept device controls; doubles standings fall back to all pairs
+- Dashboard "membership suspended" notice now uses `gate.membershipBlocked` (status suspended/resigned or manual hold, mirroring server `member_access_blocked`); automatic arrears suspension only blocks the club's configured `blocks` (door via `useDoorControl`). Test added.
+- Doubles Individuals standings apply "Original pairs only" (still the default) only when the club has official pairs; otherwise all pairs show and the switch is hidden. Empty filtered results offer "Show all pairs".

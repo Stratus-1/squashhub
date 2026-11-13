@@ -66,3 +66,6 @@
 - [x] Doubles: a player entering two doubles categories picks a partner for each category (in-app entry window fixed; invite link already did).
 - [x] Reset Willem's No Frills Doubles Week entry to unregistered + unpaid for retesting.
 - [x] Partner registrations pick up categories from pairs (Paid button 'Choose an eligible category').
+
+- [ ] GoBook: auto-link more Uitsig members + sort Gerhard's cases (Richard, Rico, Barend)
+- [ ] GoBook: auto-link more CSIR members (preview first)

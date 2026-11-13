@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   openDoor: vi.fn(),
   suspended: false,
+  arrearsOnly: false,
   isAdmin: false,
 }));
 
@@ -18,7 +19,11 @@ vi.mock("@/hooks/use-club", () => ({
 }));
 
 vi.mock("@/hooks/use-member-access-gate", () => ({
-  useMemberAccessGate: () => ({ suspended: mocks.suspended, isBlocked: () => mocks.suspended }),
+  useMemberAccessGate: () => ({
+    suspended: mocks.suspended || mocks.arrearsOnly,
+    membershipBlocked: mocks.suspended,
+    isBlocked: () => mocks.suspended,
+  }),
 }));
 
 vi.mock("@/hooks/use-club-capabilities", () => ({
@@ -84,6 +89,7 @@ describe("DashboardDeviceControls", () => {
     mocks.mutateAsync = vi.fn().mockResolvedValue({ ok: true, state: true, online: true });
     mocks.openDoor = vi.fn().mockResolvedValue(undefined);
     mocks.suspended = false;
+    mocks.arrearsOnly = false;
     mocks.isAdmin = false;
   });
 

@@ -69,9 +69,10 @@ export function DashboardDeviceControls({ className, compact = false }: { classN
   const visibleGroups = DEVICE_CATEGORY_LIST.filter((g) => groupHasContent(g.slug));
   if (!clubId || visibleGroups.length === 0) return null;
 
-  // Suspended members may not use any club device. The server refuses every
-  // command too; this only replaces the buttons with a clear explanation.
-  if (gate.suspended && !isClubAdmin) {
+  // Suspended/resigned or manually held members may not use any club device
+  // (server: member_access_blocked). Arrears-only suspension is left to the
+  // club's configured blocks (e.g. the door check in useDoorControl).
+  if (gate.membershipBlocked && !isClubAdmin) {
     return (
       <section className={cn("space-y-2", className)} aria-label="Club controls">
         <div className="flex items-center gap-1.5">

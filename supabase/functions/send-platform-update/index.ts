@@ -86,6 +86,39 @@ async function targetClubs(c: any): Promise<any[]> {
   return data ?? [];
 }
 
+/**
+ * Member ids holding a named office at the given clubs: the chairman,
+ * vice-chairman, secretary and treasurer recorded on the club, plus every
+ * current row in club_offices. Office bearers are the people platform notices
+ * are meant for, even when their club_members role is still plain "member".
+ */
+async function officeBearerIds(clubIds: string[]): Promise<string[]> {
+  if (!clubIds.length) return [];
+  const { data: cs } = await admin
+    .from("clubs")
+    .select("chairman_member_id,vice_chairman_member_id,secretary_member_id,treasurer_member_id")
+    .in("id", clubIds);
+  const ids = new Set<string>();
+  for (const c of cs ?? []) {
+    for (const key of [
+      "chairman_member_id",
+      "vice_chairman_member_id",
+      "secretary_member_id",
+      "treasurer_member_id",
+    ]) {
+      const v = (c as any)[key];
+      if (v) ids.add(String(v));
+    }
+  }
+  const { data: offs } = await admin
+    .from("club_offices")
+    .select("club_member_id")
+    .in("club_id", clubIds)
+    .is("ended_at", null);
+  for (const o of offs ?? []) if (o.club_member_id) ids.add(String(o.club_member_id));
+  return [...ids];
+}
+
 /** Club administrators of the target clubs, de-duplicated per person. */
 async function expandRecipients(c: any) {
   const clubs = await targetClubs(c);
@@ -106,6 +139,20 @@ async function expandRecipients(c: any) {
       rows.push(...(data ?? []));
       if (!data || data.length < 1000) break;
     }
+  } else if (c.audience_type === "admins") {
+    // A hand-picked list: each person must be an admin/captain or hold a named
+    // office at their club, so the list can never quietly email ordinary members.
+    const ids = (c.audience_member_ids ?? []) as string[];
+    if (!ids.length) return { clubs, recipients: [] };
+    const officeIds = new Set(await officeBearerIds(clubs.map((cl) => cl.id)));
+    const { data } = await admin
+      .from("club_members")
+      .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
+      .in("id", ids)
+      .neq("status", "resigned");
+    rows = (data ?? []).filter(
+      (r: any) => r.role === "admin" || r.role === "captain" || officeIds.has(r.id),
+    );
   } else {
     let q = admin
       .from("club_members")
@@ -116,11 +163,6 @@ async function expandRecipients(c: any) {
     // and silently returned no admins, so only filter by club for narrower audiences.
     if (c.audience_type !== "all") q = q.in("club_id", clubs.map((cl) => cl.id));
 
-    if (c.audience_type === "admins") {
-      const ids = (c.audience_member_ids ?? []) as string[];
-      if (!ids.length) return { clubs, recipients: [] };
-      q = q.in("id", ids);
-    }
     const { data } = await q;
     rows = data ?? [];
   }

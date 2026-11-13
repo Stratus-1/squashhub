@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClubCurrency } from '@/hooks/use-currency';
 import { barHistoryRange, type HistoryPeriod } from '@/lib/bar/history-range';
 import type { HistoryVenue } from '@/lib/bar/history-filter';
-import { isRecordedVisitorSale, salesStatistics, type SalesLine } from '@/lib/bar/sales-statistics';
+import { isRecordedVisitorSale, salesStatistics, signedQuantity, type SalesLine } from '@/lib/bar/sales-statistics';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -131,7 +131,7 @@ export function ClosedTabsTab({ clubId }: { clubId: string }) {
                 <span className="min-w-0 break-words">{group.name}{group.operator && <span className="block text-xs font-normal text-muted-foreground">Served by {group.operator}</span>}</span>
                 <span className="flex shrink-0 items-center gap-2">{money(group.total)}{expanded === group.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
               </Button>
-              {expanded === group.id && <div className="space-y-2 px-3 pb-3">{group.lines.map(line => <div key={line.id} className="flex justify-between gap-3 text-xs"><span className="min-w-0 break-words">{line.quantity} × {line.item}<span className="block text-muted-foreground">{when(line.createdAt)} · {line.operator ? `Served by ${line.operator}` : 'No counter operator recorded'}</span></span><span className="shrink-0">{money(line.total)}</span></div>)}</div>}
+              {expanded === group.id && <div className="space-y-2 px-3 pb-3">{group.lines.map(line => <div key={line.id} className="flex justify-between gap-3 text-xs"><span className="min-w-0 break-words">{signedQuantity(line)} × {line.item}{line.total < 0 && ' (removed)'}<span className="block text-muted-foreground">{when(line.createdAt)} · {line.operator ? `Served by ${line.operator}` : 'No counter operator recorded'}</span></span><span className="shrink-0">{money(line.total)}</span></div>)}</div>}
             </div>)}
             {groups.length > PAGE_SIZE && <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, groups.length)} of {groups.length}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 0} onClick={() => { setPage(page - 1); setExpanded(null); }}>Previous</Button><Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= groups.length} onClick={() => { setPage(page + 1); setExpanded(null); }}>Next</Button></div></div>}
           </div>}

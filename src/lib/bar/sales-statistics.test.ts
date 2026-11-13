@@ -33,4 +33,9 @@ it('failed and unconfirmed direct payments are not sales; pending open-tab payme
   expect(isRecordedVisitorSale('pending', null)).toBe(false);
   expect(isRecordedVisitorSale('pending', 'tab1')).toBe(true);
   expect(isRecordedVisitorSale('on_tab', 'tab1')).toBe(true);
+});it('a removed tab item counts as minus one, so 80 lines with 2 removals show 76 sold for R2,660', () => {
+  const sold: SalesLine = { id: 's', groupId: 't', name: 'Guest', item: 'Vetkoek Mince', division: 'bar', quantity: 78, total: 2730, createdAt: '', bucket: 'direct', operator: null };
+  const removed: SalesLine = { ...sold, id: 'r', quantity: 1, total: -35 };
+  const stats = salesStatistics([sold, removed, { ...removed, id: 'r2' }], 'both');
+  expect(stats.items).toEqual([{ item: 'Vetkoek Mince', quantity: 76, total: 2660 }]);
 });

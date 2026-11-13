@@ -25,14 +25,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
-/** Identity + unsubscribe strip appended to every emailed platform update. */
-function withEmailFooter(html: string) {
-  return `${html}
-<div style="margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6">
+/** Identity + unsubscribe strip shown at the very bottom of every emailed
+ *  platform update, below the signature and logos. */
+const PLATFORM_EMAIL_FOOTER_HTML = `<div style="margin-top:22px;border-top:1px solid #e2e8f0;padding-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6">
 SquashHub — Stratus Software Solutions (Pty) Ltd, South Africa.<br>
 Sent to you as a SquashHub club admin. Reply to this email or
 <a href="https://squashhub.co.za/settings" style="color:#94a3b8">unsubscribe</a>.
 </div>`;
+
+/** The template already greets the recipient, so drop a body greeting. */
+function stripLeadingGreeting(text: string) {
+  return text.replace(/^\s*Dear [^\n]{0,80},\s*\n+/i, "");
 }
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -291,7 +294,7 @@ Deno.serve(async (req) => {
         action_url: String(campaign.action_url || ""),
       });
       const subject = renderMerge(campaign.subject || "Update from SquashHub", vars);
-      const html = withEmailFooter(renderMerge(campaign.body_html || "", vars));
+      const html = renderMerge(campaign.body_html || "", vars);
       const plain = htmlToPlainText(html);
       const actionUrl = renderMerge(campaign.action_url || "", vars);
       const actionLabel = String(campaign.action_label || "").trim();
@@ -355,12 +358,12 @@ Deno.serve(async (req) => {
               templateData: {
                 clubName: "SquashHub Platform Updates",
                 title: subject,
-                messageBody: plain,
+                messageBody: stripLeadingGreeting(plain),
                 url: actionUrl || undefined,
                 ctaLabel: actionLabel || "Open SquashHub",
                 recipientName: r.name || undefined,
                 clubLogoUrl: STRATUS_LOGO_URL,
-                signatureHtml: PLATFORM_SIGNATURE_HTML,
+                signatureHtml: PLATFORM_SIGNATURE_HTML + PLATFORM_EMAIL_FOOTER_HTML,
               },
             });
             if (res.ok && res.sent) { sent++; await log("sent", r.email); }

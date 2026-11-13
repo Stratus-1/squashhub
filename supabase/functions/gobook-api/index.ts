@@ -367,12 +367,19 @@ Deno.serve(async (req) => {
         .eq("club_id", clubId)
         .eq("status", "active");
 
+      const dryRun = payload.dry_run === true;
+      const onlyIds: string[] | null = Array.isArray(payload.member_ids) ? payload.member_ids.map(String) : null;
+      // A GoBook client may belong to one member only; never auto-link a client already taken.
+      const takenClients = new Set<number>(
+        (members ?? []).filter((m: any) => m.gobook_client_id).map((m: any) => Number(m.gobook_client_id)),
+      );
       const linked: any[] = [];
       const unmatched: any[] = [];
       const ambiguous: any[] = [];
 
       for (const m of members ?? []) {
         if (m.gobook_client_id) continue;
+        if (onlyIds && !onlyIds.includes(String(m.id))) continue;
         // Email first (exact), then each cleaned surname part (Snr/Jnr and
         // double-barrelled names). Link only one confident match.
         const found: GoBookCandidate[] = [];
@@ -389,10 +396,15 @@ Deno.serve(async (req) => {
             });
           }
         }
-        const match = confidentMatch(m.name, found);
-        const active = rankCandidates(m.name, found).filter((c) => c.isActive !== false);
+        const freeFound = found.filter((c) => !takenClients.has(c.clientId));
+        const match = confidentMatch(m.name, freeFound);
+        const active = rankCandidates(m.name, freeFound).filter((c) => c.isActive !== false);
 
-        if (match) {
+        if (match && dryRun) {
+          takenClients.add(match.clientId);
+          linked.push({ memberId: m.id, name: m.name, clientId: match.clientId, clientName: `${match.firstName} ${match.lastName}`.trim() });
+        } else if (match) {
+          takenClients.add(match.clientId);
           const clientName = `${match.firstName} ${match.lastName}`.trim();
           await admin
             .from("club_members")
@@ -401,8 +413,9 @@ Deno.serve(async (req) => {
               gobook_client_name: clientName,
               gobook_linked_at: new Date().toISOString(),
             })
-            .eq("id", m.id);
-          linked.push({ memberId: m.id, name: m.name, clientId: match.clientId });
+            .eq("id", m.id)
+            .is("gobook_client_id", null);
+          linked.push({ memberId: m.id, name: m.name, clientId: match.clientId, clientName });
         } else if (active.length) {
           ambiguous.push({
             memberId: m.id,
@@ -410,6 +423,8 @@ Deno.serve(async (req) => {
             candidates: active.slice(0, 8).map((c) => ({
               clientId: c.clientId,
               name: `${c.firstName} ${c.lastName}`.trim(),
+              emailMatch: c.emailMatch,
+              firstNameMatch: c.firstNameMatch,
             })),
           });
         } else {
@@ -417,7 +432,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      return json({ success: true, linked, ambiguous, unmatched });
+      return json({ success: true, dryRun, linked, ambiguous, unmatched });
     }
 
     /** Admin manually links (or clears) a member's GoBook client id. */

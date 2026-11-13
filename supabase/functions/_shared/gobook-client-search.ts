@@ -52,10 +52,21 @@ export function goBookSearchTerms(name: unknown, email: unknown): string[] {
   return [...(e.includes("@") ? [e] : []), ...surnameTerms(name)];
 }
 
-export function firstNameMatches(memberName: unknown, clientFirstName: unknown): boolean {
+const sameFirst = (a: string, b: string) =>
+  !!a && !!b && (a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a))));
+
+/**
+ * Same first name, allowing short forms (Steve/Steven, Danie/Daniel) and
+ * GoBook records captured surname-first ("Marais Melinda").
+ */
+export function firstNameMatches(memberName: unknown, clientFirstName: unknown, clientLastName?: unknown): boolean {
   const a = normName(nameWords(memberName)[0]);
   const b = normName(clientFirstName).split(" ")[0] ?? "";
-  return !!a && !!b && a === b;
+  if (sameFirst(a, b)) return true;
+  if (clientLastName === undefined) return false;
+  const lastWords = normName(clientLastName).split(" ").filter(Boolean);
+  const memberSurnames = surnameTerms(memberName).map((t) => normName(t));
+  return lastWords.length === 1 && sameFirst(a, lastWords[0]) && memberSurnames.includes(normName(clientFirstName));
 }
 
 export type GoBookCandidate = {
@@ -76,7 +87,7 @@ export function rankCandidates(memberName: unknown, list: GoBookCandidate[]): Ar
   const score = (c: GoBookCandidate & { firstNameMatch: boolean }) =>
     (c.emailMatch ? 2 : 0) + (c.firstNameMatch ? 1 : 0) + (c.isActive === false ? -4 : 0);
   return [...byId.values()]
-    .map((c) => ({ ...c, firstNameMatch: firstNameMatches(memberName, c.firstName) }))
+    .map((c) => ({ ...c, firstNameMatch: firstNameMatches(memberName, c.firstName, c.lastName) }))
     .sort((x, y) => score(y) - score(x) || x.clientId - y.clientId);
 }
 

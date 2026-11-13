@@ -13,6 +13,11 @@ export function isRecordedVisitorSale(status: string, tabId: string | null) {
   return ['recorded', 'paid', 'settled', 'on_tab', 'awaiting_cash', 'awaiting_terminal'].includes(status)
     || (status === 'pending' && tabId !== null);
 }
+/** Removed-item (reversal) lines keep a positive quantity with a negative amount; count them as minus items. */
+export function signedQuantity(line: Pick<SalesLine, 'quantity' | 'total'>) {
+  const quantity = Math.abs(Number(line.quantity) || 0);
+  return Number(line.total) < 0 ? -quantity : quantity;
+}
 export function salesStatistics(lines: SalesLine[], venue: HistoryVenue) {
   const filtered = lines.filter(line => venue === 'both' || (line.division ?? 'bar') === venue);
   return {
@@ -20,9 +25,10 @@ export function salesStatistics(lines: SalesLine[], venue: HistoryVenue) {
     count: filtered.length,
     items: [...filtered.reduce((map, line) => {
       const row = map.get(line.item) ?? { item: line.item, quantity: 0, total: 0 };
-      row.quantity += Number(line.quantity) || 0; row.total += line.total;
+      row.quantity += signedQuantity(line); row.total += line.total;
       return map.set(line.item, row);
     }, new Map<string, { item: string; quantity: number; total: number }>()).values()]
+      .filter(row => row.quantity !== 0 || row.total !== 0)
       .sort((a, b) => b.quantity - a.quantity || a.item.localeCompare(b.item)),
     buckets: salesBuckets.map(bucket => {
       const selected = filtered.filter(line => line.bucket === bucket.value);

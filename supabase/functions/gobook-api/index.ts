@@ -536,6 +536,22 @@ Deno.serve(async (req) => {
       return json({ success: true, state: accounts.length ? "available" : "unavailable", accounts });
     }
 
+    // Admin-only, read-only Lights balance for a GoBook client before linking
+    // (e.g. telling duplicate GoBook accounts apart). Never writes anything.
+    if (action === "admin_client_balance") {
+      if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+      const { data: balanceClub } = await admin.from("clubs")
+        .select("gobook_provider_id").eq("id", clubId).maybeSingle();
+      const clientId = Number(payload.gobook_client_id);
+      if (!Number.isInteger(clientId) || clientId <= 0) return json({ error: "gobook_client_id is required" }, 400);
+      const response = await fetch(`${API_BASE}/Financials/Balances?clientId=${clientId}`, {
+        headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) return json({ error: `GoBook balance request failed (${response.status})` }, 502);
+      const value = response.status === 204 ? null : await response.json();
+      return json({ success: true, clientId, accounts: goBookBalances(value, clientId, Number(balanceClub?.gobook_provider_id)) });
+    }
+
     if (action === "my_client") {
       const r = await resolveMyClient();
       if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);

@@ -4575,3 +4575,10 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Symptom: "Find in GoBook" for "Richard Rilanco - Coetsee Snr" showed "No GoBook client found"; two identical "Barend Lourens" accounts gave no way to choose.
 - Cause: lookup searched GoBook only by the last word of the name ("Snr"), never by email.
 - Fix: shared `supabase/functions/_shared/gobook-client-search.ts` (re-exported at `src/lib/gobook/client-search.ts`) builds terms email-first, strips Snr/Jnr, tries each surname part and keeps particles ("van der Merwe"); candidates ranked with "Same email"/"Same first name" labels, a typed surname/email search box, and a duplicate-account note. Auto-match links only one confident match (same email + first name, else a unique exact full name). Tests in `src/lib/gobook/client-search.test.ts`.
+
+### 2026-11-13 — GoBook bulk linking (Uitsig, CSIR)
+- `match_clients` gained `dry_run` (preview, no writes), an optional `member_ids` filter, and a guard so a GoBook client already linked to one member is never auto-linked to another (write also requires `gobook_client_id IS NULL`).
+- Matcher (`_shared/gobook-client-search.ts`) now accepts short first names with the same email (Steve/Steven, ≤2 letters difference, ≥4 letters) and GoBook records captured surname-first ("Marais Melinda").
+- New admin-only, read-only `admin_client_balance` action returns a client's Lights balance, used to pick the live account among duplicate GoBook records.
+- Uitsig: 172 → 204/246 linked (16 automatic; 14 by hand: Rico Coetsee #4945, Michiel Jnr #14096, Etienne Langeveld #17365, and 11 duplicate-account members linked to the only duplicate holding a Lights account, e.g. Barend Lourens #5212). Danie Naude left (both duplicates have no Lights account).
+- CSIR: 57 → 61/121 (4 email-confirmed). CSIR's GoBook returns no account at all for the remaining 58.

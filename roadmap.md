@@ -70,5 +70,5 @@
 - [x] GoBook: auto-link more Uitsig members + sort Gerhard's cases (Richard, Rico, Barend)
 - [x] GoBook: auto-link more CSIR members (preview first)
 - [x] Durbanville Squash Club put on trial to 31 Jan 2027 (Willem, 13 Nov).
-- [ ] Letter to trial/active clubs: Stitch fee down 0.3% to 2.7% + VAT from Tue 17 Nov 2026 — draft shown, awaiting Willem's approval before sending. St John's excluded (8 clubs). App Stitch rate stays as saved; Willem will adjust it when the new rate actually kicks in (17 Nov).
+- [ ] Letter to trial/active clubs: Stitch card fee down from 2.95% + VAT to 2.70% + VAT from Tue 17 Nov 2026. Test copy sent to Willem (willemp75@gmail.com); real letter saved as draft campaign 79cc0df3-dc57-45ac-a214-0de2932adc55 for 47 admins/office bearers at CSIR, Durbanville, Gordons Bay, Highveld, Meyerton, Nelspruit and Uitsig. St John's excluded (Zimbabwe); Riverside has only test records (james@james.co.za, hkftservices@gmail.com) so it is left out until Willem gives a real address. Awaiting Willem's go-ahead to send. App Stitch rate stays as saved; Willem will adjust it when the new rate kicks in (17 Nov).
 - [ ] Uitsig 12 Nov Yoco vs cash-up: Wynand R140 / Zelda R136 card-vs-account — awaiting confirmation.

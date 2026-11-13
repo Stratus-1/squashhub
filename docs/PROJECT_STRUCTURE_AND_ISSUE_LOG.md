@@ -4570,3 +4570,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 
 ### 2026-11-13 — Uitsig: card payment selected by mistake, moved to member account (data fix)
 - Deon Groenewald's 12 Nov counter tab (f350b23e) was settled "card machine" (R344 items + R30 tip) by mistake. Converted to member account using the same records as `bar_counter_charge_member_account`: card sales + their card/fee journals removed, 10 `bar_tab_entries` added with original 12 Nov dates, stock net zero (card-sale units returned via `bar_stock_apply`, re-taken by the account entries), tip journal re-pointed to debtors→creditors→bar_income so Aiden keeps it. Saved 12 Nov cash-up snapshot left unchanged. Audited `bar_tab_card_to_member_account`. No code change.
+
+### 2026-11-13 — GoBook member links couldn't find "Snr/Jnr" or double-barrelled surnames (Uitsig)
+- Symptom: "Find in GoBook" for "Richard Rilanco - Coetsee Snr" showed "No GoBook client found"; two identical "Barend Lourens" accounts gave no way to choose.
+- Cause: lookup searched GoBook only by the last word of the name ("Snr"), never by email.
+- Fix: shared `supabase/functions/_shared/gobook-client-search.ts` (re-exported at `src/lib/gobook/client-search.ts`) builds terms email-first, strips Snr/Jnr, tries each surname part and keeps particles ("van der Merwe"); candidates ranked with "Same email"/"Same first name" labels, a typed surname/email search box, and a duplicate-account note. Auto-match links only one confident match (same email + first name, else a unique exact full name). Tests in `src/lib/gobook/client-search.test.ts`.

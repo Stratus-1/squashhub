@@ -23,6 +23,7 @@
 import { checkBookingCaps } from "../_shared/booking-caps.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { goBookBalances } from "../_shared/gobook-balance.ts";
+import { confidentMatch, goBookSearchTerms, rankCandidates, type GoBookCandidate } from "../_shared/gobook-client-search.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -342,14 +343,14 @@ Deno.serve(async (req) => {
     // pace calls so bulk matching doesn't hammer their API.
     const surnameCache = new Map<string, any[]>();
     let lastCallAt = 0;
-    const searchClients = async (term: string) => {
-      const key = term.trim().toLowerCase();
-      if (!key) return [] as any[];
+    const searchClients = async (term: string, param: "lastName" | "emailAddress" = "lastName") => {
+      const key = `${param}:${term.trim().toLowerCase()}`;
+      if (!term.trim()) return [] as any[];
       if (surnameCache.has(key)) return surnameCache.get(key)!;
       const wait = 400 - (Date.now() - lastCallAt);
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
       lastCallAt = Date.now();
-      const rows = ((await apiGet(token, `/Client/Search?lastName=${encodeURIComponent(term.trim())}`)) ?? []) as any[];
+      const rows = ((await apiGet(token, `/Client/Search?${param}=${encodeURIComponent(term.trim())}`)) ?? []) as any[];
       surnameCache.set(key, rows);
       return rows;
     };
@@ -372,28 +373,43 @@ Deno.serve(async (req) => {
 
       for (const m of members ?? []) {
         if (m.gobook_client_id) continue;
-        const surname = String(m.name ?? "").trim().split(/\s+/).slice(-1)[0] ?? "";
-        const candidates = surname.length >= 2 ? await searchClients(surname) : [];
-        const active = candidates.filter((c) => c.isActive !== false);
-        const exact = active.filter((c) => norm(clientFullName(c)) === norm(m.name));
+        // Email first (exact), then each cleaned surname part (Snr/Jnr and
+        // double-barrelled names). Link only one confident match.
+        const found: GoBookCandidate[] = [];
+        for (const term of goBookSearchTerms(m.name, m.email)) {
+          const isEmail = term.includes("@");
+          const rows = await searchClients(term, isEmail ? "emailAddress" : "lastName");
+          for (const c of rows) {
+            found.push({
+              clientId: Number(c.clientId),
+              firstName: String(c.clientFirstName ?? ""),
+              lastName: String(c.clientLastName ?? ""),
+              isActive: c.isActive,
+              emailMatch: isEmail,
+            });
+          }
+        }
+        const match = confidentMatch(m.name, found);
+        const active = rankCandidates(m.name, found).filter((c) => c.isActive !== false);
 
-        if (exact.length === 1) {
+        if (match) {
+          const clientName = `${match.firstName} ${match.lastName}`.trim();
           await admin
             .from("club_members")
             .update({
-              gobook_client_id: exact[0].clientId,
-              gobook_client_name: clientFullName(exact[0]),
+              gobook_client_id: match.clientId,
+              gobook_client_name: clientName,
               gobook_linked_at: new Date().toISOString(),
             })
             .eq("id", m.id);
-          linked.push({ memberId: m.id, name: m.name, clientId: exact[0].clientId });
-        } else if (exact.length > 1 || active.length) {
+          linked.push({ memberId: m.id, name: m.name, clientId: match.clientId });
+        } else if (active.length) {
           ambiguous.push({
             memberId: m.id,
             name: m.name,
-            candidates: (exact.length ? exact : active).slice(0, 8).map((c) => ({
+            candidates: active.slice(0, 8).map((c) => ({
               clientId: c.clientId,
-              name: clientFullName(c),
+              name: `${c.firstName} ${c.lastName}`.trim(),
             })),
           });
         } else {

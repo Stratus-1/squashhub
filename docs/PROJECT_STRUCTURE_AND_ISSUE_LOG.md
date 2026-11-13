@@ -4585,3 +4585,5 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 
 ### 2026-11-13 — Durbanville Squash Club trial
 - Durbanville (`dsc`, 334 member records) had no subscription row and no signed SLA, so new membership applications were blocked. Added a `trial` subscription ending 2027-01-31 23:59:59 Johannesburg, with a `club_billing_audit` entry (Willem). Editable in Super Admin → Subscriptions.
+
+- 2026-11-13: Platform update email footer shortened so the unsubscribe link stays on one line ("Sent to you as a SquashHub club admin. Reply to this email or unsubscribe."). Redeployed send-platform-update; test copy 2 sent to Willem.

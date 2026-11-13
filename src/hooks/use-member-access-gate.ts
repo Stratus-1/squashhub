@@ -32,6 +32,10 @@ const DEFAULTS: SuspensionRules = {
 export interface MemberAccessGate {
   status: SuspensionStatus;
   suspended: boolean;
+  /** Suspended/resigned membership or a manual admin hold — mirrors the server's
+   *  member_access_blocked(). Automatic arrears suspension is NOT included; it
+   *  only blocks the actions listed in the club's configured `blocks`. */
+  membershipBlocked: boolean;
   warning: boolean;
   reason: string | null;
   outstanding: number;
@@ -111,15 +115,18 @@ export function useMemberAccessGate(): MemberAccessGate {
 
   let status: SuspensionStatus = "active";
   let reason: string | null = null;
+  let membershipBlocked = false;
 
   const memberStatus = String(data?.member?.status || "active");
   if (memberStatus === "suspended" || memberStatus === "resigned") {
     // Mirrors the server's member_access_blocked(): a suspended/resigned
     // membership loses access even without a manual hold.
     status = "suspended";
+    membershipBlocked = true;
     reason = data?.member?.suspension_reason || `Membership ${memberStatus}`;
   } else if (manualFlag && (manualStatus === "suspended" || manualStatus === "manual_hold")) {
     status = manualStatus;
+    membershipBlocked = true;
     reason = data?.member?.suspension_reason || "Manually suspended by club admin";
   } else if (rules.enabled) {
     const exempt = rules.exempt_with_mandate && hasMandate;
@@ -143,6 +150,7 @@ export function useMemberAccessGate(): MemberAccessGate {
   return {
     status,
     suspended,
+    membershipBlocked,
     warning: status === "warning",
     reason,
     outstanding,

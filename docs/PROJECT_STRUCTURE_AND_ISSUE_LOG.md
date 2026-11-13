@@ -4587,3 +4587,5 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Durbanville (`dsc`, 334 member records) had no subscription row and no signed SLA, so new membership applications were blocked. Added a `trial` subscription ending 2027-01-31 23:59:59 Johannesburg, with a `club_billing_audit` entry (Willem). Editable in Super Admin → Subscriptions.
 
 - 2026-11-13: Platform update email footer shortened so the unsubscribe link stays on one line ("Sent to you as a SquashHub club admin. Reply to this email or unsubscribe."). Redeployed send-platform-update; test copy 2 sent to Willem.
+
+- 2026-11-13 — Platform update emails: the identity/unsubscribe strip now sits below the SquashHub/Stratus signature and logos (was inside the letter body), a body "Dear …" line is dropped because the template already greets, and in-app/WhatsApp/SMS copies no longer carry the email footer. Test 3 of the Stitch fee letter re-sent from the corrected draft (3.40% → 3.10% VAT incl).

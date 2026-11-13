@@ -4562,3 +4562,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-13 — Monitoring fixes: arrears-only members kept device controls; doubles standings fall back to all pairs
 - Dashboard "membership suspended" notice now uses `gate.membershipBlocked` (status suspended/resigned or manual hold, mirroring server `member_access_blocked`); automatic arrears suspension only blocks the club's configured `blocks` (door via `useDoorControl`). Test added.
 - Doubles Individuals standings apply "Original pairs only" (still the default) only when the club has official pairs; otherwise all pairs show and the switch is hidden. Empty filtered results offer "Show all pairs".
+
+### 2026-11-13 — Bar sales statistics counted removed tab items as sold (Uitsig Vetkoek Mince)
+- Symptom: Items sold showed "80 × Vetkoek Mince R2,660" (80 × R35 = R2,800).
+- Cause: tab item reversals (`Reversal of <sale>`) store quantity 1 with a negative total; `salesStatistics` added the quantity as +1. Two reversals → 80 instead of 76. Amounts were always correct.
+- Fix: `signedQuantity` in `src/lib/bar/sales-statistics.ts` counts negative-total lines as minus items; drill-through shows "-1 × item (removed)". Test added. No data changed.

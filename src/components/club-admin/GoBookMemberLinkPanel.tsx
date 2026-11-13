@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Link2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { goBookSearchTerms, rankCandidates, type GoBookCandidate } from "@/lib/gobook/client-search";
 
 type Member = {
   id: string;
   name: string;
+  email: string | null;
   gobook_client_id: number | null;
   gobook_client_name: string | null;
 };
@@ -28,7 +30,7 @@ export function GoBookMemberLinkPanel({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id, name, gobook_client_id, gobook_client_name")
+        .select("id, name, email, gobook_client_id, gobook_client_name")
         .eq("club_id", clubId)
         .eq("status", "active")
         .order("name");
@@ -102,28 +104,36 @@ export function GoBookMemberLinkPanel({ clubId }: { clubId: string }) {
   );
 }
 
+type Ranked = ReturnType<typeof rankCandidates>[number];
+
 function MemberRow({ clubId, member }: { clubId: string; member: Member }) {
   const qc = useQueryClient();
-  const [candidates, setCandidates] = useState<Array<{ clientId: number; name: string }> | null>(
-    null,
-  );
+  const [candidates, setCandidates] = useState<Ranked[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const lookup = async () => {
+  const search = async (terms: string[]) => {
     setBusy(true);
     try {
-      const surname = String(member.name ?? "").trim().split(/\s+/).slice(-1)[0] ?? "";
-      const { data, error } = await supabase.functions.invoke("gobook-api", {
-        body: { action: "find_client", club_id: clubId, query: surname },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      setCandidates(
-        ((data as any).clients ?? []).map((c: any) => ({
-          clientId: c.clientId,
-          name: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(),
-        })),
-      );
+      const found: GoBookCandidate[] = [];
+      for (const term of terms) {
+        const { data, error } = await supabase.functions.invoke("gobook-api", {
+          body: { action: "find_client", club_id: clubId, query: term },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const isEmail = term.includes("@");
+        for (const c of (data as any).clients ?? []) {
+          found.push({
+            clientId: Number(c.clientId),
+            firstName: String(c.firstName ?? ""),
+            lastName: String(c.lastName ?? ""),
+            isActive: c.isActive,
+            emailMatch: isEmail && member.email?.trim().toLowerCase() === term.trim().toLowerCase(),
+          });
+        }
+      }
+      setCandidates(rankCandidates(member.name, found));
     } catch (e: any) {
       toast.error(e?.message || "GoBook lookup failed");
     } finally {
@@ -131,7 +141,14 @@ function MemberRow({ clubId, member }: { clubId: string; member: Member }) {
     }
   };
 
-  const link = async (c: { clientId: number; name: string }) => {
+  const lookup = () => search(goBookSearchTerms(member.name, member.email));
+  const searchTyped = () => {
+    const q = query.trim();
+    if (q.length >= 2) search([q]);
+  };
+
+  const link = async (c: Ranked) => {
+    const name = `${c.firstName} ${c.lastName}`.trim();
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("gobook-api", {
@@ -140,12 +157,12 @@ function MemberRow({ clubId, member }: { clubId: string; member: Member }) {
           club_id: clubId,
           club_member_id: member.id,
           gobook_client_id: c.clientId,
-          gobook_client_name: c.name,
+          gobook_client_name: name,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success(`${member.name} linked to ${c.name}`);
+      toast.success(`${member.name} linked to ${name}`);
       qc.invalidateQueries({ queryKey: ["gobook-link-members", clubId] });
     } catch (e: any) {
       toast.error(e?.message || "Link failed");
@@ -153,6 +170,8 @@ function MemberRow({ clubId, member }: { clubId: string; member: Member }) {
       setBusy(false);
     }
   };
+
+  const sameEmailAndName = (candidates ?? []).filter((c) => c.emailMatch && c.firstNameMatch);
 
   return (
     <div className="p-2 text-[11px] space-y-1">
@@ -163,24 +182,57 @@ function MemberRow({ clubId, member }: { clubId: string; member: Member }) {
         </Button>
       </div>
       {candidates && (
-        <div className="flex flex-wrap gap-1">
-          {candidates.length ? (
-            candidates.map((c) => (
-              <Button
-                key={c.clientId}
-                size="sm"
-                variant="outline"
-                className="h-6 text-[10px]"
-                disabled={busy}
-                onClick={() => link(c)}
-              >
-                {c.name} (#{c.clientId})
-              </Button>
-            ))
-          ) : (
-            <span className="text-muted-foreground">No GoBook client found</span>
+        <>
+          <div className="flex flex-wrap gap-1">
+            {candidates.length ? (
+              candidates.slice(0, 12).map((c) => (
+                <Button
+                  key={c.clientId}
+                  size="sm"
+                  variant={c.emailMatch || c.firstNameMatch ? "secondary" : "outline"}
+                  className="h-auto min-h-6 py-0.5 text-[10px] flex-col items-start gap-0"
+                  disabled={busy}
+                  onClick={() => link(c)}
+                >
+                  <span>
+                    {`${c.firstName} ${c.lastName}`.trim()} (#{c.clientId})
+                  </span>
+                  {(c.emailMatch || c.firstNameMatch || c.isActive === false) && (
+                    <span className="text-[9px] text-muted-foreground font-normal">
+                      {[
+                        c.emailMatch && "Same email",
+                        c.firstNameMatch && "Same first name",
+                        c.isActive === false && "Inactive on GoBook",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </Button>
+              ))
+            ) : (
+              <span className="text-muted-foreground">No GoBook client found</span>
+            )}
+          </div>
+          {sameEmailAndName.length > 1 && (
+            <p className="text-[10px] text-muted-foreground">
+              GoBook has {sameEmailAndName.length} accounts with this member's name and email. Ask the member or GoBook
+              which one holds their Lights balance and bookings.
+            </p>
           )}
-        </div>
+          <div className="flex gap-1">
+            <Input
+              className="h-6 text-[11px]"
+              placeholder="Search GoBook by surname or email"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchTyped()}
+            />
+            <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={searchTyped} disabled={busy || query.trim().length < 2}>
+              Search
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );

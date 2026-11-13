@@ -103,6 +103,11 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
     },
   });
 
+  // Only filter when the club has official pairs set up: with none, every rubber
+  // would be dropped and played matches would look unrecorded.
+  const hasOfficialPairs = officialPairs.length > 0;
+  const filterOriginalPairs = !!isDoubles && originalOnly && hasOfficialPairs;
+
   // Fetch club members (for name + ladder + member-number → player-code mapping)
   const { data: members = [] } = useQuery({
     queryKey: ["individual-standings-members", clubId],
@@ -135,7 +140,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // Also derives a team_code → league number map from league_rounds so we can
   // filter by "League 1", "League 2", etc. (groups Men/Ladies/Mixed of same rank).
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["individual-standings", assocIdToUse, associationId, seasonYear, myCodes.join(","), selectedLeagueNum, isDoubles && originalOnly, officialPairs.length, members.length],
+    queryKey: ["individual-standings", assocIdToUse, associationId, seasonYear, myCodes.join(","), selectedLeagueNum, filterOriginalPairs, officialPairs.length, members.length],
     enabled: !!assocIdToUse && myCodes.length > 0,
     staleTime: 30 * 1000,
     queryFn: async () => {
@@ -236,7 +241,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           return true;
         });
       };
-      const filterOriginal = !!isDoubles && originalOnly;
+      const filterOriginal = filterOriginalPairs;
 
       const agg = new Map<string, PlayerRow>();
       for (const r of rubbers) {
@@ -444,7 +449,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           </SelectContent>
         </Select>
 
-        {isDoubles && (
+        {isDoubles && hasOfficialPairs && (
           <Select value={originalOnly ? "original" : "all"} onValueChange={(v) => setOriginalOnly(v === "original")}>
             <SelectTrigger className="h-8 w-[200px] text-xs">
               <SelectValue />
@@ -482,6 +487,11 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           <p className="text-muted-foreground text-sm">
             No {isDoubles ? "pair" : "player"} results recorded yet for {seasonYear}.
           </p>
+          {filterOriginalPairs && (
+            <Button size="sm" variant="outline" className="mt-3 h-8 text-xs" onClick={() => setOriginalOnly(false)}>
+              Show all pairs (incl. reserves)
+            </Button>
+          )}
         </Card>
       ) : viewMode === "position" ? (
         <div className="space-y-4">

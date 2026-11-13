@@ -53,7 +53,7 @@ export function goBookSearchTerms(name: unknown, email: unknown): string[] {
 }
 
 const sameFirst = (a: string, b: string) =>
-  !!a && !!b && (a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a))));
+  !!a && !!b && (a === b || (Math.min(a.length, b.length) >= 4 && Math.abs(a.length - b.length) <= 2 && (a.startsWith(b) || b.startsWith(a))));
 
 /**
  * Same first name, allowing short forms (Steve/Steven, Danie/Daniel) and

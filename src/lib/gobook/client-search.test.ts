@@ -32,4 +32,19 @@ describe("GoBook client search", () => {
   it("does not link on surname alone", () => {
     expect(confidentMatch("Rico Rilanco - Coetsee Jnr", [c(4249, "Richard", "Coetsee")])).toBeNull();
   });
+
+  it("links a GoBook record captured surname-first when the email matches", () => {
+    const list = [c(27885, "Marais", "Melinda", true), c(1464, "Jaco", "Marais")];
+    expect(confidentMatch("Melinda Marais", list)?.clientId).toBe(27885);
+  });
+
+  it("accepts a short first name with the same email (Steve / Steven)", () => {
+    const list = [c(10203, "steven", "hulme", true), c(274, "STEVEN", "HULME"), c(9898, "Steven", "Hulme")];
+    expect(confidentMatch("Steve Hulme (Snr)", list)?.clientId).toBe(10203);
+  });
+
+  it("does not treat a different family member on the same email as a match", () => {
+    expect(confidentMatch("Ulrich Strydom", [c(20820, "Andreas", "Strydom", true)])).toBeNull();
+    expect(confidentMatch("Rico Rilanco - Coetsee Jnr", [c(4249, "Richard", "Coetsee", true)])).toBeNull();
+  });
 });

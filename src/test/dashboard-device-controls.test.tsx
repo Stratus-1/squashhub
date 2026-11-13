@@ -108,6 +108,14 @@ describe("DashboardDeviceControls", () => {
     expect(screen.getByText(/membership is suspended/i)).toBeTruthy();
   });
 
+  it("keeps controls for a member only flagged for unpaid fees", () => {
+    mocks.arrearsOnly = true;
+    mocks.devices = [device({ id: "c", category: "gadgets", name: "Clubhouse geyser" })];
+    render(<DashboardDeviceControls />);
+    expect(screen.getByText("Clubhouse geyser")).toBeTruthy();
+    expect(screen.queryByText(/membership is suspended/i)).toBeNull();
+  });
+
   it("keeps controls for a club admin even when flagged suspended", () => {
     mocks.suspended = true;
     mocks.isAdmin = true;

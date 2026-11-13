@@ -4567,3 +4567,6 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Symptom: Items sold showed "80 × Vetkoek Mince R2,660" (80 × R35 = R2,800).
 - Cause: tab item reversals (`Reversal of <sale>`) store quantity 1 with a negative total; `salesStatistics` added the quantity as +1. Two reversals → 80 instead of 76. Amounts were always correct.
 - Fix: `signedQuantity` in `src/lib/bar/sales-statistics.ts` counts negative-total lines as minus items; drill-through shows "-1 × item (removed)". Test added. No data changed.
+
+### 2026-11-13 — Uitsig: card payment selected by mistake, moved to member account (data fix)
+- Deon Groenewald's 12 Nov counter tab (f350b23e) was settled "card machine" (R344 items + R30 tip) by mistake. Converted to member account using the same records as `bar_counter_charge_member_account`: card sales + their card/fee journals removed, 10 `bar_tab_entries` added with original 12 Nov dates, stock net zero (card-sale units returned via `bar_stock_apply`, re-taken by the account entries), tip journal re-pointed to debtors→creditors→bar_income so Aiden keeps it. Saved 12 Nov cash-up snapshot left unchanged. Audited `bar_tab_card_to_member_account`. No code change.

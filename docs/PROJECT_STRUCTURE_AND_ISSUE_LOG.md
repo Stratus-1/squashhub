@@ -4624,3 +4624,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Uitsig No Frills Doubles invite left out all ladies (185 of 246)
 - Cause: `tournaments.gender` was saved as "men" (default) although the event has Mens, Ladies and Mixed categories; StepInvitePanel filtered the host-club pool by that column, dropping 58 ladies. The other 3 missing were the already-entered test recipients.
 - Fix: `inviteGenderFilter` derives the filter from category genders; No Frills Doubles (Uitsig + Riverside test) set to `open` (migration 0419). Entry eligibility already used category types.
+
+### 2026-11-16 — Tournament join search hid members who already have a login
+- Symptom: Willem (CSIR, has login) searched "Pretorius" on the No Frills Doubles join link and got "We couldn't find you", inviting a duplicate "existing member" registration.
+- Cause: `tournament_join_find_member` filtered `user_id IS NULL`.
+- Fix (migration 0420): return logged-in members too with `has_login`; `TournamentJoin.tsx` shows "Already on SquashHub" + Sign in instead of "This is me". Claims still only apply to unlinked rows.

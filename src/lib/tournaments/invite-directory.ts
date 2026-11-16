@@ -174,3 +174,37 @@ export async function fetchTournamentEntrants(tournamentId: string): Promise<Dir
   if (error) throw error;
   return sanitizeDirectory((data as Record<string, unknown>[]) || []);
 }
+
+/** Name (and whether any contact route exists) for invite recipients — never contact details. */
+export interface InviteRecipientName {
+  member_id: string;
+  display_name: string;
+  club_name: string;
+  reachable: boolean;
+}
+
+/**
+ * Real names for every resolved invite recipient, including cross-club roster
+ * players with no email/phone/login (the directory only lists reachable ones,
+ * which left those rows labelled "Player").
+ */
+export async function fetchInviteRecipientNames(tournamentId: string, memberIds: string[]): Promise<InviteRecipientName[]> {
+  if (!tournamentId || memberIds.length === 0) return [];
+  const out: InviteRecipientName[] = [];
+  for (let i = 0; i < memberIds.length; i += 500) {
+    const { data, error } = await (supabase as any).rpc("tournament_invite_member_names", {
+      p_tournament_id: tournamentId,
+      p_member_ids: memberIds.slice(i, i + 500),
+    });
+    if (error) throw error;
+    for (const r of (data as Record<string, unknown>[]) || []) {
+      out.push({
+        member_id: String(r.member_id),
+        display_name: String(r.display_name ?? ""),
+        club_name: String(r.club_name ?? ""),
+        reachable: r.reachable === true,
+      });
+    }
+  }
+  return out;
+}

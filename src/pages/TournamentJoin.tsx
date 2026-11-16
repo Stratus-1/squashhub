@@ -202,7 +202,7 @@ export default function TournamentJoin() {
     const mine = ctx.me ?? [];
     return (
       <div className="space-y-4">
-        {user && mine.length > 0 && step === "choose" && (
+        {user && mine.length > 0 && (step === "choose" || step === "search") && (
           <div className="space-y-2 rounded-md border border-primary/40 bg-primary/5 p-3">
             <p className="text-xs font-medium">You're signed in</p>
             {mine.map((m) => (
@@ -251,7 +251,7 @@ export default function TournamentJoin() {
                     </span>
                     {f.has_login ? (
                       user ? (
-                        <span className="text-xs text-muted-foreground">Use the account linked to this profile</span>
+                        <span className="text-right text-xs text-muted-foreground">{mine.some((m) => m.member_id === f.member_id) ? "That's you — use Enter above" : "Linked to another login"}</span>
                       ) : (
                         <Button size="sm" variant="outline" onClick={() => { setKind(null); setPicked(null); setHaveLogin(true); setStep("account"); }}>
                           <LogIn className="mr-1 h-3.5 w-3.5" />Sign in

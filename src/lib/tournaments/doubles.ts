@@ -418,3 +418,46 @@ export async function setPairingLocked(champId: string, locked: boolean) {
   });
   if (error) throw error;
 }
+
+/** Clubs a player may pick an outside partner from, and whether the organiser allows it. */
+export async function fetchExternalPartnerContext(champId: string): Promise<{ allowed: boolean; clubs: { club_id: string; club_name: string }[] }> {
+  const { data, error } = await (supabase as any).rpc("tournament_join_context", { p_champ_id: champId });
+  if (error) throw error;
+  const d = (data ?? {}) as { allow_external?: boolean; clubs?: { club_id: string; club_name: string }[] };
+  return { allowed: !!d.allow_external, clubs: d.clubs ?? [] };
+}
+
+/** Search an eligible club's list for the outside partner (names only). */
+export async function findExternalPartner(champId: string, clubId: string, query: string) {
+  const { data, error } = await (supabase as any).rpc("tournament_join_find_member", { p_champ_id: champId, p_club_id: clubId, p_query: query });
+  if (error) throw error;
+  return (data ?? []) as { member_id: string; display_name: string }[];
+}
+
+/**
+ * Enter (and pay for) a partner who isn't on the invite list. Either an
+ * existing profile from an eligible club, or new details (pending
+ * tournament-only member of that club; no club = tournament guest of the host).
+ */
+export async function proposeExternalPartner(
+  champId: string,
+  groupNumber: number,
+  partner: { memberId?: string | null; clubId?: string | null; name?: string; gender?: string; phone?: string; email?: string; consent: boolean },
+  auth: TokenAuth = {},
+) {
+  const { data, error } = await (supabase as any).rpc("propose_doubles_partner_external", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_token: auth.token || null,
+    p_verify: auth.verify || null,
+    p_partner_member_id: partner.memberId || null,
+    p_club_id: partner.clubId || null,
+    p_name: partner.name || null,
+    p_gender: partner.gender || null,
+    p_phone: partner.phone || null,
+    p_email: partner.email || null,
+    p_consent: partner.consent,
+  });
+  if (error) throw error;
+  return data as { id: string; status: PairStatus };
+}

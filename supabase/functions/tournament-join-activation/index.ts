@@ -4,8 +4,12 @@
 // email the club holds; the browser never sees the address or the token.
 // All eligibility + rate limits live in DB tournament_join_issue_activation.
 //
-// Body: { champ_id: uuid, member_id: uuid }
-// Returns: { status: "sent" | "too_soon" | "has_login" | "not_available" | "not_open" | "error", email_hint? }
+// When the club has no email for the member, the player supplies one (body.email);
+// the DB saves it on the membership with an audit row, then the link goes there.
+//
+// Body: { champ_id: uuid, member_id: uuid, email?: string }
+// Returns: { status: "sent" | "too_soon" | "has_login" | "not_available" | "not_open" |
+//            "email_required" | "email_has_login" | "email_in_use" | "error", email_hint? }
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendAppEmail } from "../_shared/send-app-email.ts";
@@ -28,12 +32,15 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ status: "error" }, 400); }
   const champId = String(body?.champ_id || "");
   const memberId = String(body?.member_id || "");
+  const email = String(body?.email || "").trim().toLowerCase().slice(0, 254);
   if (!UUID.test(champId) || !UUID.test(memberId)) return json({ status: "error" }, 400);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false },
   });
-  const { data, error } = await admin.rpc("tournament_join_issue_activation", { p_champ_id: champId, p_member_id: memberId });
+  const { data, error } = await admin.rpc("tournament_join_issue_activation", {
+    p_champ_id: champId, p_member_id: memberId, p_email: email || null,
+  });
   if (error) { console.error("issue activation failed", error.message); return json({ status: "error" }); }
   const r = data as any;
   if (r?.status !== "issued") return json({ status: r?.status || "error", email_hint: r?.email_hint ?? null });

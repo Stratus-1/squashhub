@@ -2927,6 +2927,13 @@
       "when": 1794820605672,
       "tag": "0417_regional_open_entry_external_partners",
       "breakpoints": true
+    },
+    {
+      "idx": 418,
+      "version": "7",
+      "when": 1794821008753,
+      "tag": "0418_tournament_join_confirm_billing",
+      "breakpoints": true
     }
   ]
 }

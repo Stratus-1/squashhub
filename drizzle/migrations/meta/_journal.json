@@ -2990,6 +2990,13 @@
       "when": 1794838156158,
       "tag": "0426_record_partner_cover_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 427,
+      "version": "7",
+      "when": 1794838733624,
+      "tag": "0427_lock_take_tournament_snapshot",
+      "breakpoints": true
     }
   ]
 }

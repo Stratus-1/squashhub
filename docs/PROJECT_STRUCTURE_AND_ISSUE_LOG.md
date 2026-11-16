@@ -4606,3 +4606,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Function logs contained no authorized/signed Help Center calls in the retention window — only unauthenticated probes. The production 404 is therefore not reproducible from SquashHub's side; the Help Center caller must retry and the resulting `diag_code` read.
 - Both RPCs are service-only with no pilot-allowlist reference; one open ticket has an unheld, delivered latest `case.updated` event eligible for a read.
 - Redeployed only `help-center-case-context` (submitted source SHA-256 48c9026b…bd723b2); 24/25 bun tests pass (rpcs.test needs local Postgres). Post-deploy: GET 404 `case_context_unavailable` no-store, bad bearer 404 (`invalid_workload_token` ERR_JWS_INVALID), POST 405.
+
+### 2026-11-16 — Invite showed "Mixed 2 · Doubles" instead of "Mixed"
+- Cause: Step-by-Step categories re-added in setup get a de-duplicated internal key ("Mixed 2") with the organiser's name in `answers.categoryLabels`. `group_labels` stores the key (it is unit identity for draw/progression/scheduling lookups), and the invite RPCs (`tournament_division_options`, `get_tournament_invite_base`) showed it raw.
+- Fix (display only, migration 0416): new `tournament_group_display_label(beta, raw, group)` maps the key prefix to `categoryLabels` while keeping the " · Doubles" suffix; both invite RPCs use it. Stored keys, entries and games unchanged. Verified Uitsig "No Frills Doubles": Ladies 2/Mixed 2 → Ladies/Mixed.

@@ -183,7 +183,17 @@ export type CreateInput = {
   ladderAffects?: boolean;
   /** Scheduling "Avoid back-to-back matches". undefined = leave as is. */
   avoidBackToBack?: boolean;
+  /** Basics "Event level" → tournament_governance.eligibility_scope (invite audience/club picker). undefined = leave as is. */
+  eventLevel?: "club" | "regional" | "national" | null;
 };
+
+/** Event level (Basics) → governance eligibility scope read by Invitations and entry checks. */
+export function eligibilityScopeForLevel(level: "club" | "regional" | "national" | null | undefined): "club" | "association" | "open" | null {
+  if (level === "club") return "club";
+  if (level === "regional") return "association";
+  if (level === "national") return "open";
+  return null;
+}
 
 /** Club-wide permission for tournament results to move the ladder (column default = allowed). */
 export function clubAllowsTournamentLadder(cfg: { ladder_from_tournaments?: boolean | null; is_active?: boolean | null } | null | undefined): boolean {
@@ -278,6 +288,16 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     if (modes.length === 1 && modes[0] !== "first_to_target" && i.divisions.every((d) => d.scoring)) {
       const { error: rErr } = await fromExt("tournament_rules").update({ scoring_mode: modes[0] }).eq("tournament_id", tid);
       if (rErr) throw rErr;
+    }
+  }
+  const eligScope = eligibilityScopeForLevel(i.eventLevel);
+  if (eligScope) {
+    // Without this a Regional/National event stayed "club" and Invitations hid the club picker.
+    const { data: upd, error: gErr } = await fromExt("tournament_governance").update({ eligibility_scope: eligScope }).eq("tournament_id", tid).select("tournament_id");
+    if (gErr) throw gErr;
+    if (!upd?.length) {
+      const { error: iErr } = await fromExt("tournament_governance").insert({ tournament_id: tid, eligibility_scope: eligScope });
+      if (iErr) throw iErr;
     }
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);

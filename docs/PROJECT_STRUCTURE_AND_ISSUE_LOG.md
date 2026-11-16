@@ -4610,3 +4610,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Invite showed "Mixed 2 · Doubles" instead of "Mixed"
 - Cause: Step-by-Step categories re-added in setup get a de-duplicated internal key ("Mixed 2") with the organiser's name in `answers.categoryLabels`. `group_labels` stores the key (it is unit identity for draw/progression/scheduling lookups), and the invite RPCs (`tournament_division_options`, `get_tournament_invite_base`) showed it raw.
 - Fix (display only, migration 0416): new `tournament_group_display_label(beta, raw, group)` maps the key prefix to `categoryLabels` while keeping the " · Doubles" suffix; both invite RPCs use it. Stored keys, entries and games unchanged. Verified Uitsig "No Frills Doubles": Ladies 2/Mixed 2 → Ladies/Mixed.
+
+### 2026-11-16 — Regional tournament Invitations had no club picker (Uitsig No Frills Doubles)
+- Cause: Step-by-Step "Event level" (Regional / National) was saved only in the builder answers; `tournament_governance.eligibility_scope` stayed `club`, so Invitations (`audienceModesForScope`) hid "Selected clubs".
+- Fix: `persistStepTournament` now writes the scope from the event level (`eligibilityScopeForLevel`: club→club, regional→association, national→open; unanswered = unchanged). Uitsig No Frills Doubles set to `association` (22 NSA clubs listed). Test: `src/test/event-level-eligibility-scope.test.ts`.

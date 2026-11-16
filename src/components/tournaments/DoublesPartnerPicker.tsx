@@ -26,6 +26,9 @@ import {
   partnerReadinessBadge,
   partnerReadinessNote,
   proposePartner,
+  proposeExternalPartner,
+  fetchExternalPartnerContext,
+  findExternalPartner,
   respondToPair,
   type MyPair,
   type ManagedPair,
@@ -371,12 +374,15 @@ function DivisionPartner({
     mutationFn: async (
       job:
         | { kind: "propose"; memberId: string; payForPartner: boolean }
+        | { kind: "external"; partner: Parameters<typeof proposeExternalPartner>[2] }
         | { kind: "accept" }
         | { kind: "reject" }
         | { kind: "cancel" },
     ) => {
       if (job.kind === "propose")
         return proposePartner(champId, division.group_number, job.memberId, auth, job.payForPartner);
+      if (job.kind === "external")
+        return proposeExternalPartner(champId, division.group_number, job.partner, auth);
       if (!pair) throw new Error("This pairing no longer exists");
       if (job.kind === "accept") return respondToPair(pair.id, true, auth);
       if (job.kind === "reject") return respondToPair(pair.id, false, auth);
@@ -391,7 +397,7 @@ function DivisionPartner({
       else toast.success("Pairing updated.");
 
       // Tell both players on exactly the channels enabled for this tournament.
-      if (res?.id && (job.kind === "propose" || job.kind === "accept")) {
+      if (res?.id && (job.kind === "propose" || job.kind === "external" || job.kind === "accept")) {
         try {
           await notifyDoublesPair(String(res.id), clubId ?? null);
         } catch {
@@ -400,6 +406,7 @@ function DivisionPartner({
       }
       // Picking a partner is the moment the entry becomes payable.
       if (job.kind === "propose" && hasFee && onPay) onPay(job.payForPartner ? feeCents * 2 : feeCents);
+      if (job.kind === "external" && hasFee && onPay) onPay(feeCents * 2);
     },
     onError: (e: any) => toast.error(e?.message || "Could not update your doubles pair"),
   });
@@ -530,6 +537,8 @@ function DivisionPartner({
             </div>
 
           )}
+          <ExternalPartnerForm champId={champId} feeCents={feeCents} busy={busy}
+            onSubmit={(partner) => act.mutate({ kind: "external", partner })} />
         </div>
       )}
 
@@ -569,6 +578,85 @@ function DivisionPartner({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/**
+ * "My partner isn't on the list" — only when the organiser allows outside
+ * partners. The entering player pays both fees; no partner confirmation.
+ */
+function ExternalPartnerForm({ champId, feeCents, busy, onSubmit }: {
+  champId: string;
+  feeCents: number;
+  busy: boolean;
+  onSubmit: (p: { memberId?: string | null; clubId?: string | null; name?: string; gender?: string; phone?: string; email?: string; consent: boolean }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [clubId, setClubId] = useState<string>("");
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<{ member_id: string; display_name: string }[] | null>(null);
+  const [name, setName] = useState("");
+  const [gender, setGender] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const { data: ctx } = useQuery({ queryKey: ["external-partner-ctx", champId], queryFn: () => fetchExternalPartnerContext(champId), retry: false });
+  if (!ctx?.allowed) return null;
+  const noClub = clubId === "none";
+  const fee = feeCents > 0 ? ` You pay both entry fees (${money(feeCents * 2)}).` : "";
+  const nameOk = name.trim().includes(" ") && name.trim().length >= 4;
+
+  if (!open) return (
+    <button type="button" className="text-[11px] text-primary underline" onClick={() => setOpen(true)}>My partner isn't on the list</button>
+  );
+  return (
+    <div className="space-y-2 rounded-md border border-dashed p-2">
+      <p className="text-[11px] text-muted-foreground">Enter a partner who wasn't invited.{fee} The organiser can remove the pair.</p>
+      <Select value={clubId} onValueChange={(v) => { setClubId(v); setHits(null); }}>
+        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Partner's club" /></SelectTrigger>
+        <SelectContent>
+          {ctx.clubs.map((c) => <SelectItem key={c.club_id} value={c.club_id}>{c.club_name}</SelectItem>)}
+          <SelectItem value="none">No club (guest)</SelectItem>
+        </SelectContent>
+      </Select>
+      {clubId && !noClub && (
+        <div className="space-y-1">
+          <div className="flex gap-2">
+            <Input className="h-8 text-sm" placeholder="Search partner by surname or NSA number" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Button size="sm" variant="outline" disabled={q.trim().length < 3} onClick={async () => {
+              try { setHits(await findExternalPartner(champId, clubId, q.trim())); } catch (e: any) { toast.error(e?.message || "Search failed"); }
+            }}>Search</Button>
+          </div>
+          {hits?.map((h) => (
+            <button key={h.member_id} type="button" disabled={busy} className="w-full rounded-md border p-2 text-left text-sm hover:bg-muted"
+              onClick={() => onSubmit({ memberId: h.member_id, consent: true })}>
+              Enter with {h.display_name}
+            </button>
+          ))}
+          {hits && <p className="text-[11px] text-muted-foreground">{hits.length ? "Not listed?" : "Not found."} Add their details below.</p>}
+        </div>
+      )}
+      {clubId && (noClub || hits) && (
+        <div className="space-y-1.5">
+          <Input className="h-8 text-sm" placeholder="First name and surname" value={name} onChange={(e) => setName(e.target.value)} />
+          <Select value={gender} onValueChange={setGender}>
+            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Gender" /></SelectTrigger>
+            <SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem></SelectContent>
+          </Select>
+          <Input className="h-8 text-sm" inputMode="tel" placeholder="Cell (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input className="h-8 text-sm" type="email" placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label className="flex items-start gap-2 text-[11px]">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+            My partner agreed to be entered and to share these details with the organiser.
+          </label>
+          <Button size="sm" className="w-full" disabled={busy || !nameOk || !gender || !consent}
+            onClick={() => onSubmit({ clubId: noClub ? null : clubId, name: name.trim(), gender, phone: phone.trim(), email: email.trim(), consent })}>
+            Enter with this partner
+          </Button>
+        </div>
+      )}
+      <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => setOpen(false)}>Cancel</button>
     </div>
   );
 }

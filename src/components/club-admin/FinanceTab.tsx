@@ -51,7 +51,7 @@ import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
 type GLAccount =
   | "debtors" | "creditors" | "bank_current" | "cash" | "bar_stock_on_hand" | "other_assets"
   | "opening_balance_equity" | "member_credits" | "association_payable"
-  | "fee_income" | "shop_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income" | "bar_stock_gain"
+  | "fee_income" | "shop_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income" | "visitor_income" | "bar_stock_gain"
   | "shop_expense" | "bar_expense" | "bar_cost_of_sales" | "shop_cost_of_sales" | "league_fees_expense" | "national_body_expense" | "bar_stock_loss" | "club_stock_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "security" | "squashhub_subscription" | "internet_software" | "salary_wages" | "general_expense";
 
@@ -86,6 +86,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   tournament_income:       { label: "Fee Income — Tournament",    type: "IS", category: "Income", normal: "Cr" },
   light_fees_income:       { label: "Fee Income — Lights",        type: "IS", category: "Income", normal: "Cr" },
   wifi_income:             { label: "Fee Income — Wi-Fi",         type: "IS", category: "Income", normal: "Cr" },
+  visitor_income:          { label: "Fee Income — Visitors",      type: "IS", category: "Income", normal: "Cr" },
   // Expenses
   shop_expense: { label: "Shop Purchases", type: "IS", category: "Expense", normal: "Dr" },
   bar_cost_of_sales: { label: "Cost of sales — Bar", type: "IS", category: "Expense", normal: "Dr" },

@@ -73,3 +73,7 @@
 - [ ] Letter to trial/active clubs: Stitch card fee down from 2.95% + VAT to 2.70% + VAT from Tue 17 Nov 2026. Test copy sent to Willem (willemp75@gmail.com); real letter saved as draft campaign 79cc0df3-dc57-45ac-a214-0de2932adc55 for 47 admins/office bearers at CSIR, Durbanville, Gordons Bay, Highveld, Meyerton, Nelspruit and Uitsig. St John's excluded (Zimbabwe); Riverside has only test records (james@james.co.za, hkftservices@gmail.com) so it is left out until Willem gives a real address. Wording changed to 3.40% → 3.10% VAT incl (0.3%); Stratus logo top-left + SquashHub/Stratus signature added. Second test copy to Willem, then await go-ahead to send. App Stitch rate stays as saved; Willem will adjust it when the new rate kicks in (17 Nov).
 - [x] Uitsig 12 Nov Yoco: Wynand R140 / Zelda R136 moved from member account to card (13 Nov, Willem confirmed).
 - [x] Uitsig 12 Nov Yoco: R23 + R13 recorded as card bar sales; saved cash-up card now R7,678 = Yoco (13 Nov).
+
+## Regional entries (16 Nov 2026) — planning only, awaiting approval
+- [ ] Plan: player may enter + pay for an external (non-member/non-visitor) partner when the tournament allows external entries.
+- [ ] Plan: general open entry link for other clubs (incl. clubs not on SquashHub, e.g. Kentron / Pierre van Ryneveld); link first sends the player to register at their own club (existing member with login / existing member without login / new member), then join the tournament and pay.

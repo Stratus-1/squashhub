@@ -4596,3 +4596,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Yoco 12 Nov card total R7,678. After moving Deon (card→account) and Wynand R140 / Zelda R136 (account→card), two swipes (R23 19:26:47, R13 19:28:55) still had no sale.
 - On Willem's instruction recorded both as card bar sales: hidden made_to_order item "Unrecorded card sale (Yoco)" (no stock), two settled terminal guest tabs, journals dated at swipe time (bar_income + gateway fee).
 - Saved cash-up 2fd0314b method snapshot refreshed (card 7163 sales + 515 tips = R7,678; member account 476/30); card_expected/counted = 7,678; cash figures and -R49 cash write-off unchanged. Cash-up 76c9f961 member account 2408→2268 (Wynand moved out). Both audited in audit_events.
+
+### 2026-11-16 — Gordons Bay: Michele Lamers EFT top-up approved as R10 instead of R100 (data fix)
+- 11 Nov EFT top-up (txn 1f93247b) was confirmed as R10; Standard Bank proof (ref 4212375056, "GBSQ0008 - TOP-UP") shows R100.
+- Corrected the transaction and its bank_current/member_credits journal lines to R100; audited as `topup_amount_corrected`. Balance now +R110 credit. No bank statement line was matched, so no reconciliation impact.

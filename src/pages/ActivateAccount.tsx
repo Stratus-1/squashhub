@@ -51,9 +51,29 @@ function clearToken() {
   try { localStorage.removeItem(ACTIVATION_STORAGE_KEY); } catch { /* ignore */ }
 }
 
+/** Optional return after activation — only a tournament join page (from the join-link activation email). */
+const ACTIVATION_NEXT_KEY = "sh.activation_next";
+const SAFE_NEXT = /^\/(c\/[a-z0-9-]+\/)?t\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/join$/i;
+function readNext(): string | null {
+  const url = new URL(window.location.href);
+  const n = url.searchParams.get("next");
+  if (n !== null) {
+    url.searchParams.delete("next");
+    window.history.replaceState(null, "", url.pathname + (url.search || ""));
+    if (SAFE_NEXT.test(n)) { try { localStorage.setItem(ACTIVATION_NEXT_KEY, n); } catch { /* ignore */ } return n; }
+  }
+  try { const s = localStorage.getItem(ACTIVATION_NEXT_KEY); return s && SAFE_NEXT.test(s) ? s : null; } catch { return null; }
+}
+function takeNext(): string | null {
+  const n = readNext();
+  try { localStorage.removeItem(ACTIVATION_NEXT_KEY); } catch { /* ignore */ }
+  return n;
+}
+
 export default function ActivateAccount() {
   const navigate = useNavigate();
   const [token] = useState(readToken);
+  useState(readNext); // capture ?next= before the address bar is cleaned
   const [info, setInfo] = useState<Info | null>(null);
   const [mode, setMode] = useState<"choose" | "password" | "signin" | "confirm">("choose");
   const [password, setPassword] = useState("");
@@ -79,7 +99,7 @@ export default function ActivateAccount() {
       clearToken();
       clearPendingVerify();
       toast.success("Your SquashHub account is active and linked to your existing membership.");
-      navigate("/", { replace: true });
+      navigate(takeNext() || "/", { replace: true });
       return;
     }
     if (status === "email_mismatch") {

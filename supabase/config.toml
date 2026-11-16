@@ -121,3 +121,6 @@ verify_jwt = false
 
 [functions.player-admin-inspection]
 verify_jwt = false
+
+[functions.tournament-join-activation]
+verify_jwt = false

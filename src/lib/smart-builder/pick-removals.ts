@@ -52,3 +52,55 @@ export function removalImpact(games: GameLite[]): { kind: "none" | "unplayed" | 
   const unplayed = real.length - played;
   return { kind: played ? "played" : unplayed ? "unplayed" : "none", unplayed, played };
 }
+
+/** Registration fields the player board reads to decide who really entered and who cancelled. */
+export interface BoardReg {
+  club_member_id: string;
+  partner_member_id: string | null;
+  status: string | null;
+  division_choices: number[] | null;
+  division_partners?: Record<string, string | null> | null;
+  registration_status?: string | null;
+  registration_source?: string | null;
+  confirmed_at?: string | null;
+  fee_status?: string | null;
+  withdrawn_keep_position?: boolean | null;
+}
+
+const CANCELLED = /withdrawn|cancel|declin|reject|removed/i;
+
+/**
+ * Who the player board treats as entered, and who cancelled.
+ * - An invitation is not an entry: only rows passing `isEntered` count.
+ * - A partner named by a real entry counts as entered for that event (e.g. paid for by their partner).
+ * - A cancelled/declined entry (not a mid-tournament withdrawal that keeps its place) is listed in
+ *   `cancelled` so the board can take that player off; never someone who is entered another way.
+ */
+export function boardEntries(rows: BoardReg[], isEntered: (r: BoardReg) => boolean): { entered: Map<string, number[]>; cancelled: string[] } {
+  const entered = new Map<string, number[]>();
+  const add = (id: string | null | undefined, groups: number[]) => {
+    if (!id) return;
+    entered.set(id, [...new Set([...(entered.get(id) ?? []), ...groups])].sort((x, y) => x - y));
+  };
+  for (const r of rows) {
+    if (CANCELLED.test(r.status ?? "") || !isEntered(r)) continue;
+    const groups = r.division_choices ?? [];
+    add(r.club_member_id, groups);
+    if (r.division_partners && Object.keys(r.division_partners).length) {
+      for (const [g, p] of Object.entries(r.division_partners)) add(p, [Number(g)].filter((n) => n > 0));
+    } else if (r.partner_member_id) add(r.partner_member_id, groups);
+  }
+  const cancelled = [...new Set(rows
+    .filter((r) => CANCELLED.test(r.status ?? "") && !r.withdrawn_keep_position && !entered.has(r.club_member_id))
+    .map((r) => r.club_member_id))].sort();
+  return { entered, cancelled };
+}
+
+/** Take cancelled players off the board (not marked as organiser-removed, so a later re-entry shows them again). */
+export function pruneCancelledPicks(picks: Picks, cancelled: string[]): Picks | null {
+  const hit = cancelled.filter((id) => id in picks);
+  if (!hit.length) return null;
+  const next = { ...picks };
+  for (const id of hit) delete next[id];
+  return next;
+}

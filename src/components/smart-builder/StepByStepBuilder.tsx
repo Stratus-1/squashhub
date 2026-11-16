@@ -85,7 +85,7 @@ const StructSection = ({ title }: { title: string; children?: null }) => <h3 cla
 import type { StagePlans } from "@/lib/smart-builder/stage-plan";
 import { useClubBetaFeature } from "@/hooks/use-club-beta-feature";
 import { placesOf, togglePlace, addPlace, pickCounts, blockedReason, entrantsFromPicks } from "@/lib/smart-builder/pick-entries";
-import { removePick, unmarkRemoved, shouldAutoAdd, shouldFillEntryPlaces, picksSignature, removalImpact } from "@/lib/smart-builder/pick-removals";
+import { removePick, unmarkRemoved, shouldAutoAdd, shouldFillEntryPlaces, picksSignature, removalImpact, boardEntries, pruneCancelledPicks, type BoardReg } from "@/lib/smart-builder/pick-removals";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { isPlayerEligibleForCategory, validatePairComposition, COMPETITION_CATEGORIES, CATEGORY_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
@@ -140,7 +140,7 @@ import { attachTimelinePlayoffs, createPlannedPlayoffFixtures } from "@/lib/smar
 import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 import { FeeBasisQuestion, tiersFromFee } from "./FeeBasisQuestion";
 import { tierSummary } from "@/lib/tournaments/entry-fee";
-import { LIFECYCLE, clubAllowsTournamentLadder, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
+import { LIFECYCLE, clubAllowsTournamentLadder, isEnteredRegistration, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 import { StageCardShell, StageScheduleOverview } from "./StageScheduleOverview";
 import { courtOverlaps, stageStatus, type StageStatus } from "@/lib/smart-builder/schedule-view";
 import { RoundSchedulingEditor } from "./RoundSchedulingEditor";
@@ -883,7 +883,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
       if (ownerError || !owner) throw new Error("Entry counts unavailable");
       const rows: RegLite[] = [];
       for (let start = 0; ; start += 1000) {
-        const { data, error } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners").eq("champ_id", entryTournamentId).order("id").range(start, start + 999);
+        const { data, error } = await fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices, division_partners, registration_status, registration_source, confirmed_at, fee_status, withdrawn_keep_position").eq("champ_id", entryTournamentId).order("id").range(start, start + 999);
         if (error) throw error;
         rows.push(...((data ?? []) as RegLite[]));
         if ((data ?? []).length < 1000) break;
@@ -896,15 +896,25 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   /** Players who already entered (invite/self-entry) are listed in Pick players with their chosen events; picking only adds. */
   const enteredIds = new Set<string>();
   const enteredPlaces = new Map<string, string[]>();
+  const cancelledEntryIds: string[] = [];
   if (entrySnapshot.owner === entryOwner && entrySnapshot.state === "ready") {
-    for (const r of entrySnapshot.rows) {
-      if (/withdrawn|cancel|declin|reject|removed/i.test(r.status ?? "")) continue;
-      const ks = (r.division_choices?.length ? r.division_choices.map((n) => units[n - 1]?.key) : units.length === 1 ? [units[0].key] : []).filter(Boolean) as string[];
-      enteredIds.add(r.club_member_id);
-      enteredPlaces.set(r.club_member_id, [...new Set([...(enteredPlaces.get(r.club_member_id) ?? []), ...ks])]);
-    }
+    // An invitation is not an entry; partners named by a real entry count as entered for that event.
+    const board = boardEntries(entrySnapshot.rows as BoardReg[], isEnteredRegistration);
+    board.entered.forEach((groups, id) => {
+      const ks = (groups.length ? groups.map((n) => units[n - 1]?.key) : units.length === 1 ? [units[0].key] : []).filter(Boolean) as string[];
+      enteredIds.add(id);
+      enteredPlaces.set(id, ks);
+    });
+    cancelledEntryIds.push(...board.cancelled);
   }
   const enteredSig = [...enteredPlaces].map(([id, ks]) => `${id}:${ks.join(",")}`).sort().join("|");
+  const cancelledSig = cancelledEntryIds.join("|");
+  // A player who cancelled/declined leaves the board, so saving can never re-enter (and re-charge) them.
+  useEffect(() => {
+    if (!cancelledEntryIds.length) return;
+    setA((prev: StepAnswers) => { const picks = pruneCancelledPicks(prev.picks, cancelledEntryIds); return picks ? { ...prev, picks } : prev; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelledSig]);
   useEffect(() => {
     if (!enteredPlaces.size) return;
     setA((prev: StepAnswers) => {

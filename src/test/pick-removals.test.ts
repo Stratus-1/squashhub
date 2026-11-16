@@ -36,3 +36,38 @@ describe("shouldFillEntryPlaces", () => {
     expect(shouldFillEntryPlaces([], ["pieter"], "pieter", ["mens-doubles"])).toBe(false);
   });
 });
+
+import { boardEntries, pruneCancelledPicks, type BoardReg } from "@/lib/smart-builder/pick-removals";
+import { isEnteredRegistration } from "@/lib/smart-builder/step-handover";
+
+describe("player board: cancelled players and invitations (No Frills Doubles)", () => {
+  const row = (o: Partial<BoardReg> & { club_member_id: string }): BoardReg => ({ partner_member_id: null, status: "pending_payment", division_choices: [], ...o });
+  const rows: BoardReg[] = [
+    row({ club_member_id: "gerhard", status: "cancelled", registration_status: "declined", registration_source: "organiser", confirmed_at: "2026-11-16T08:02:39Z", division_choices: [1, 3] }),
+    row({ club_member_id: "bernard", registration_source: "organiser", confirmed_at: "2026-11-16T09:55:48Z", division_choices: [1] }),
+    row({ club_member_id: "bernice", status: "paid", registration_status: "registered", registration_source: "organiser", confirmed_at: "2026-11-16T10:13:34Z", division_choices: [3], division_partners: { "3": "neill" } }),
+    row({ club_member_id: "neill", division_choices: [3], division_partners: { "3": "bernice" } }),
+    row({ club_member_id: "abdul" }),
+    row({ club_member_id: "kept", status: "cancelled", withdrawn_keep_position: true, division_choices: [1] }),
+  ];
+  const b = boardEntries(rows, isEnteredRegistration);
+
+  it("a player who cancelled is taken off the board", () => {
+    expect(b.cancelled).toContain("gerhard");
+    const picks = pruneCancelledPicks({ gerhard: ["Mens", "Mixed"], bernard: ["Mens"] }, b.cancelled);
+    expect(picks).toEqual({ bernard: ["Mens"] });
+  });
+
+  it("an invitation alone is not an entry", () => {
+    expect(b.entered.has("abdul")).toBe(false);
+    expect(b.entered.get("bernard")).toEqual([1]);
+  });
+
+  it("a partner paid for by a real entry counts as entered in that event", () => {
+    expect(b.entered.get("neill")).toEqual([3]);
+  });
+
+  it("a mid-tournament withdrawal that keeps its place stays on the board", () => {
+    expect(b.cancelled).not.toContain("kept");
+  });
+});

@@ -21607,6 +21607,10 @@ export type Database = {
         Args: { _member: string }
         Returns: number
       }
+      _tournament_join_can_activate: {
+        Args: { p_member_id: string }
+        Returns: boolean
+      }
       _tournament_join_club_ok: {
         Args: { p_champ_id: string; p_club_id: string }
         Returns: boolean
@@ -21618,6 +21622,10 @@ export type Database = {
           p_member_id: string
           p_source: string
         }
+        Returns: string
+      }
+      _tournament_join_mask_email: {
+        Args: { p_email: string }
         Returns: string
       }
       _tournament_join_open: { Args: { p_champ_id: string }; Returns: boolean }
@@ -26117,6 +26125,10 @@ export type Database = {
       }
       tournament_join_find_member: {
         Args: { p_champ_id: string; p_club_id: string; p_query: string }
+        Returns: Json
+      }
+      tournament_join_issue_activation: {
+        Args: { p_champ_id: string; p_member_id: string }
         Returns: Json
       }
       tournament_join_pending_claims: {

@@ -2948,6 +2948,13 @@
       "when": 1794821993313,
       "tag": "0420_tournament_join_find_member_include_logins",
       "breakpoints": true
+    },
+    {
+      "idx": 421,
+      "version": "7",
+      "when": 1794822390015,
+      "tag": "0421_tournament_join_activation_email",
+      "breakpoints": true
     }
   ]
 }

@@ -4633,3 +4633,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Tournament join link: search-first + activation email
 - Join page now goes club → search (surname/NSA no.) → result decides: has login → Sign in; listed without login → personal activation email (`tournament-join-activation` → DB `tournament_join_issue_activation`, service-role only, 1 per 10 min / 5 per day); no email on file → player supplies it, saved on the membership with an `audit_events` row (refused if the email already has a login or is used by another member of that club); not found → existing-unlisted or new member.
 - `/activate?next=/t/<id>/join` (allowlisted) returns the player to the join page after activation.
+
+### 2026-11-16 — Regional "Enter as…" blocked: "Choose an eligible category before entering this tournament"
+- Cause: `beta_tournament_category_guard` only allowed category-less invite rows when `invited_by_admin`, and looked up player/partner gender at the host club only; `tournament_division_options` also read gender host-club-only (visitors would see no Mens/Ladies); `respond_tournament_invite_public` raised the entry fee on the player's home-club row.
+- Fix (0423/0424): allow category-less rows from `tournament_link`/`tournament_link_claim`/`external_partner`; eligible-club members pass gender lookups; fee insert uses `resolve_host_billing_member` (host-club visitor row).

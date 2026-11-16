@@ -132,6 +132,11 @@ export async function settlePaynowSession(admin: any, session: any) {
         .eq("id", regRow.fee_payment_id);
     }
 
+    // Doubles: a payer covering their partner settles the pair and records the
+    // partner's share under the partner's name (same step as Stitch).
+    { const { error: pairErr } = await admin.rpc("champ_apply_paid_registration", {
+      p_registration_id: session.champ_registration_id, p_payment_ref: `PAYNOW-${ref}`,
+    }); if (pairErr) console.error("champ_apply_paid_registration failed", pairErr); }
     // Cancel the pending EFT row created when the invite was accepted.
     await admin
       .from("member_credit_transactions")

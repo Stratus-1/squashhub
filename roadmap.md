@@ -82,5 +82,5 @@
 - [ ] Plan: general open entry link for other clubs (incl. clubs not on SquashHub, e.g. Kentron / Pierre van Ryneveld); link first sends the player to register at their own club (existing member with login / existing member without login / new member), then join the tournament and pay.
 - [ ] Plan: open link "I'm a member" path — if not found on the club's list, register as an EXISTING (unlisted, never NSA-seeded) member: no new-member fees, pending club approval; separate from "new member".
 - [ ] No Frills Doubles invite panel shows 'Player' instead of names and '3 of 367 reached' (16 Nov screenshot) — investigate.
-- [ ] Tournament join: listed member without login → send activation email (click to set up login, return to entry)
-- [ ] Tournament join: listed member with no email → player supplies email, saved on record, activation email sent
+- [x] Tournament join: listed member without login → send activation email (click to set up login, return to entry)
+- [x] Tournament join: listed member with no email → player supplies email, saved on record, activation email sent

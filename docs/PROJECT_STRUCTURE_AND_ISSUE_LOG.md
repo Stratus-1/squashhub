@@ -4629,3 +4629,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Symptom: Willem (CSIR, has login) searched "Pretorius" on the No Frills Doubles join link and got "We couldn't find you", inviting a duplicate "existing member" registration.
 - Cause: `tournament_join_find_member` filtered `user_id IS NULL`.
 - Fix (migration 0420): return logged-in members too with `has_login`; `TournamentJoin.tsx` shows "Already on SquashHub" + Sign in instead of "This is me". Claims still only apply to unlinked rows.
+
+### 2026-11-16 — Tournament join link: search-first + activation email
+- Join page now goes club → search (surname/NSA no.) → result decides: has login → Sign in; listed without login → personal activation email (`tournament-join-activation` → DB `tournament_join_issue_activation`, service-role only, 1 per 10 min / 5 per day); no email on file → player supplies it, saved on the membership with an `audit_events` row (refused if the email already has a login or is used by another member of that club); not found → existing-unlisted or new member.
+- `/activate?next=/t/<id>/join` (allowlisted) returns the player to the join page after activation.

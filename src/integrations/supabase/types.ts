@@ -26128,7 +26128,7 @@ export type Database = {
         Returns: Json
       }
       tournament_join_issue_activation: {
-        Args: { p_champ_id: string; p_member_id: string }
+        Args: { p_champ_id: string; p_email?: string; p_member_id: string }
         Returns: Json
       }
       tournament_join_pending_claims: {

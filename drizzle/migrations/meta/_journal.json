@@ -2955,6 +2955,13 @@
       "when": 1794822390015,
       "tag": "0421_tournament_join_activation_email",
       "breakpoints": true
+    },
+    {
+      "idx": 422,
+      "version": "7",
+      "when": 1794822464570,
+      "tag": "0422_tournament_join_activation_supply_email",
+      "breakpoints": true
     }
   ]
 }

@@ -25847,6 +25847,10 @@ export type Database = {
           platform_fee_cents: number
         }[]
       }
+      tournament_group_display_label: {
+        Args: { p_beta: Json; p_group: number; p_raw: string }
+        Returns: string
+      }
       tournament_host_club_ids: { Args: { _champ: string }; Returns: string[] }
       tournament_host_courts: {
         Args: { _club_ids: string[] }

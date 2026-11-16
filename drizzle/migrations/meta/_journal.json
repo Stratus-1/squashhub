@@ -2983,6 +2983,13 @@
       "when": 1794835384220,
       "tag": "0425_cancel_entry_removes_unpaid_fee_before_close",
       "breakpoints": true
+    },
+    {
+      "idx": 426,
+      "version": "7",
+      "when": 1794838156158,
+      "tag": "0426_record_partner_cover_fee",
+      "breakpoints": true
     }
   ]
 }

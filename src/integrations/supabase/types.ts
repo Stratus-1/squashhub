@@ -21538,6 +21538,15 @@ export type Database = {
         Args: { p_champ_id: string }
         Returns: string[]
       }
+      _champ_record_partner_cover_fee: {
+        Args: {
+          p_group: number
+          p_partner_reg_id: string
+          p_payer: string
+          p_ref: string
+        }
+        Returns: string
+      }
       _champ_row_unlocked: {
         Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
         Returns: boolean

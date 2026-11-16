@@ -4642,3 +4642,4 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Only players who confirmed entry were billed (361 invite-only rows had no fee). Gerhard Fourie confirmed, then his entry was cancelled; the unpaid R210 fee and its debtor/tournament-income journal lines remained.
 - Removed that fee row and its two journal lines on Willem's instruction; audit_events `tournament_entry_fee_removed` holds the removed data.
 - Open gap: Decline / Remove / Withdraw set the registration to cancelled without removing an unpaid entry fee. Not changed yet — awaiting owner approval.
+- Display fix (same day): Manage → Entries & payment status counted all 363 invitation rows as "entered" with R210 each (R76,020 due). `loadRegistrations` now keeps only real entries (`isEnteredRegistration`) and shows the rest as "invited, not entered yet". Test: src/test/invited-not-entered.test.ts.

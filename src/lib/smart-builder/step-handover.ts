@@ -534,20 +534,39 @@ export const isOutstanding = (status: string, feeDue: boolean) => feeDue && OUTS
 export const regLabel = (status: string, feeDue: boolean, confirmNeedsPay = false) =>
   status === ON_ACCOUNT && feeDue ? "Entered · Charged to member account" : confirmNeedsPay && feeDue && OUTSTANDING.has(status) ? (status === "pending_eft" ? "Not confirmed · EFT proof waiting" : status === "payment_failed" ? "Not confirmed · Payment failed" : "Not confirmed · Payment outstanding") : !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
 
-export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
+/**
+ * An invitation is not an entry. A registration row counts as entered (and can owe a fee) only once
+ * the player confirmed it, the organiser entered them, or the server marked it registered/settled.
+ * Invite-only rows (no confirmation, no organiser source) never owe anything — the server only raises
+ * the entry fee on confirmation (tg_registration_ensure_entry_fee).
+ */
+export function isEnteredRegistration(r: { status?: string | null; registration_status?: string | null; registration_source?: string | null; confirmed_at?: string | null; fee_status?: string | null }): boolean {
+  const s = String(r.status ?? "").toLowerCase();
+  if (["cancelled", "withdrawn", "declined"].includes(s)) return false;
+  if (r.confirmed_at) return true;
+  if (r.registration_status === "registered") return true;
+  if (r.registration_source === "organiser") return true;
+  if (["paid", "waived"].includes(s) || r.fee_status === ON_ACCOUNT) return true;
+  return false;
+}
+
+export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number; invitedCount?: number }> {
   // Always recompute from current entries; first repair entries left inconsistent by an older replacement.
   await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
   const [{ data: t }, { data: regs }] = await Promise.all([
     fromExt("club_champs").select("entry_fee_cents").eq("id", tournamentId).maybeSingle(),
-    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status").eq("champ_id", tournamentId),
+    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status, registration_status, registration_source, confirmed_at").eq("champ_id", tournamentId),
   ]);
   const feeCents = Number((t as any)?.entry_fee_cents ?? 0);
-  const live = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
+  const open = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
+  const live = open.filter(isEnteredRegistration);
+  const invitedCount = open.length - live.length;
   const ids = [...new Set(live.flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
   const { data: ms } = ids.length ? await supabase.from("club_members").select("id, name").in("id", ids) : { data: [] as any[] };
   const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
   return {
     feeCents,
+    invitedCount,
     rows: live.map((r) => ({
       memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Unknown member",
       partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Unknown member" : null,

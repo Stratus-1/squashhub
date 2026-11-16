@@ -2962,6 +2962,13 @@
       "when": 1794822464570,
       "tag": "0422_tournament_join_activation_supply_email",
       "breakpoints": true
+    },
+    {
+      "idx": 423,
+      "version": "7",
+      "when": 1794823203854,
+      "tag": "0423_beta_category_guard_regional_join",
+      "breakpoints": true
     }
   ]
 }

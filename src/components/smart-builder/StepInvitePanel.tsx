@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronDown, ChevronRight, Copy, Link2, Search, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { absoluteUrl } from "@/lib/site";
+import { JoinClaimsReview } from "@/components/tournaments/JoinClaimsReview";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -442,6 +443,8 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
           </div>
         );
       })()}
+
+      {wide && <JoinClaimsReview champId={h.tournamentId} />}
 
       {/* 4. Recipients */}
       {ids.length > 0 && (

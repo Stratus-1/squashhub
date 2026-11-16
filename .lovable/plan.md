@@ -39,7 +39,9 @@ Rules for each path:
 - **c) New member (not a member of this club):**
   - **Club on SquashHub (SLA or trial):** a normal membership application, with entry allowed while it's pending.
   - **Club not on SquashHub (Kentron):** the player is added to that club's list as a **pending, tournament-only member**. They aren't billed or counted, get no club access, and can't book courts. This is a narrow exception to the "no applications at unsigned clubs" rule and covers nothing else. When the club signs up, its admin sees these players flagged "joined via tournament" and can approve or remove them.
-- After any path, the player lands back on this tournament automatically.
+- **From registration to entry, one continuous flow:** registering creates the login and signs them in, then they land straight on this tournament's entry page (categories, partner, payment). There's no second link or click.
+- **Coming back later:** the same open link recognises a signed-in player and opens their entry. On a new device they sign in first. They also get a personal entry link by email/SMS as a backup.
+- Club confirmation of an existing or new member runs in the background and never holds up the entry.
 - Each person gets one national profile and one entry per tournament. Re-using the link never duplicates anything.
 
 ## B. Inviting listed players who have no contact details

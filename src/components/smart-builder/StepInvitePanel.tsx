@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, Search, Send, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Link2, Search, Send, X } from "lucide-react";
+import { toast } from "sonner";
+import { absoluteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -420,6 +422,26 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
         <p className="mt-1 text-xs text-muted-foreground">In emails the entry link is sent as a large "Enter here" button, with a second "Go to Tournament" button below.</p>
       </div>
 
+
+      {/* Open entry link (Regional / National): for players messages can't reach. */}
+      {wide && (() => {
+        const link = absoluteUrl(`/t/${h.tournamentId}/join`);
+        const noContactCount = ids.filter(noContact).length;
+        const msg = `You're invited to enter ${h.name || "our tournament"}. Tap the link, choose your club and enter: ${link}`;
+        const copy = (text: string, what: string) => navigator.clipboard?.writeText(text).then(() => toast.success(`${what} copied`)).catch(() => toast.error("Couldn't copy"));
+        return (
+          <div className="space-y-1.5 rounded border border-border p-2 text-xs" data-testid="open-entry-link">
+            <p className="flex items-center gap-1 font-medium"><Link2 className="h-3 w-3" />Share open entry link</p>
+            <p className="text-muted-foreground">Anyone from an eligible club can register at their own club and enter. Nothing is sent automatically.{noContactCount ? ` ${noContactCount} selected player${noContactCount === 1 ? " has" : "s have"} no email, phone or login — share this link with them.` : ""}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="max-w-full truncate rounded bg-muted px-1.5 py-0.5">{link}</code>
+              <Button size="sm" variant="outline" onClick={() => copy(link, "Link")}><Copy className="mr-1 h-3 w-3" />Copy link</Button>
+              <Button size="sm" variant="outline" onClick={() => copy(msg, "Message")}><Copy className="mr-1 h-3 w-3" />Copy WhatsApp message</Button>
+              <Button size="sm" variant="outline" asChild><a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer">WhatsApp</a></Button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 4. Recipients */}
       {ids.length > 0 && (

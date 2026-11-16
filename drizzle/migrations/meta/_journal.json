@@ -2934,6 +2934,13 @@
       "when": 1794821008753,
       "tag": "0418_tournament_join_confirm_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 419,
+      "version": "7",
+      "when": 1794821503066,
+      "tag": "0419_no_frills_doubles_open_gender",
+      "breakpoints": true
     }
   ]
 }

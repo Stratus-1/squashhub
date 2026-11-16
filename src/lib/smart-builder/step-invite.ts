@@ -98,6 +98,32 @@ export function memberMatchesTournamentGender(memberGender: string | null | unde
   return matchValues.includes(normalized);
 }
 
+/**
+ * Gender filter for broad invite audiences, from the tournament's categories.
+ * Any category without a men/ladies gender (Mixed, Open) — or both men and
+ * ladies categories — means everyone may be invited. The old tournament-wide
+ * `gender` column is only used when no category genders are known; it
+ * defaulted to "men" and silently dropped every lady from mixed events.
+ */
+export function inviteGenderFilter(
+  tournamentGender: string | null | undefined,
+  categoryGenders: Record<string, string> | null | undefined,
+  categoryCount: number | null | undefined,
+): "men" | "ladies" | null {
+  const n = Math.max(0, Number(categoryCount || 0));
+  if (categoryGenders && n > 0) {
+    const vals = Array.from({ length: n }, (_, i) => String(categoryGenders[String(i + 1)] ?? "").toLowerCase());
+    if (vals.some((v) => v !== "men" && v !== "ladies")) return null;
+    if (vals.every((v) => v === "men")) return "men";
+    if (vals.every((v) => v === "ladies")) return "ladies";
+    return null;
+  }
+  const g = String(tournamentGender || "").toLowerCase();
+  if (g === "men") return "men";
+  if (g === "ladies" || g === "women" || g === "female") return "ladies";
+  return null;
+}
+
 export type ExistingInviteRow = {
   club_member_id: string;
   status?: string | null;

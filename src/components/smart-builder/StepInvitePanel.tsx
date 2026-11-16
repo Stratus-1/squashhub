@@ -14,7 +14,7 @@ import {
   type BetaLifecycle, type DeliveryRowAt, type Handover, type InformChannel,
 } from "@/lib/smart-builder/step-handover";
 import {
-  EMPTY_INVITE_AUDIENCE, memberMatchesTournamentGender, personaliseInvite, sendInvites,
+  EMPTY_INVITE_AUDIENCE, inviteGenderFilter, memberMatchesTournamentGender, personaliseInvite, sendInvites,
   type StepInviteAudience,
 } from "@/lib/smart-builder/step-invite";
 import {
@@ -93,17 +93,19 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   useEffect(() => {
     let active = true;
     (async () => {
-      const [t, gov, mem, leagues] = await Promise.all([
-        fromExt("club_champs").select("entry_fee_cents, payment_required, payment_timing, gender, registration_opens_at, registration_closes_at").eq("id", h.tournamentId).maybeSingle(),
+      const [t, gov, mem, leagues, tg] = await Promise.all([
+        fromExt("club_champs").select("entry_fee_cents, payment_required, payment_timing, gender, num_groups, registration_opens_at, registration_closes_at").eq("id", h.tournamentId).maybeSingle(),
         fromExt("tournament_governance").select("eligibility_scope").eq("tournament_id", h.tournamentId).maybeSingle(),
         supabase.from("club_members").select("id, name, status, role, billing_exempt, gender").eq("club_id", h.clubId),
         fromExt("leagues").select("id, name, association_id, season_year, level, is_reserve").eq("club_id", h.clubId).is("archived_at", null).order("name"),
+        fromExt("tournaments").select("league_genders").eq("id", h.tournamentId).maybeSingle(),
       ]);
       if (!active) return;
       const td = t.data as any;
       setFeeCents(Number(td?.entry_fee_cents ?? 0));
       setPayFirst(((td?.payment_timing ?? "on_entry") !== "after_acceptance") && !!td?.payment_required && Number(td?.entry_fee_cents ?? 0) > 0);
-      setGender(td?.gender ?? null);
+      // Mixed / both-gender events invite everyone; only single-gender events filter.
+      setGender(inviteGenderFilter(td?.gender, (tg.data as any)?.league_genders ?? null, td?.num_groups));
       setEntOpen(td?.registration_opens_at ? String(td.registration_opens_at).slice(0, 10) : "");
       setEntClose(td?.registration_closes_at ? String(td.registration_closes_at).slice(0, 10) : "");
       setScope(String((gov.data as any)?.eligibility_scope ?? "club"));

@@ -222,32 +222,23 @@ export default function TournamentJoin() {
 
         <div className="space-y-1.5">
           <Label className="text-xs">Which club do you play for?</Label>
-          <Select value={clubId} onValueChange={(v) => { setClubId(v); setStep("choose"); setKind(null); setFound(null); setPicked(null); setErr(null); }}>
+          <Select value={clubId} onValueChange={(v) => { setClubId(v); setStep("search"); setKind("claim"); setFound(null); setPicked(null); setErr(null); }}>
             <SelectTrigger><SelectValue placeholder="Choose your club" /></SelectTrigger>
             <SelectContent>{(ctx.clubs ?? []).map((c) => <SelectItem key={c.club_id} value={c.club_id}>{c.club_name}{c.is_host ? " (host)" : ""}</SelectItem>)}</SelectContent>
           </Select>
         </div>
 
         {club && step === "choose" && (
-          <div className="grid gap-2">
-            {!user && (
-              <Button variant="outline" className="h-auto justify-start py-2 text-left" onClick={() => { setKind(null); setHaveLogin(true); setStep("account"); }}>
-                <LogIn className="mr-2 h-4 w-4 shrink-0" /><span><span className="block font-medium">I already use SquashHub</span><span className="block text-xs text-muted-foreground">Sign in and go to your entry</span></span>
-              </Button>
-            )}
-            <Button variant="outline" className="h-auto justify-start py-2 text-left" onClick={() => { setKind("claim"); setStep("search"); }}>
-              <UserCheck className="mr-2 h-4 w-4 shrink-0" /><span><span className="block font-medium">I'm a member of {club.club_name}</span><span className="block text-xs text-muted-foreground">We'll look for you on the club's list</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto justify-start py-2 text-left" onClick={() => { setKind("new"); setStep("details"); }}>
-              <UserPlus className="mr-2 h-4 w-4 shrink-0" /><span><span className="block font-medium">I'm not a member of {club.club_name}</span><span className="block text-xs text-muted-foreground">Join as a new member, then enter</span></span>
-            </Button>
-          </div>
+          <Button className="w-full" onClick={() => { setKind("claim"); setStep("search"); }}>
+            <Search className="mr-2 h-4 w-4" />Find me at {club.club_name}
+          </Button>
         )}
 
         {club && step === "search" && (
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Search for yourself on {club.club_name}'s list. We'll take you to sign in, claim your profile or register, whichever fits.</p>
             <div className="flex gap-2">
-              <Input placeholder="Your surname or NSA number" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && query.trim().length >= 3) runSearch(); }} />
+              <Input autoFocus placeholder="Your surname or NSA number" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && query.trim().length >= 3) runSearch(); }} />
               <Button onClick={runSearch} disabled={busy || query.trim().length < 3}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
             </div>
             {found && found.length > 0 && (
@@ -286,12 +277,21 @@ export default function TournamentJoin() {
               </div>
             )}
             {found && (
-              <div className="rounded-md border border-dashed border-border p-3 text-xs">
-                <p className="mb-2">{found.length ? "Not you?" : "We couldn't find you."} If you are a member of {club.club_name} but not on this list yet, register as an existing member. No joining fees are charged.</p>
-                <Button size="sm" variant="outline" onClick={() => { setKind("existing_unlisted"); setPicked(null); setStep("details"); }}>Register as an existing member</Button>
+              <div className="space-y-2 rounded-md border border-dashed border-border p-3 text-xs">
+                <p>{found.length ? "Not you?" : `We couldn't find you on ${club.club_name}'s list.`}</p>
+                <Button size="sm" variant="outline" className="h-auto w-full justify-start py-2 text-left" onClick={() => { setKind("existing_unlisted"); setPicked(null); setStep("details"); }}>
+                  <UserCheck className="mr-2 h-4 w-4 shrink-0" /><span><span className="block font-medium">I'm a member of {club.club_name}, just not listed</span><span className="block text-muted-foreground">Register as an existing member. No joining fees.</span></span>
+                </Button>
+                <Button size="sm" variant="outline" className="h-auto w-full justify-start py-2 text-left" onClick={() => { setKind("new"); setPicked(null); setStep("details"); }}>
+                  <UserPlus className="mr-2 h-4 w-4 shrink-0" /><span><span className="block font-medium">I'm not a member of {club.club_name}</span><span className="block text-muted-foreground">Join as a new member, then enter</span></span>
+                </Button>
               </div>
             )}
-            <button type="button" className="text-xs text-primary underline" onClick={() => setStep("choose")}>Back</button>
+            {!user && (
+              <button type="button" className="flex items-center gap-1 text-xs text-primary underline" onClick={() => { setKind(null); setPicked(null); setHaveLogin(true); setStep("account"); }}>
+                <LogIn className="h-3.5 w-3.5" />I already use SquashHub — sign in
+              </button>
+            )}
           </div>
         )}
 
@@ -313,7 +313,7 @@ export default function TournamentJoin() {
             <div className="space-y-1.5"><Label className="text-xs">Cell number</Label><Input inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
             {!user && <div className="space-y-1.5"><Label className="text-xs">Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>}
             <Button className="w-full" onClick={proceed}>Continue</Button>
-            <button type="button" className="text-xs text-primary underline" onClick={() => setStep(kind === "existing_unlisted" ? "search" : "choose")}>Back</button>
+            <button type="button" className="text-xs text-primary underline" onClick={() => setStep("search")}>Back</button>
           </div>
         )}
 
@@ -343,7 +343,7 @@ export default function TournamentJoin() {
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{haveLogin ? "Sign in and continue" : "Create login and continue"}
             </Button>
             {!haveLogin && <p className="text-xs text-muted-foreground">By continuing you accept the SquashHub terms and privacy policy.</p>}
-            <button type="button" className="text-xs text-primary underline" onClick={() => setStep(kind === "claim" ? "search" : kind ? "details" : "choose")}>Back</button>
+            <button type="button" className="text-xs text-primary underline" onClick={() => setStep(kind === "claim" || (!kind && club) ? "search" : kind ? "details" : "choose")}>Back</button>
           </div>
         )}
 

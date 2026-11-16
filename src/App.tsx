@@ -80,6 +80,7 @@ const ClubAuth = lazy(() => import("./pages/ClubAuth"));
 const BookingResponse = lazy(() => import("./pages/BookingResponse"));
 const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
 const TournamentGroupAction = lazy(() => import("./pages/TournamentGroupAction"));
+const TournamentJoin = lazy(() => import("./pages/TournamentJoin"));
 
 const MobileBillingBridge = lazy(() => import("./pages/MobileBillingBridge"));
 const MobileCheckout = lazy(() => import("./pages/MobileCheckout"));
@@ -655,6 +656,9 @@ function AppRoutes() {
         <Route path="/t/:champId/withdraw" element={<TournamentGroupAction action="withdraw" />} />
         <Route path="/c/:subdomain/t/:champId/enter" element={<TournamentGroupAction action="enter" />} />
         <Route path="/c/:subdomain/t/:champId/withdraw" element={<TournamentGroupAction action="withdraw" />} />
+        {/* Open entry link for Regional / National tournaments */}
+        <Route path="/t/:champId/join" element={<TournamentJoin />} />
+        <Route path="/c/:subdomain/t/:champId/join" element={<TournamentJoin />} />
 
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/updates" element={<ProtectedRoute><Updates /></ProtectedRoute>} />

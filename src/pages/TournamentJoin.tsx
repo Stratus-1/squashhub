@@ -29,7 +29,8 @@ type Ctx = {
   start_date?: string | null; entries_close?: string | null; fee_cents?: number;
   categories?: string[]; clubs?: Club[]; me?: Me[];
 };
-type Found = { member_id: string; display_name: string; nsa_on_file: boolean; matched_by: "nsa" | "name"; has_login?: boolean };
+type Found = { member_id: string; display_name: string; nsa_on_file: boolean; matched_by: "nsa" | "name"; has_login?: boolean;
+  can_activate?: boolean; needs_email?: boolean; email_hint?: string | null };
 type Step = "choose" | "search" | "details" | "account" | "check_email" | "awaiting" | "working";
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : null);
@@ -48,6 +49,8 @@ export default function TournamentJoin() {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<Found[] | null>(null);
   const [picked, setPicked] = useState<Found | null>(null);
+  const [actEmail, setActEmail] = useState("");
+  const [actSent, setActSent] = useState<string | null>(null);
   const [nsa, setNsa] = useState("");
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
@@ -121,11 +124,35 @@ export default function TournamentJoin() {
   };
 
   const runSearch = async () => {
-    setErr(null); setBusy(true); setPicked(null);
+    setErr(null); setBusy(true); setPicked(null); setActSent(null); setActEmail("");
     const { data, error } = await (supabase as any).rpc("tournament_join_find_member", { p_champ_id: champId, p_club_id: clubId, p_query: query.trim() });
     setBusy(false);
     if (error) { setErr(error.message); return; }
     setFound((data ?? []) as Found[]);
+  };
+
+  const ACT_MSG: Record<string, string> = {
+    too_soon: "We've just sent you a link. Please check your inbox (and spam) — you can ask again in 10 minutes.",
+    email_required: "Please enter a valid email address.",
+    email_has_login: "That email already has a SquashHub login. Use \"I already use SquashHub — sign in\" below, then pick your name.",
+    email_in_use: "Another member of this club already uses that email. Please use your own email address.",
+    has_login: "This profile already has a login. Use \"I already use SquashHub — sign in\" below.",
+    not_available: "We can't send a link for this profile. Continue below and the organiser will confirm you.",
+    not_open: "Entries through this link are not open.",
+  };
+  const sendActivation = async () => {
+    if (!picked) return;
+    setErr(null);
+    if (picked.needs_email && !/^\S+@\S+\.\S+$/.test(actEmail.trim())) { setErr("Please enter a valid email address."); return; }
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("tournament-join-activation", {
+      body: { champ_id: champId, member_id: picked.member_id, email: picked.needs_email ? actEmail.trim().toLowerCase() : undefined },
+    });
+    setBusy(false);
+    const st = error ? "error" : (data as any)?.status;
+    if (st === "sent") { setActSent((data as any)?.email_hint || actEmail.trim().toLowerCase()); return; }
+    if (st === "not_available") { setPicked({ ...picked, can_activate: false }); }
+    setErr(ACT_MSG[st] || "We couldn't send the email. Please try again.");
   };
 
   const createOrSignIn = async () => {
@@ -264,7 +291,29 @@ export default function TournamentJoin() {
                 ))}
               </ul>
             )}
-            {picked && (
+            {picked && !user && picked.can_activate && (
+              <div className="space-y-2 rounded-md border border-primary/40 bg-primary/5 p-3">
+                {actSent ? (
+                  <>
+                    <p className="font-medium">Check your email</p>
+                    <p className="text-xs text-muted-foreground">We sent your personal activation link to {actSent}. Tap it, choose a password and you'll come straight back here to enter.</p>
+                  </>
+                ) : picked.needs_email ? (
+                  <>
+                    <p className="text-xs">You're on {club.club_name}'s list, but the club doesn't have your email yet. Enter it and we'll save it and send your activation link.</p>
+                    <Input type="email" placeholder="Your email address" value={actEmail} onChange={(e) => setActEmail(e.target.value)} />
+                    <Button className="w-full" disabled={busy} onClick={sendActivation}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save email and send link</Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs">You're on {club.club_name}'s list. We'll email your activation link to {picked.email_hint || "the email the club has for you"}.</p>
+                    <Button className="w-full" disabled={busy} onClick={sendActivation}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Send my activation link</Button>
+                    <p className="text-xs text-muted-foreground">Not your email any more? Ask {club.club_name} to update it.</p>
+                  </>
+                )}
+              </div>
+            )}
+            {picked && (user || !picked.can_activate) && (
               <div className="space-y-2 rounded-md border border-border p-3">
                 {picked.nsa_on_file && (
                   <div className="space-y-1.5">

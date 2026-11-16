@@ -14,7 +14,7 @@ import {
   type BetaLifecycle, type DeliveryRowAt, type Handover, type InformChannel,
 } from "@/lib/smart-builder/step-handover";
 import {
-  EMPTY_INVITE_AUDIENCE, memberMatchesTournamentGender, personaliseInvite, sendInvites,
+  EMPTY_INVITE_AUDIENCE, inviteGenderFilter, memberMatchesTournamentGender, personaliseInvite, sendInvites,
   type StepInviteAudience,
 } from "@/lib/smart-builder/step-invite";
 import {

@@ -2920,6 +2920,13 @@
       "when": 1794816819769,
       "tag": "0416_invite_category_display_names",
       "breakpoints": true
+    },
+    {
+      "idx": 417,
+      "version": "7",
+      "when": 1794820605672,
+      "tag": "0417_regional_open_entry_external_partners",
+      "breakpoints": true
     }
   ]
 }

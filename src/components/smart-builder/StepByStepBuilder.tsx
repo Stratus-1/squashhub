@@ -302,6 +302,8 @@ export type StepAnswers = {
   scope: Scope | null;
   /** Explicit opt-in: registered visitors (club sign-ins) may be picked and invited. Default off. */
   includeVisitors?: boolean;
+  /** Players may enter (and pay for) a doubles partner from outside the invite list. */
+  allowExternalEntries?: boolean;
   ownerName: string;
   syncCutoff: string;
 };
@@ -1545,7 +1547,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
-        ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true, eventLevel: a.scope ?? undefined,
+        ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true, eventLevel: a.scope ?? undefined, allowExternalEntries: a.allowExternalEntries,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => { const t = String(u.categoryType ?? "open").toLowerCase(); return t === "men" ? "mens" : (["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"); }),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: `${u.key.split("::").join(" › ")} · ${u.disc ? PLAY_LABEL[u.disc] : "Singles or Doubles?"}` /* unit identity — downstream matches on it; display names resolve via categoryLabels */, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, playoffPointsPerGame: sc.playoffPointsPerGame ?? null, playoffMatchFormat: sc.playoffMatchFormat ?? null, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
@@ -1862,6 +1864,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   </p>
                 </div>
                 <Switch id="sbs-include-visitors" checked={!!a.includeVisitors} onCheckedChange={(v) => setA({ ...a, includeVisitors: v })} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sbs-allow-external" className="text-sm font-medium">Allow players to enter a partner from outside</Label>
+                  <p className="text-xs text-muted-foreground">
+                    A player may enter and pay for a doubles partner who isn't on the invite list (from an eligible club, or a guest). You can remove such pairs. Off = invited players only.
+                  </p>
+                </div>
+                <Switch id="sbs-allow-external" checked={!!a.allowExternalEntries} onCheckedChange={(v) => setA({ ...a, allowExternalEntries: v })} />
               </div>
             </>
           )}

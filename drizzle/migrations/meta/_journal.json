@@ -2969,6 +2969,13 @@
       "when": 1794823203854,
       "tag": "0423_beta_category_guard_regional_join",
       "breakpoints": true
+    },
+    {
+      "idx": 424,
+      "version": "7",
+      "when": 1794823311079,
+      "tag": "0424_regional_entry_categories_and_host_billing",
+      "breakpoints": true
     }
   ]
 }

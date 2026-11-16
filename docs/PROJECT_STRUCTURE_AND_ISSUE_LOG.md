@@ -4600,3 +4600,9 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Gordons Bay: Michele Lamers EFT top-up approved as R10 instead of R100 (data fix)
 - 11 Nov EFT top-up (txn 1f93247b) was confirmed as R10; Standard Bank proof (ref 4212375056, "GBSQ0008 - TOP-UP") shows R100.
 - Corrected the transaction and its bank_current/member_credits journal lines to R100; audited as `topup_amount_corrected`. Balance now +R110 credit. No bank statement line was matched, so no reconciliation impact.
+
+### 2026-11-16 — Help Center case-context: diagnosis + redeploy (no code/secret/data change)
+- All required secrets present by name (READ_AUDIENCE, CALLER_SERVICE_ACCOUNT, IAP_AUDIENCE, TENANT_SCOPE, OPERATOR_EMAILS); OPERATOR_EMAILS was not missing, so it was not reset. Live probes log `missing_workload_token` (the check after `missing_config`/`missing_allowlist`), proving config and a non-empty valid allowlist load in production.
+- Function logs contained no authorized/signed Help Center calls in the retention window — only unauthenticated probes. The production 404 is therefore not reproducible from SquashHub's side; the Help Center caller must retry and the resulting `diag_code` read.
+- Both RPCs are service-only with no pilot-allowlist reference; one open ticket has an unheld, delivered latest `case.updated` event eligible for a read.
+- Redeployed only `help-center-case-context` (submitted source SHA-256 48c9026b…bd723b2); 24/25 bun tests pass (rpcs.test needs local Postgres). Post-deploy: GET 404 `case_context_unavailable` no-store, bad bearer 404 (`invalid_workload_token` ERR_JWS_INVALID), POST 405.

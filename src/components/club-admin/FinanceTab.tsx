@@ -112,7 +112,7 @@ const ALL_ACCOUNTS = Object.keys(CHART_OF_ACCOUNTS) as GLAccount[];
 
 // Default gateway fee percentages by provider, VAT-inclusive (list rate x 1.15).
 // Overridable per club in Banking settings.
-const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 2.64, stitch: 3.40, payfast: 3.70 };
+const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 2.64, stitch: 3.105, payfast: 3.70 }; // Stitch: 2.7% + 15% VAT
 const FALLBACK_GATEWAY_FEE_PCT = 3.70;
 export type CardMethod = "card_local" | "card_intl" | "wallet" | "capitec";
 export const CARD_METHOD_LABELS: Record<CardMethod, string> = {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { takeJoinReturn } from "@/lib/tournaments/join-flow";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -62,6 +63,13 @@ export default function AuthCallback() {
               return;
             }
           } catch { /* ignore */ }
+
+          // Came from a tournament open entry link: go back there to finish the entry.
+          const joinReturn = takeJoinReturn();
+          if (joinReturn) {
+            navigate(joinReturn, { replace: true });
+            return;
+          }
 
           if (callbackRedirect?.startsWith("/") && !callbackRedirect.startsWith("//")) {
             navigate(callbackRedirect, { replace: true });

@@ -1,4 +1,7 @@
 # Roadmap
+- [x] Invite list: real names + "No contact · share link" for cross-club players; Share open entry link.
+- [x] Regional open entry link /t/:id/join, organiser claim review, outside-partner setting + picker, host-only account charge (backend + UI). Not yet tried: real sign-up/email round trip and an outside-partner entry on a live tournament.
+- [ ] Optional "you've been entered" message to outside partners with contact details (plan C) — not built; waits on owner confirmation.
 - [ ] Riverside YouTube pilot: use the existing Friday Round Robin test fixture Albert Erasmus vs Joubert Khumalo; add/verify the viewing link once Willem supplies it. No fixtures/results changed; stream-link feature not implemented yet.
 - [x] Explain how to schedule a YouTube phone livestream and share its viewing link for the Riverside pilot.
 - [x] Fix social-event email links to the invited club and allow secure accept/decline without login, scoped to the invited occurrence; 39 focused checks and synthetic signed-out phone/desktop flows passed, email function deployed. Old emails cannot be changed; real delivered-email check remains unverified.
@@ -78,3 +81,4 @@
 - [ ] Plan: player may enter + pay for an external (non-member/non-visitor) partner when the tournament allows external entries.
 - [ ] Plan: general open entry link for other clubs (incl. clubs not on SquashHub, e.g. Kentron / Pierre van Ryneveld); link first sends the player to register at their own club (existing member with login / existing member without login / new member), then join the tournament and pay.
 - [ ] Plan: open link "I'm a member" path — if not found on the club's list, register as an EXISTING (unlisted, never NSA-seeded) member: no new-member fees, pending club approval; separate from "new member".
+- [ ] No Frills Doubles invite panel shows 'Player' instead of names and '3 of 367 reached' (16 Nov screenshot) — investigate.

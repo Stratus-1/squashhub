@@ -185,6 +185,8 @@ export type CreateInput = {
   avoidBackToBack?: boolean;
   /** Basics "Event level" → tournament_governance.eligibility_scope (invite audience/club picker). undefined = leave as is. */
   eventLevel?: "club" | "regional" | "national" | null;
+  /** Who may enter "Allow players to enter a partner from outside". undefined = leave as is. */
+  allowExternalEntries?: boolean;
 };
 
 /** Event level (Basics) → governance eligibility scope read by Invitations and entry checks. */
@@ -299,6 +301,10 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
       const { error: iErr } = await fromExt("tournament_governance").insert({ tournament_id: tid, eligibility_scope: eligScope });
       if (iErr) throw iErr;
     }
+  }
+  if (i.allowExternalEntries !== undefined) {
+    const { error: xErr } = await fromExt("tournaments").update({ allow_external_entries: !!i.allowExternalEntries }).eq("id", tid);
+    if (xErr) throw xErr;
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);
   if (i.partnerPay !== undefined) {

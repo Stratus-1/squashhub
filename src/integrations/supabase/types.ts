@@ -5778,6 +5778,7 @@ export type Database = {
           declined_at: string | null
           division_choices: number[]
           division_partners: Json | null
+          entered_by_member_id: string | null
           fee_paid_cents: number
           fee_payment_id: string | null
           fee_settled_via: string | null
@@ -5817,6 +5818,7 @@ export type Database = {
           declined_at?: string | null
           division_choices?: number[]
           division_partners?: Json | null
+          entered_by_member_id?: string | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           fee_settled_via?: string | null
@@ -5856,6 +5858,7 @@ export type Database = {
           declined_at?: string | null
           division_choices?: number[]
           division_partners?: Json | null
+          entered_by_member_id?: string | null
           fee_paid_cents?: number
           fee_payment_id?: string | null
           fee_settled_via?: string | null
@@ -7419,7 +7422,10 @@ export type Database = {
           id_number: string | null
           is_league_only_membership: boolean
           is_pending_approval: boolean
+          join_kind: string | null
+          join_source: string | null
           joined_at: string
+          joined_via_tournament_id: string | null
           ladder_position: number | null
           name: string | null
           occupation: string | null
@@ -7475,7 +7481,10 @@ export type Database = {
           id_number?: string | null
           is_league_only_membership?: boolean
           is_pending_approval?: boolean
+          join_kind?: string | null
+          join_source?: string | null
           joined_at?: string
+          joined_via_tournament_id?: string | null
           ladder_position?: number | null
           name?: string | null
           occupation?: string | null
@@ -7531,7 +7540,10 @@ export type Database = {
           id_number?: string | null
           is_league_only_membership?: boolean
           is_pending_approval?: boolean
+          join_kind?: string | null
+          join_source?: string | null
           joined_at?: string
+          joined_via_tournament_id?: string | null
           ladder_position?: number | null
           name?: string | null
           occupation?: string | null
@@ -19347,6 +19359,71 @@ export type Database = {
           },
         ]
       }
+      tournament_join_claims: {
+        Row: {
+          champ_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          champ_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          champ_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_join_claims_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_join_claims_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "md_club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_join_claims_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_join_claims_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_lookup_attempts: {
         Row: {
           champ_id: string | null
@@ -20033,6 +20110,7 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          allow_external_entries: boolean
           avoid_back_to_back: boolean
           beta_lifecycle: Json | null
           builder_architecture: string
@@ -20155,6 +20233,7 @@ export type Database = {
           visitor_clubs: string[]
         }
         Insert: {
+          allow_external_entries?: boolean
           avoid_back_to_back?: boolean
           beta_lifecycle?: Json | null
           builder_architecture?: string
@@ -20277,6 +20356,7 @@ export type Database = {
           visitor_clubs?: string[]
         }
         Update: {
+          allow_external_entries?: boolean
           avoid_back_to_back?: boolean
           beta_lifecycle?: Json | null
           builder_architecture?: string
@@ -21435,6 +21515,10 @@ export type Database = {
         Args: { _family_member_id: string }
         Returns: boolean
       }
+      _champ_account_allowed: {
+        Args: { p_host_club_id: string; p_member_id: string }
+        Returns: boolean
+      }
       _champ_admin_guard: { Args: { p_champ_id: string }; Returns: undefined }
       _champ_device_assert_write: {
         Args: { p_match: string }
@@ -21523,6 +21607,20 @@ export type Database = {
         Args: { _member: string }
         Returns: number
       }
+      _tournament_join_club_ok: {
+        Args: { p_champ_id: string; p_club_id: string }
+        Returns: boolean
+      }
+      _tournament_join_ensure_entry: {
+        Args: {
+          p_champ_id: string
+          p_entered_by?: string
+          p_member_id: string
+          p_source: string
+        }
+        Returns: string
+      }
+      _tournament_join_open: { Args: { p_champ_id: string }; Returns: boolean }
       accept_tournament_invite: {
         Args: {
           p_accept: boolean
@@ -25163,6 +25261,22 @@ export type Database = {
         }
         Returns: Json
       }
+      propose_doubles_partner_external: {
+        Args: {
+          p_champ_id: string
+          p_club_id?: string
+          p_consent?: boolean
+          p_email?: string
+          p_gender?: string
+          p_group_number: number
+          p_name?: string
+          p_partner_member_id?: string
+          p_phone?: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       purchase_data_bundle: {
         Args: {
           _club_id: string
@@ -25941,6 +26055,15 @@ export type Database = {
           member_id: string
         }[]
       }
+      tournament_invite_member_names: {
+        Args: { p_member_ids: string[]; p_tournament_id: string }
+        Returns: {
+          club_name: string
+          display_name: string
+          member_id: string
+          reachable: boolean
+        }[]
+      }
       tournament_invite_members_for_club: {
         Args: {
           p_club_id: string
@@ -25977,6 +26100,44 @@ export type Database = {
           member_count: number
           registered_count: number
         }[]
+      }
+      tournament_join_claim: {
+        Args: {
+          p_champ_id: string
+          p_member_id: string
+          p_nsa_number?: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
+      tournament_join_context: { Args: { p_champ_id: string }; Returns: Json }
+      tournament_join_enter: {
+        Args: { p_champ_id: string; p_member_id: string }
+        Returns: Json
+      }
+      tournament_join_find_member: {
+        Args: { p_champ_id: string; p_club_id: string; p_query: string }
+        Returns: Json
+      }
+      tournament_join_pending_claims: {
+        Args: { p_champ_id: string }
+        Returns: Json
+      }
+      tournament_join_register: {
+        Args: {
+          p_champ_id: string
+          p_club_id: string
+          p_email?: string
+          p_gender: string
+          p_kind: string
+          p_name: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
+      tournament_join_review_claim: {
+        Args: { p_approve: boolean; p_claim_id: string }
+        Returns: Json
       }
       tournament_league_division_for: {
         Args: { p_champ_id: string; p_member_id: string }

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, Search, Send, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Link2, Search, Send, X } from "lucide-react";
+import { toast } from "sonner";
+import { absoluteUrl } from "@/lib/site";
+import { JoinClaimsReview } from "@/components/tournaments/JoinClaimsReview";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -18,7 +21,7 @@ import {
   audienceLabel, audienceModesForScope, resolveInviteAudience,
   type AudienceMemberRow, type InviteAudienceMode,
 } from "@/lib/tournaments/invite-audience";
-import { fetchInviteDirectory, type DirectoryPlayer } from "@/lib/tournaments/invite-directory";
+import { fetchInviteDirectory, fetchInviteRecipientNames, type DirectoryPlayer, type InviteRecipientName } from "@/lib/tournaments/invite-directory";
 import { fetchClubVisitors, promoteVisitors } from "@/lib/tournaments/visitor-promotion";
 import {
   associationTickState, fetchScopeMemberIds, fetchScopeTree, toggleAssociation, toggleClub,
@@ -69,6 +72,7 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<DirectoryPlayer[]>([]);
   const [dirNames, setDirNames] = useState<Map<string, string>>(new Map());
+  const [recipNames, setRecipNames] = useState<Map<string, InviteRecipientName>>(new Map());
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -221,13 +225,26 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
     pool.find((m) => m.id === id)?.name?.trim()
     || pickedPlayers.find((p) => p.member_id === id)?.display_name
     || dirNames.get(id)
+    || recipNames.get(id)?.display_name
     || "Player";
+  /** Cross-club roster player without email, phone or login: messages can't reach them. */
+  const noContact = (id: string) => recipNames.get(id)?.reachable === false;
 
   /* ── Delivery status ── */
   const allIds = inviteCampaignIds(lifecycle);
   const allKey = allIds.join(",");
   useEffect(() => { if (allIds.length) loadDeliveries(allIds).then(setRows); }, [allKey]);
   const ids = resolved.memberIds;
+  const idsKey = ids.join(",");
+  useEffect(() => {
+    if (!wide || ids.length === 0) return;
+    let active = true;
+    fetchInviteRecipientNames(h.tournamentId, ids)
+      .then((rs) => { if (active) setRecipNames(new Map(rs.map((r) => [r.member_id, r]))); })
+      .catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wide, idsKey, h.tournamentId]);
   const status = recipientStatus(ids, rows);
   const reached = status.filter((s) => s.state === "sent").length;
   const notReached = status.filter((s) => s.state !== "sent");
@@ -407,6 +424,28 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
       </div>
 
 
+      {/* Open entry link (Regional / National): for players messages can't reach. */}
+      {wide && (() => {
+        const link = absoluteUrl(`/t/${h.tournamentId}/join`);
+        const noContactCount = ids.filter(noContact).length;
+        const msg = `You're invited to enter ${h.name || "our tournament"}. Tap the link, choose your club and enter: ${link}`;
+        const copy = (text: string, what: string) => navigator.clipboard?.writeText(text).then(() => toast.success(`${what} copied`)).catch(() => toast.error("Couldn't copy"));
+        return (
+          <div className="space-y-1.5 rounded border border-border p-2 text-xs" data-testid="open-entry-link">
+            <p className="flex items-center gap-1 font-medium"><Link2 className="h-3 w-3" />Share open entry link</p>
+            <p className="text-muted-foreground">Anyone from an eligible club can register at their own club and enter. Nothing is sent automatically.{noContactCount ? ` ${noContactCount} selected player${noContactCount === 1 ? " has" : "s have"} no email, phone or login — share this link with them.` : ""}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="max-w-full truncate rounded bg-muted px-1.5 py-0.5">{link}</code>
+              <Button size="sm" variant="outline" onClick={() => copy(link, "Link")}><Copy className="mr-1 h-3 w-3" />Copy link</Button>
+              <Button size="sm" variant="outline" onClick={() => copy(msg, "Message")}><Copy className="mr-1 h-3 w-3" />Copy WhatsApp message</Button>
+              <Button size="sm" variant="outline" asChild><a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer">WhatsApp</a></Button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {wide && <JoinClaimsReview champId={h.tournamentId} />}
+
       {/* 4. Recipients */}
       {ids.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -424,7 +463,9 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
         const st = status.find((x) => x.memberId === id)!;
         return <li key={id} className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5">
           <label className="flex items-center gap-2"><input type="checkbox" aria-label={`Select ${nameOf(id)}`} checked={sel.includes(id)} onChange={() => toggle(id)} />
-            <span className="font-medium">{nameOf(id)}</span></label>
+            <span className="font-medium">{nameOf(id)}</span>
+            {recipNames.get(id)?.club_name && <span className="text-muted-foreground">· {recipNames.get(id)!.club_name}</span>}
+            {noContact(id) && <span className="rounded border border-border px-1 text-[11px] text-muted-foreground" title="No email, phone or login on file — share the open entry link with them">No contact · share link</span>}</label>
           <span className="flex items-center gap-2">
             <span className={st.state === "sent" ? "text-primary" : sentAlready ? "text-destructive" : "text-muted-foreground"} title={st.problems.join(" · ")}>
               {st.state === "sent" ? `Sent${st.sends > 1 ? ` ${st.sends}×` : ""} · ${st.reached.map((c) => CH_LABEL[c as InformChannel] ?? c).join(", ")}` : sentAlready ? `Not reached${st.problems[0] ? ` — ${st.problems[0]}` : ""}` : "Not sent yet"}

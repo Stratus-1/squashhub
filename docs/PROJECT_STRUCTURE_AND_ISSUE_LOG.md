@@ -4614,3 +4614,9 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Regional tournament Invitations had no club picker (Uitsig No Frills Doubles)
 - Cause: Step-by-Step "Event level" (Regional / National) was saved only in the builder answers; `tournament_governance.eligibility_scope` stayed `club`, so Invitations (`audienceModesForScope`) hid "Selected clubs".
 - Fix: `persistStepTournament` now writes the scope from the event level (`eligibilityScopeForLevel`: club→club, regional→association, national→open; unanswered = unchanged). Uitsig No Frills Doubles set to `association` (22 NSA clubs listed). Test: `src/test/event-level-eligibility-scope.test.ts`.
+
+### 2026-11-16 — Invite recipients showed "Player"; regional open entry link + outside partners
+- Symptom: Uitsig No Frills Doubles invite list showed 364 rows named "Player", 3 of 367 reached.
+- Cause: names came only from `tournament_invite_directory`, which lists reachable players (login/email); NSA roster players at other clubs have no contact details.
+- Fix: `tournament_invite_member_names` RPC returns names/club/reachable for every resolved recipient; StepInvitePanel shows "No contact · share link" and a Share open entry link block (copy / WhatsApp). Only test sends had gone out.
+- Added (approved plan): `/t/:champId/join` open entry link (own-club registration first, NSA claim or organiser-approved name claim, existing-unlisted member without joining fee, new member), organiser claim review in Invitations, "Allow players to enter a partner from outside" setting + "My partner isn't on the list" picker, account payment only for host-club members, club confirmation clears billing exemption. Migrations 0417/0418.

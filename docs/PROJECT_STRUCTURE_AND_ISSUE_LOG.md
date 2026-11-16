@@ -4637,3 +4637,8 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Regional "Enter as…" blocked: "Choose an eligible category before entering this tournament"
 - Cause: `beta_tournament_category_guard` only allowed category-less invite rows when `invited_by_admin`, and looked up player/partner gender at the host club only; `tournament_division_options` also read gender host-club-only (visitors would see no Mens/Ladies); `respond_tournament_invite_public` raised the entry fee on the player's home-club row.
 - Fix (0423/0424): allow category-less rows from `tournament_link`/`tournament_link_claim`/`external_partner`; eligible-club members pass gender lookups; fee insert uses `resolve_host_billing_member` (host-club visitor row).
+
+### 2026-11-16 — Uitsig No Frills Doubles: unpaid entry fee left after cancellation (data fix)
+- Only players who confirmed entry were billed (361 invite-only rows had no fee). Gerhard Fourie confirmed, then his entry was cancelled; the unpaid R210 fee and its debtor/tournament-income journal lines remained.
+- Removed that fee row and its two journal lines on Willem's instruction; audit_events `tournament_entry_fee_removed` holds the removed data.
+- Open gap: Decline / Remove / Withdraw set the registration to cancelled without removing an unpaid entry fee. Not changed yet — awaiting owner approval.

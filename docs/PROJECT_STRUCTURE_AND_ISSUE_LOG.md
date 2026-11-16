@@ -4620,3 +4620,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 - Cause: names came only from `tournament_invite_directory`, which lists reachable players (login/email); NSA roster players at other clubs have no contact details.
 - Fix: `tournament_invite_member_names` RPC returns names/club/reachable for every resolved recipient; StepInvitePanel shows "No contact · share link" and a Share open entry link block (copy / WhatsApp). Only test sends had gone out.
 - Added (approved plan): `/t/:champId/join` open entry link (own-club registration first, NSA claim or organiser-approved name claim, existing-unlisted member without joining fee, new member), organiser claim review in Invitations, "Allow players to enter a partner from outside" setting + "My partner isn't on the list" picker, account payment only for host-club members, club confirmation clears billing exemption. Migrations 0417/0418.
+
+### 2026-11-16 — Uitsig No Frills Doubles invite left out all ladies (185 of 246)
+- Cause: `tournaments.gender` was saved as "men" (default) although the event has Mens, Ladies and Mixed categories; StepInvitePanel filtered the host-club pool by that column, dropping 58 ladies. The other 3 missing were the already-entered test recipients.
+- Fix: `inviteGenderFilter` derives the filter from category genders; No Frills Doubles (Uitsig + Riverside test) set to `open` (migration 0419). Entry eligibility already used category types.

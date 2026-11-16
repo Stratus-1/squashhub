@@ -2941,6 +2941,13 @@
       "when": 1794821503066,
       "tag": "0419_no_frills_doubles_open_gender",
       "breakpoints": true
+    },
+    {
+      "idx": 420,
+      "version": "7",
+      "when": 1794821993313,
+      "tag": "0420_tournament_join_find_member_include_logins",
+      "breakpoints": true
     }
   ]
 }

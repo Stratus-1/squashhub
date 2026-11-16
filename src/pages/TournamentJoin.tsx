@@ -29,7 +29,7 @@ type Ctx = {
   start_date?: string | null; entries_close?: string | null; fee_cents?: number;
   categories?: string[]; clubs?: Club[]; me?: Me[];
 };
-type Found = { member_id: string; display_name: string; nsa_on_file: boolean; matched_by: "nsa" | "name" };
+type Found = { member_id: string; display_name: string; nsa_on_file: boolean; matched_by: "nsa" | "name"; has_login?: boolean };
 type Step = "choose" | "search" | "details" | "account" | "check_email" | "awaiting" | "working";
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : null);
@@ -254,8 +254,21 @@ export default function TournamentJoin() {
               <ul className="divide-y divide-border rounded-md border border-border">
                 {found.map((f) => (
                   <li key={f.member_id} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <span>{f.display_name}</span>
-                    <Button size="sm" variant={picked?.member_id === f.member_id ? "default" : "outline"} onClick={() => { setPicked(f); setName(f.display_name); if (f.matched_by === "nsa") setNsa(query.trim()); }}>This is me</Button>
+                    <span>
+                      {f.display_name}
+                      {f.has_login && <span className="block text-xs text-muted-foreground">Already on SquashHub</span>}
+                    </span>
+                    {f.has_login ? (
+                      user ? (
+                        <span className="text-xs text-muted-foreground">Use the account linked to this profile</span>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => { setKind(null); setPicked(null); setHaveLogin(true); setStep("account"); }}>
+                          <LogIn className="mr-1 h-3.5 w-3.5" />Sign in
+                        </Button>
+                      )
+                    ) : (
+                      <Button size="sm" variant={picked?.member_id === f.member_id ? "default" : "outline"} onClick={() => { setPicked(f); setName(f.display_name); if (f.matched_by === "nsa") setNsa(query.trim()); }}>This is me</Button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -11115,9 +11115,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       </span>
                     )}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {GENDER_LABELS[c.gender as GenderCategory] || c.gender} · {c.match_type === "doubles" ? "Doubles" : "Singles"} · {c.num_groups} groups · {c.status}
-                  </p>
                   <p className="text-xs text-muted-foreground">
                     {c.start_date && c.end_date ? `${c.start_date} to ${c.end_date}` : "Dates not set yet"}
                   </p>

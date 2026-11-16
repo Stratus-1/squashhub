@@ -28,6 +28,9 @@ interface PendingApplicant {
   status: ApplicationStatus;
   /** Set when a member on a Family Package asked to add this person. */
   family: { addedBy: string | null; relationship: string | null } | null;
+  /** Joined through a tournament open entry link (pending club confirmation). */
+  join_source?: string | null;
+  join_kind?: string | null;
 }
 
 /** "added by Jannie Goosen, spouse" — who asked and how they're related. */
@@ -63,7 +66,7 @@ export function PendingApplicationsPanel({ clubId }: Props) {
     queryKey: ["pending-applications", clubId],
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("club_members")
-        .select("id, name, email, phone, gender, applied_at, fee_category_id, role, billing_exempt")
+        .select("id, name, email, phone, gender, applied_at, fee_category_id, role, billing_exempt, join_source, join_kind")
         .eq("club_id", clubId)
         .eq("is_pending_approval", true)
         .order("applied_at", { ascending: true });
@@ -136,7 +139,8 @@ export function PendingApplicationsPanel({ clubId }: Props) {
       if (approve) {
         // The member normally raised this fee in the signup wizard; this is the
         // idempotent safety net so approval never leaves a member unbilled.
-        await raiseJoiningFee(member.id, member.fee_category_id);
+        // Existing members who weren't on the list (joined via a tournament link) never pay joining fees.
+        if (member.join_kind !== "existing_unlisted") await raiseJoiningFee(member.id, member.fee_category_id);
       }
       const { error } = await (supabase.rpc as any)("review_membership_application", {
         _member_id: member.id,
@@ -224,6 +228,13 @@ export function PendingApplicationsPanel({ clubId }: Props) {
                   {familyNote(p.family)}
                 </span>
               </span>
+            )}
+            {p.join_source === "tournament_link" && (
+              <Badge variant="secondary" className="text-[10px]">
+                {p.join_kind === "existing_unlisted" ? "Joined via tournament · existing member (not listed) · no joining fee"
+                  : p.join_kind === "external_partner" ? "Entered as a tournament partner"
+                  : "Joined via tournament · new member"}
+              </Badge>
             )}
             <span className="text-[10px] text-muted-foreground truncate">{p.email || ""}</span>
             <span className="text-[10px] text-muted-foreground truncate">{p.phone || ""}</span>

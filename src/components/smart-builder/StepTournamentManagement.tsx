@@ -49,7 +49,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const [diamond, setDiamond] = useState<boolean | null>(null);
   useEffect(() => { let active = true; isDiamondTournament(tournamentId).then((yes) => { if (active) setDiamond(yes); }).catch(() => { if (active) setDiamond(true); }); return () => { active = false; }; }, [tournamentId]);
   const [open, setOpen] = useState(false);
-  const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number } | null>(null);
+  const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number; invitedCount?: number } | null>(null);
   const [showRegs, setShowRegs] = useState(false);
   const [view, setView] = useState<LifecycleKey | null>(null);
   const [payDlg, setPayDlg] = useState<any>(null);
@@ -263,6 +263,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         <div className="rounded border border-border p-3">
           <div className="mb-1 font-semibold">Entries &amp; payment status</div>
           {regs ? <div>{rows.length} entered{h.feeDue ? ` · ${paid + onAccount} fee${paid + onAccount === 1 ? "" : "s"} settled (${paid} paid · ${onAccount} charged to member account) · ${owing.length} outstanding${owing.length ? ` (${money(owing.reduce((s, r) => s + r.owesCents, 0))} due)` : ""}` : ""}</div> : "Loading…"}
+          {(regs?.invitedCount ?? 0) > 0 && <div className="text-muted-foreground">{regs!.invitedCount} invited, not entered yet — no fee is owed until a player enters.</div>}
           <div className="text-muted-foreground">Entering a player never marks them as paid.</div>
           {rows.length > 0 && <button type="button" className="mt-1 text-primary underline" onClick={() => setShowRegs((v) => !v)}>{showRegs ? "Hide players" : "Show players"}</button>}
           {showRegs && <ul className="mt-1 divide-y divide-border rounded border border-border">{rows.map((r) => (

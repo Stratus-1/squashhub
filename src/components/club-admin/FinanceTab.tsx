@@ -45,6 +45,8 @@ import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club
 import { transactionAccountGroups } from "@/lib/finance/transaction-accounts";
 import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
 import { compareLabel } from "@/lib/finance/sort-label";
+import { trialBalanceReport } from "@/lib/finance/report-export";
+import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -160,7 +162,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   const partyPlural = party === "club" ? "clubs" : "members";
-  const { format: money, symbol: currencySymbol } = useClubCurrency();
+  const { format: money, symbol: currencySymbol, code: currencyCode } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
@@ -1242,9 +1244,23 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         {/* Trial Balance Tab */}
         <TabsContent value="trial">
           <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Trial Balance</h3>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-sm">Trial Balance</h3>
+              </div>
+              <ReportDownloadMenu
+                money={money}
+                disabled={isLoading}
+                build={() => trialBalanceReport({
+                  clubName: club?.name,
+                  currencyCode,
+                  asAt: format(new Date(), "yyyy-MM-dd"),
+                  rows: ALL_ACCOUNTS.filter(a => { const b = trialBalance[a]; return b && (b.debit > 0 || b.credit > 0); })
+                    .sort((a, b) => compareLabel(CHART_OF_ACCOUNTS[a].label, CHART_OF_ACCOUNTS[b].label))
+                    .map(a => ({ label: CHART_OF_ACCOUNTS[a].label, category: CHART_OF_ACCOUNTS[a].category, debit: trialBalance[a].debit, credit: trialBalance[a].credit })),
+                })}
+              />
             </div>
             <div className="overflow-hidden border rounded-lg">
               <div className="grid grid-cols-[1fr_80px_90px_90px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download, ChevronRight, ChevronDown } from "lucide-react";
+import { FileText, ChevronRight, ChevronDown } from "lucide-react";
+import { incomeStatementReport } from "@/lib/finance/report-export";
+import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -149,42 +151,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts, endMonth = 2 }:
   const reportError = accountsError || ledgerError || purchasesError || (basis === "cost_of_sales" && costsError);
   const basisLabel = basis === "purchases" ? "Purchases" : "Cost of sales";
 
-  const exportCsv = () => {
-    const lines: string[] = [];
-    lines.push(`Income Statement`);
-    if (clubName) lines.push(`Club,${clubName}`);
-    lines.push(`Period,${from} to ${to}`);
-    lines.push(`Trading-cost basis,${basisLabel}`);
-    if (missingCosts) lines.push(`Provisional costs,${missingCosts} sale lines have no recorded cost`);
-    lines.push("");
-    const csvRow = (label: string, amount: number) => lines.push(`"${label.replace(/"/g, '""')}",${amount.toFixed(2)}`);
-    lines.push(`Item,Amount (${currencyCode})`, "PRIMARY INCOME");
-    report.primary.forEach(row => csvRow(row.label, row.amount));
-    csvRow("Primary gross income", report.primaryTotal);
-    for (const row of margins) {
-      lines.push("", row.division === "shop" ? "SHOP" : "BAR");
-      csvRow("Sales", row.sales);
-      row.tipIncome.forEach(tip => csvRow(tip.label, tip.amount));
-      csvRow(`Less: ${basis === "purchases" ? "Stock purchases" : "Cost of sales — Items"}`, -row.tradingCost);
-      row.allocated.forEach(cost => csvRow(`Less: ${cost.label}`, -cost.amount));
-      csvRow("Gross profit / (loss)", row.profit);
-    }
-    lines.push("");
-    csvRow("Total gross income", report.grossIncome);
-    lines.push("", "GENERAL EXPENSES");
-    report.expenses.forEach(row => csvRow(row.label, row.amount));
-    csvRow("Total general expenses", report.generalExpenses);
-    csvRow("Net profit / (loss)", netProfit);
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `income-statement_${from}_to_${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const printPdf = () => window.print();
+  const buildReport = () => incomeStatementReport({ report, basis, from, to, clubName, currencyCode, missingCosts });
 
   return (
     <Card className="p-4 space-y-4">
@@ -222,12 +189,7 @@ export function IncomeStatementTab({ clubId, clubName, accounts, endMonth = 2 }:
             <Label className="text-[10px] text-muted-foreground">To</Label>
             <Input type="date" value={to} onChange={e => { setTo(e.target.value); setPreset("custom"); }} className="h-8 text-xs w-[140px]" />
           </div>
-          <Button size="sm" variant="outline" onClick={exportCsv} disabled={reportLoading || reportError} className="gap-1.5 h-8">
-            <Download className="w-3.5 h-3.5" /> CSV
-          </Button>
-          <Button size="sm" variant="outline" onClick={printPdf} disabled={reportLoading || reportError} className="gap-1.5 h-8">
-            <FileText className="w-3.5 h-3.5" /> Print / PDF
-          </Button>
+<ReportDownloadMenu build={buildReport} money={money} disabled={reportLoading || reportError} />
         </div>
       </div>
 

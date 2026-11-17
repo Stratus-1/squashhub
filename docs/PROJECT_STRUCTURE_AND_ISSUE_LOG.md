@@ -4674,3 +4674,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-17 — Finance reports listed lines in random order
 - Income Statement (income, expenses, salary breakdown, bar/shop costs, tips), Balance Sheet sections and Trial Balance now sort lines alphabetically via `src/lib/finance/sort-label.ts`; Balance Sheet surplus lines stay last in Equity. Display only, no ledger changes. Test: `src/test/finance-report-order.test.ts`.
+
+### 2026-11-17 — Finance report printing printed the whole page
+- Income Statement "Print / PDF" used `window.print()` (whole page); Balance Sheet "Print" likewise; Trial Balance had no export. Replaced with one "Download" menu (PDF for printing / Excel / CSV) built from `src/lib/finance/report-export.ts`: club name, report title, period ("For the period … to …" or "As at …") and report lines only. Test: `src/test/finance-report-export.test.ts`.

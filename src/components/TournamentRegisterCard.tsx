@@ -543,7 +543,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           Your entry is marked "on account", but no matching charge is on your member account yet. The club will check it — nothing has been charged.
         </p>
       )}
-      {myReg && paymentRequired && entryFee > 0 && canReportPayment(feeState) && (
+      {myReg && !needsCategoryFirst && paymentRequired && entryFee > 0 && canReportPayment(feeState) && (
         <ReportPaymentButton champId={champ.id} clubId={clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
       )}
       {myReg && !needsCategoryFirst && myReg.partner_member_id && (

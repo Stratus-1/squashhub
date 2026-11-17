@@ -140,7 +140,8 @@ export default function TournamentInvite() {
   const divisions = useMemo(() => inviteDivisions(data), [data]);
   const mustChooseDivision = requiresDivisionChoice(data);
   // Bells runs every league at the same time, so only one entry is possible.
-  const multiDivisionAllowed = allowsMultipleDivisions(data);
+  // A payment already received covers one category: pick one, so nothing goes unpaid.
+  const multiDivisionAllowed = allowsMultipleDivisions(data) && !prepaidNeedsCategory;
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
   // Total follows the ticked events — events may be priced differently.
   const feeCents = useMemo(() => inviteTotalFeeCents(data, chosenDivisions), [data, chosenDivisions]);
@@ -799,7 +800,7 @@ export default function TournamentInvite() {
       )}
       {prepaidNeedsCategory ? (
         <p className="text-xs rounded-md border border-primary/40 bg-primary/5 p-2.5">
-          Your entry fee is already paid. Choose your category above and tap Accept to complete your entry — you won't be asked to pay again.
+          Your entry fee for one category is already paid. Choose your category above and tap Accept to complete your entry — you won't be asked to pay again.
         </p>
       ) : feeCents > 0 && (
         <p className="text-xs text-muted-foreground">

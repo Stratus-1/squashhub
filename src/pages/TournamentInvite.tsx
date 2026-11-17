@@ -35,7 +35,7 @@ import {
   withdrawalInfo,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
-import { doublesDivisions, fetchPairingState } from "@/lib/tournaments/doubles";
+import { doublesDivisions, fetchPairingState, partnersCompleteForPayment } from "@/lib/tournaments/doubles";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 
 
@@ -305,6 +305,22 @@ export default function TournamentInvite() {
     retry: false,
   });
   const partnerVerifyNeeded = partnerNeedsVerify && !signedInPairing.isSuccess;
+
+  // Partner first, then pay: the payment options stay hidden until every
+  // doubles event this player entered has a pairing. Shares the picker's cache,
+  // so choosing a partner reveals the payment options straight away.
+  const pairingVerify = verify.trim() || null;
+  const pairingReady = !isTest && !!token && !!data?.champ_id && hasDoublesChoice
+    && (!partnerVerifyNeeded || partnerVerifyReady);
+  const pairingQ = useQuery({
+    queryKey: ["champ-pairing-state", String(data?.champ_id || ""), token || "auth", pairingVerify || "unverified"],
+    queryFn: () => fetchPairingState(String(data?.champ_id), { token: token || null, verify: pairingVerify }),
+    enabled: pairingReady,
+    retry: false,
+  });
+  const partnersChosen = !hasDoublesChoice
+    || pairingQ.isError // never let a loading problem hide the way to pay
+    || (pairingQ.isSuccess && partnersCompleteForPayment(pairingQ.data, enteredDivisions.map((d) => d.group_number)));
 
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
@@ -580,16 +596,22 @@ export default function TournamentInvite() {
             </Button>
           )
         ) : (
-          <div className="space-y-2">
-            {payChooser}
-            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
-              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
-            {!user && (
-              <p className="text-[11px] text-muted-foreground text-center">
-                You can pay straight from this invitation — no login needed.
-              </p>
-            )}
-          </div>
+          partnersChosen ? (
+            <div className="space-y-2">
+              {payChooser}
+              <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
+                busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
+              {!user && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  You can pay straight from this invitation — no login needed.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center rounded-md border border-dashed p-2.5">
+              Step 1: choose your doubles partner above. Step 2: the payment options appear here.
+            </p>
+          )
         )}
         {data?.champ_id && (
           <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
@@ -616,16 +638,22 @@ export default function TournamentInvite() {
             </Button>
           )
         ) : (
-          <div className="space-y-2">
-            {payChooser}
-            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
-              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
-            {!user && (
-              <p className="text-[11px] text-muted-foreground text-center">
-                You can pay straight from this invitation — no login needed.
-              </p>
-            )}
-          </div>
+          partnersChosen ? (
+            <div className="space-y-2">
+              {payChooser}
+              <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!!user || !payNeedsVerify || payVerifyReady}
+                busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
+              {!user && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  You can pay straight from this invitation — no login needed.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center rounded-md border border-dashed p-2.5">
+              Step 1: choose your doubles partner above. Step 2: the payment options appear here.
+            </p>
+          )
         )}
         {withdrawSection}
       </>,

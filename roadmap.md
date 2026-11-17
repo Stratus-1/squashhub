@@ -33,8 +33,8 @@
 - [x] Nelspruit Makro payments reviewed: stay recorded as bar cost of sales (not Stock on hand), tuck-shop stays under Bar — Willem's choice, no ledger changes.
 
 ## Open tasks
-- [ ] Doubles invitation: partner list always shows when a player reopens their link (incl. after paying), partner chosen before payment; fix Duane Rossouw (Uitsig No Frills Doubles).
-- [ ] Check "not linked with Stitch" pay button error on Uitsig doubles invitation (player report 17 Nov).
+- [x] Doubles invitation: partner list always shows when a player reopens their link (incl. after paying), partner chosen before payment; fix Duane Rossouw (Uitsig No Frills Doubles). Preview-only until publish.
+- [ ] Check "not linked with Stitch" pay button error on Uitsig doubles invitation (player report 17 Nov) — Uitsig's Stitch setup is present; needs the exact screen/time to trace.
 - [x] Reclassify Bamanye Ntonjane's 27 October R23/R20 as direct bar sales, removing member credits without changing bank receipts.
 - [x] Audit Nelspruit member credits against recorded bar charges and linked direct-sales references: no exact-reference duplicates; Francois, Gareth, Gerrie van Niekerk, Deidre and Andre have corresponding bar debits.
 - [ ] Confirm before correcting ambiguous candidates: John Cussons R75 (25 Sep, labelled bar payment but no bar debit); Zach Wiid R20 (26 Oct, separate paid R20 direct sale 31 seconds later with different reference); Ruaan Naude R100 (3 Nov, separate paid R20 sale). Payment purpose/provider references do not establish duplication; requires Willem or receipt confirmation.

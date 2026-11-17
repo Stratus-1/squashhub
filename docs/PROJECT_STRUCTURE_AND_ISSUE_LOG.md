@@ -4677,3 +4677,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-17 — Finance report printing printed the whole page
 - Income Statement "Print / PDF" used `window.print()` (whole page); Balance Sheet "Print" likewise; Trial Balance had no export. Replaced with one "Download" menu (PDF for printing / Excel / CSV) built from `src/lib/finance/report-export.ts`: club name, report title, period ("For the period … to …" or "As at …") and report lines only. Test: `src/test/finance-report-export.test.ts`.
+
+### 2026-11-17 — Doubles invitation: partner list hidden on reopen; partner before payment
+- Symptom: Duane Rossouw (Uitsig No Frills Doubles, entered + paid) reopened his link and could not pick a partner.
+- Cause: the partner list only appears after the guest check (last 4 cellphone digits), which is empty on every reopen and gave no hint; signed-in invitees were asked too. `step_pair_payment_context` also crashed (500) for players without a partner (unassigned record).
+- Fix: `TournamentInvite.tsx` skips the check when signed in as the invitee, tells guests the list appears after the digits, and hides payment until every entered doubles event has a pairing (`partnersCompleteForPayment` in `src/lib/tournaments/doubles.ts`, fails open on load errors). Migration 0429 fixes the 500. Test: `src/test/doubles-partner-before-pay.test.ts`.

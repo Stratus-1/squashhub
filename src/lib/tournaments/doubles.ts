@@ -139,6 +139,23 @@ export function doublesDivisions(
 
 const ACTIVE_PAIR_STATUSES: PairStatus[] = ["pending", "awaiting_payment", "confirmed"];
 
+/**
+ * Partner first, then pay: true once every entered doubles event has an active
+ * pairing (pending, awaiting payment or confirmed). Family-mode payers are ready
+ * once they have built at least one pair.
+ */
+export function partnersCompleteForPayment(
+  state: Pick<PairingState, "family_mode" | "pairs" | "managed_pairs"> | null | undefined,
+  groupNumbers: number[],
+): boolean {
+  if (!state) return false;
+  if (state.family_mode) {
+    return (state.managed_pairs || []).some((p) => ACTIVE_PAIR_STATUSES.includes(p.status as PairStatus));
+  }
+  if (groupNumbers.length === 0) return true;
+  return groupNumbers.every((g) => !!pairForDivision(state.pairs || [], g));
+}
+
 export function pairForDivision(pairs: MyPair[], groupNumber: number): MyPair | null {
   const active = pairs.filter(
     (p) => p.group_number === groupNumber && ACTIVE_PAIR_STATUSES.includes(p.status),

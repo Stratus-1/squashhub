@@ -469,7 +469,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
               {visibleRegistrations.map((r: any) => (
                 <div key={r.id} className="p-2 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-[12rem] flex-1">
                       <p className="font-medium break-words">
                         {getName(r.member)}
                         {(() => {
@@ -482,7 +482,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         if (!partners.length) return <p className="text-xs text-muted-foreground">Partner: <span className="italic">none yet</span></p>;
                         return partners.map((p) => (
                           <p key={`${p.partnerId}-${p.group ?? "x"}`} className="text-xs text-muted-foreground break-words">
-                            {p.group != null && typedCategories ? `${categoryName(p.group)} partner: ` : "Partner: "}
+                            {p.group != null && champ?.group_labels?.[String(p.group)] ? `${categoryName(p.group)} partner: ` : "Partner: "}
                             <span className="font-medium text-foreground">{p.name}</span>
                             {!p.confirmed && <span className="ml-1 text-amber-600">({p.status === "awaiting_payment" ? "awaiting payment" : "pending"})</span>}
                           </p>

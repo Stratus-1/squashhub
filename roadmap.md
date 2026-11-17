@@ -89,6 +89,6 @@
 
 ## No Frills Doubles payments (17 Nov 2026)
 - [x] John Dyason paid R210 by card with no category: payment recorded on his invitation (17 Nov). WhatsApp with link pending below.
-- [ ] WhatsApp John Dyason his link: choose one category + partner.
+- [x] WhatsApp John Dyason his link: choose one category + partner (sent 17 Nov).
 - [x] Stop payments before a category is chosen; hold any that still arrive and alert organisers.
-- [ ] WhatsApp Bernard Welters his link: choose partner and pay R210.
+- [x] WhatsApp Bernard Welters his link: choose partner and pay R210 (sent 17 Nov).

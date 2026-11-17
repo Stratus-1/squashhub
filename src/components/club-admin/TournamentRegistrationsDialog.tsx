@@ -24,6 +24,7 @@ import {
   isParticipatingEntrant,
 } from "@/lib/tournaments/entrant-status";
 import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import { awaitingProofCheck, isPaidRow, isPendingRow, matchesRegistrationFilter, partnersOf, type PairRow, type RegistrationFilter } from "@/lib/tournaments/registration-filters";
 import { keepPositionGroups } from "@/lib/tournaments/withdraw";
 import {
   AlertDialog,
@@ -53,7 +54,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
-  const [showProofOnly, setShowProofOnly] = useState(false);
+  const [filter, setFilter] = useState<RegistrationFilter>("all");
   const [search, setSearch] = useState("");
   const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
   const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
@@ -105,6 +106,19 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
         .eq("champ_id", champId);
       if (error) throw error;
       return (data || []) as any[];
+    },
+    enabled: !!champId && open,
+  });
+  // Doubles partners from the pairing board (players pick partners there); the
+  // registration's partner column alone misses most pairs.
+  const { data: pairRows = [] } = useQuery({
+    queryKey: ["champ-registration-pairs", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("champ_doubles_pairs")
+        .select("member_a, member_b, group_number, status, a:member_a(name), b:member_b(name)")
+        .eq("champ_id", champId);
+      if (error) throw error;
+      return (data || []) as PairRow[];
     },
     enabled: !!champId && open,
   });
@@ -314,26 +328,49 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const activeRegistrations = registrations.filter((r: any) => r.status !== "cancelled");
   const cancelledCount = registrations.length - activeRegistrations.length;
-  /** Proof of payment uploaded but the money has not been confirmed yet — needs an admin decision. */
-  const awaitingProofCheck = (r: any) =>
-    !!r.proof_url && (r.status === "pending_eft" || r.status === "pending_payment");
   const proofPendingCount = activeRegistrations.filter(awaitingProofCheck).length;
+
+  const feeRequired = entryFee > 0 && !!champ?.payment_required;
+  const nameById = new Map<string, string>();
+  registrations.forEach((r: any) => { if (r.club_member_id && r.member) nameById.set(r.club_member_id, getName(r.member)); });
+  (members as any[]).forEach((m: any) => { if (m?.id && !nameById.has(m.id)) nameById.set(m.id, getName(m)); });
+  const partnerList = (r: any) =>
+    partnersOf(r.club_member_id, pairRows, r.partner_member_id ? { id: r.partner_member_id, name: r.partner ? getName(r.partner) : null, confirmed: r.partner_confirmed } : null)
+      .map((p) => ({ ...p, name: p.name || nameById.get(p.partnerId) || "Partner from another club" }));
+  const hasPairs = isDoubles || pairRows.length > 0 || registrations.some((r: any) => !!r.partner_member_id);
+  const filterCtx = { feeRequired, signup: (id: string) => signupMap.get(id) };
+  const countOf = (f: RegistrationFilter) => activeRegistrations.filter((r: any) => matchesRegistrationFilter(r, f, filterCtx)).length;
 
   const baseRegistrations = showCancelled ? registrations : activeRegistrations;
   const q = search.trim().toLowerCase();
-  const visibleRegistrations = (showProofOnly
-    ? baseRegistrations.filter(awaitingProofCheck)
-    : baseRegistrations
-  )
-    .filter((r: any) => !q || getName(r.member).toLowerCase().includes(q) || (r.partner && getName(r.partner).toLowerCase().includes(q)))
+  const visibleRegistrations = baseRegistrations
+    .filter((r: any) => filter === "all" || matchesRegistrationFilter(r, filter, filterCtx))
+    .filter((r: any) => !q || getName(r.member).toLowerCase().includes(q) || partnerList(r).some((p) => p.name.toLowerCase().includes(q)))
     .slice()
     .sort((a: any, b: any) => getName(a.member).localeCompare(getName(b.member)));
 
-  const feeRequired = entryFee > 0 && !!champ?.payment_required;
-  const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;
-  const paidCount = activeRegistrations.filter((r: any) => r.fee_status ? r.fee_status === "paid" : r.status === "paid").length;
-  const accountCount = activeRegistrations.filter((r: any) => r.fee_status === "on_account").length;
-  const pendingCount = activeRegistrations.filter((r: any) => r.fee_status ? r.fee_status === "pending" : r.status === "pending_payment" || r.status === "pending_eft").length;
+  const participatingCount = countOf("registered");
+  const paidCount = activeRegistrations.filter(isPaidRow).length;
+  const accountCount = countOf("account");
+  const pendingCount = activeRegistrations.filter(isPendingRow).length;
+  const notEnteredCount = countOf("not_entered");
+  /** Summary chip that doubles as a quick filter; click again to show everyone. */
+  const chip = (f: RegistrationFilter, label: string, count: number, className = "", variant: "default" | "secondary" | "outline" = "outline") => {
+    const on = filter === f;
+    return (
+      <button
+        type="button"
+        aria-pressed={on}
+        title={on ? "Showing only these — click to show everyone" : `Show only: ${label}`}
+        onClick={() => setFilter(on ? "all" : f)}
+        className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Badge variant={on ? "default" : variant} className={`cursor-pointer ${on ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : className}`}>
+          {label} {count}
+        </Badge>
+      </button>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -348,30 +385,20 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
         )}
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>
-            {feeRequired && <Badge variant="secondary">Paid {paidCount}</Badge>}
-            {feeRequired && accountCount > 0 && <Badge variant="secondary">Member account {accountCount}</Badge>}
-            {feeRequired && <Badge variant="outline">Pending {pendingCount}</Badge>}
+            {chip("all", "All", activeRegistrations.length, "", "secondary")}
+            {chip("registered", feeRequired ? "Registered" : "Entered", participatingCount, "", "secondary")}
+            {feeRequired && chip("paid", "Paid", paidCount, "", "secondary")}
+            {feeRequired && accountCount > 0 && chip("account", "Member account", accountCount, "", "secondary")}
+            {feeRequired && chip("pending", "Pending", pendingCount)}
+            {notEnteredCount > 0 && chip("not_entered", "Not entered yet", notEnteredCount)}
             {proofPendingCount > 0 && (
-              <Badge
-                variant="default"
-                className="cursor-pointer bg-amber-600 hover:bg-amber-700"
-                title="Proof of payment uploaded — confirm or waive these entries"
-                onClick={() => setShowProofOnly((v) => !v)}
-              >
-                <FileText className="w-3 h-3 mr-1" />
-                {showProofOnly ? "Showing " : ""}Proof to check {proofPendingCount}
-              </Badge>
+              <span title="Proof of payment uploaded — confirm or waive these entries">
+                {chip("proof", "Proof to check", proofPendingCount, "bg-amber-600 text-white hover:bg-amber-700", "default")}
+              </span>
             )}
-            <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
-              Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
-            </Badge>
-            <Badge variant="outline" className="text-amber-700 border-amber-500">
-              Invited, not activated {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_account && !signupMap.get(r.club_member_id)?.has_signed_in).length}
-            </Badge>
-            <Badge variant="outline" className="text-rose-700 border-rose-500">
-              No account {activeRegistrations.filter((r: any) => !signupMap.get(r.club_member_id)?.has_account).length}
-            </Badge>
+            {chip("active", "Active", countOf("active"), "bg-sky-600 text-white hover:bg-sky-600", "default")}
+            {chip("not_activated", "Invited, not activated", countOf("not_activated"), "text-amber-700 border-amber-500")}
+            {chip("no_account", "No account", countOf("no_account"), "text-rose-700 border-rose-500")}
             {cancelledCount > 0 && (
               <Badge
                 variant="outline"
@@ -445,12 +472,17 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           return fee ? <span className={`ml-2 text-xs font-semibold ${fee.paid ? "text-emerald-600" : "text-muted-foreground"}`}>{fee.text}</span> : null;
                         })()}
                       </p>
-                      {isDoubles && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          Partner: {r.partner ? getName(r.partner) : <span className="italic">none</span>}
-                          {r.partner && !r.partner_confirmed && <span className="ml-1 text-amber-600">(pending)</span>}
-                        </p>
-                      )}
+                      {hasPairs && (() => {
+                        const partners = partnerList(r);
+                        if (!partners.length) return <p className="text-xs text-muted-foreground">Partner: <span className="italic">none yet</span></p>;
+                        return partners.map((p) => (
+                          <p key={`${p.partnerId}-${p.group ?? "x"}`} className="text-xs text-muted-foreground break-words">
+                            {p.group != null && typedCategories ? `${leagueLabel(p.group)} partner: ` : "Partner: "}
+                            <span className="font-medium text-foreground">{p.name}</span>
+                            {!p.confirmed && <span className="ml-1 text-amber-600">({p.status === "awaiting_payment" ? "awaiting payment" : "pending"})</span>}
+                          </p>
+                        ));
+                      })()}
                       <div className="flex gap-1 mt-0.5 flex-wrap">
                         {r.invited_by_admin && <Badge variant="outline" className="text-[10px]">Invited</Badge>}
                         {r.confirmed_at && r.confirmation_source === "rsvp" && (

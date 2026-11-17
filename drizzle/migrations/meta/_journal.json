@@ -3004,6 +3004,13 @@
       "when": 1794896357593,
       "tag": "0428_tournament_join_selected_clubs",
       "breakpoints": true
+    },
+    {
+      "idx": 429,
+      "version": "7",
+      "when": 1794909915078,
+      "tag": "0429_fix_step_pair_payment_context_no_partner",
+      "breakpoints": true
     }
   ]
 }

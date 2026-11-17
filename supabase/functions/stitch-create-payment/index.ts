@@ -101,6 +101,12 @@ Deno.serve(async (req) => {
       return json({ error: "Missing required fields" }, 200);
     }
     if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
+    if (purpose === "tournament" && champ_registration_id && !(pay_scope === "partner")) {
+      // No payment for an invitation that has no category chosen yet: the entry
+      // could not be marked paid and the money would not reach the entry.
+      const { data: notPayable } = await admin.rpc("champ_registration_payable", { p_registration_id: champ_registration_id });
+      if (notPayable) return json({ error: String(notPayable) }, 200);
+    }
     // Own-entry card payment: refuse if the entry is already settled another way (card, waiver, member account).
     // Partner/both scopes were already checked by step_pair_payment_context above.
     if (purpose === "tournament" && champ_registration_id && !(pay_scope === "partner" || pay_scope === "both")) {

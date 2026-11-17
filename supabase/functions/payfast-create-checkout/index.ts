@@ -60,6 +60,12 @@ Deno.serve(async (req) => {
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    if (purpose === "tournament" && champ_registration_id) {
+      // No payment for an invitation that has no category chosen yet: the entry
+      // could not be marked paid and the money would not reach the entry.
+      const { data: notPayable } = await admin.rpc("champ_registration_payable", { p_registration_id: champ_registration_id });
+      if (notPayable) return json({ error: String(notPayable) }, 400);
+    }
 
     const { data: member } = await admin
       .from("club_members")

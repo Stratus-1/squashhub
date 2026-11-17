@@ -35,7 +35,7 @@ import {
   withdrawalInfo,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
-import { doublesDivisions } from "@/lib/tournaments/doubles";
+import { doublesDivisions, fetchPairingState } from "@/lib/tournaments/doubles";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 
 
@@ -295,6 +295,17 @@ export default function TournamentInvite() {
   const adminEntered = !!(data as any)?.admin_entered;
   const hasDoublesChoice = enteredDivisions.length > 0 && !adminEntered;
 
+  // Signed in as the invited player: the server already knows who they are, so
+  // the partner list opens without the quick phone/surname check. Same cache key
+  // as the picker's unverified load, so the list is fetched once.
+  const signedInPairing = useQuery({
+    queryKey: ["champ-pairing-state", String(data?.champ_id || ""), token || "auth", "unverified"],
+    queryFn: () => fetchPairingState(String(data?.champ_id), { token: token || null, verify: null }),
+    enabled: !!user && !isTest && !!token && !!data?.champ_id && hasDoublesChoice && partnerNeedsVerify,
+    retry: false,
+  });
+  const partnerVerifyNeeded = partnerNeedsVerify && !signedInPairing.isSuccess;
+
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
       <div className="space-y-2 pt-1">
@@ -309,7 +320,7 @@ export default function TournamentInvite() {
               : ""}
           </p>
         </div>
-        {partnerNeedsVerify && (
+        {partnerVerifyNeeded && (
           <div className="space-y-1.5">
             <Label htmlFor="partner-verify" className="text-xs">
               {inviteVerificationLabel(verificationKind)}
@@ -328,6 +339,13 @@ export default function TournamentInvite() {
             <p className="text-[11px] text-muted-foreground">
               {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
             </p>
+            {!partnerVerifyReady && (
+              <p className="text-xs font-medium">
+                {verificationKind === "phone_last4"
+                  ? "Type the last 4 digits above and the list of partners will appear."
+                  : "Type your surname above and the list of partners will appear."}
+              </p>
+            )}
           </div>
         )}
         <DoublesPartnerPicker
@@ -335,7 +353,7 @@ export default function TournamentInvite() {
           divisions={enteredDivisions}
           token={token || null}
           verify={verify.trim() || null}
-          enabled={!partnerNeedsVerify || partnerVerifyReady}
+          enabled={!partnerVerifyNeeded || partnerVerifyReady}
           onPay={() => goPay(String(data.champ_id))}
         />
 

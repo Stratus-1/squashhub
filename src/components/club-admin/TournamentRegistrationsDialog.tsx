@@ -331,6 +331,11 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const proofPendingCount = activeRegistrations.filter(awaitingProofCheck).length;
 
   const feeRequired = entryFee > 0 && !!champ?.payment_required;
+  /** Short category name for partner lines, e.g. "Mixed" (organiser's name, never the internal "Mixed 2" key). */
+  const categoryName = (gn: number) => {
+    const key = leagueLabel(gn).split(" · ")[0];
+    return String(champ?.beta_lifecycle?.answers?.categoryLabels?.[key] || key);
+  };
   const nameById = new Map<string, string>();
   registrations.forEach((r: any) => { if (r.club_member_id && r.member) nameById.set(r.club_member_id, getName(r.member)); });
   (members as any[]).forEach((m: any) => { if (m?.id && !nameById.has(m.id)) nameById.set(m.id, getName(m)); });
@@ -457,7 +462,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
           ) : visibleRegistrations.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              {registrations.length === 0 ? "No registrations yet." : "No active registrations. Toggle 'Show cancelled' to view withdrawn entries."}
+              {registrations.length === 0 ? "No registrations yet." : filter !== "all" || q ? "Nobody matches this filter." : "No active registrations. Toggle 'Show cancelled' to view withdrawn entries."}
             </p>
           ) : (
             <div className="border rounded divide-y">
@@ -477,7 +482,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         if (!partners.length) return <p className="text-xs text-muted-foreground">Partner: <span className="italic">none yet</span></p>;
                         return partners.map((p) => (
                           <p key={`${p.partnerId}-${p.group ?? "x"}`} className="text-xs text-muted-foreground break-words">
-                            {p.group != null && typedCategories ? `${leagueLabel(p.group)} partner: ` : "Partner: "}
+                            {p.group != null && typedCategories ? `${categoryName(p.group)} partner: ` : "Partner: "}
                             <span className="font-medium text-foreground">{p.name}</span>
                             {!p.confirmed && <span className="ml-1 text-amber-600">({p.status === "awaiting_payment" ? "awaiting payment" : "pending"})</span>}
                           </p>

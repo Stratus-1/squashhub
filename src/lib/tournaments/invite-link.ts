@@ -201,6 +201,20 @@ export type InviteState =
 const PAID_STATUSES = new Set(["paid", "waived", "registered", "active"]);
 const PENDING_PAYMENT_STATUSES = new Set(["pending_payment", "pending_eft", "payment_pending"]);
 
+/**
+ * A card payment that arrived before the invitee chose a category is recorded
+ * on the invitation (fee paid) without entering them. They must still choose a
+ * category and accept — never show "You're entered" or ask them to pay again.
+ */
+export function paidAwaitingCategory(payload: InvitePayload | null | undefined): boolean {
+  if (!payload || !payload.found || payload.revoked || payload.declined_at) return false;
+  const status = String(payload.status || "").toLowerCase();
+  if (PAID_STATUSES.has(status) || status === "cancelled") return false;
+  if (payload.confirmed_at || (payload as { admin_entered?: boolean }).admin_entered) return false;
+  if ((payload.selected_divisions?.length ?? 0) > 0) return false;
+  return String(payload.fee_status || "").toLowerCase() === "paid";
+}
+
 /** Single source of truth for what the landing page should offer the visitor. */
 export function inviteState(payload: InvitePayload | null | undefined): InviteState {
   if (!payload || !payload.found) return "not_found";
@@ -209,6 +223,7 @@ export function inviteState(payload: InvitePayload | null | undefined): InviteSt
   const status = String(payload.status || "").toLowerCase();
   if (status === "cancelled" || payload.declined_at) return "declined";
   if (PAID_STATUSES.has(status)) return "registered";
+  if (paidAwaitingCategory(payload)) return "actionable";
   // Settled through another route (member account, waiver, card) — never offer payment again.
   const fee = String(payload.fee_status || "").toLowerCase();
   if (payload.fee_settled_via === "account" || fee === "on_account" || fee === "paid" || fee === "waived") return "registered";

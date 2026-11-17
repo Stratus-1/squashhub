@@ -23186,6 +23186,10 @@ export type Database = {
         Args: { p_champ_id: string; p_group: number }
         Returns: string
       }
+      champ_hold_unentered_payment: {
+        Args: { p_amount: number; p_ref: string; p_registration_id: string }
+        Returns: string
+      }
       champ_is_family_doubles: {
         Args: { p_champ_id: string }
         Returns: boolean
@@ -23279,6 +23283,10 @@ export type Database = {
           division: number
           registration_id: string
         }[]
+      }
+      champ_registration_payable: {
+        Args: { p_registration_id: string }
+        Returns: string
       }
       champ_result_stage_rule: {
         Args: {

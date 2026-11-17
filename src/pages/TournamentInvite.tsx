@@ -813,11 +813,6 @@ export default function TournamentInvite() {
           {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
         </div>
       )}
-      {hasDoublesChoice && (
-        <p className="text-xs text-muted-foreground">
-          This is a doubles entry — after you accept you must pick your partner right here to complete it.
-        </p>
-      )}
       {prepaidNeedsCategory ? (
         <p className="text-xs rounded-md border border-primary/40 bg-primary/5 p-2.5">
           Your entry fee for one category is already paid. Choose your category above and tap Accept to complete your entry — you won't be asked to pay again.
@@ -825,7 +820,7 @@ export default function TournamentInvite() {
       ) : feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           {doublesEntry
-            ? "Next you choose your doubles partner, then the payment options appear."
+            ? "This is a doubles entry — next you choose your partner, then the payment options appear."
             : "Accepting reserves your place — you'll go straight to the entry fee payment page."}
         </p>
       )}

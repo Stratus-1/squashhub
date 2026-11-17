@@ -122,6 +122,16 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     },
     enabled: !!champId && open,
   });
+  // Organiser's category names live on the tournament (the club_champs view
+  // only carries the internal keys, e.g. "Mixed 2"). Read-only.
+  const { data: categoryLabels = null } = useQuery({
+    queryKey: ["champ-category-labels", champId],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", champId).maybeSingle();
+      return ((data as any)?.beta_lifecycle?.answers?.categoryLabels ?? null) as Record<string, string> | null;
+    },
+    enabled: !!champId && open && !champ?.beta_lifecycle,
+  });
   const memberLeagues = (memberId: string): number[] =>
     Array.from(
       new Set(
@@ -334,7 +344,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   /** Short category name for partner lines, e.g. "Mixed" (organiser's name, never the internal "Mixed 2" key). */
   const categoryName = (gn: number) => {
     const key = leagueLabel(gn).split(" · ")[0];
-    return String(champ?.beta_lifecycle?.answers?.categoryLabels?.[key] || key);
+    const labels = champ?.beta_lifecycle?.answers?.categoryLabels ?? categoryLabels;
+    return String(labels?.[key] || key);
   };
   const nameById = new Map<string, string>();
   registrations.forEach((r: any) => { if (r.club_member_id && r.member) nameById.set(r.club_member_id, getName(r.member)); });

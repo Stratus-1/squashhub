@@ -116,4 +116,20 @@ describe("grouped income statement", () => {
     expect(report.netProfit).toBe(9900);
     expect(report.divisions[0].allocated).toEqual([{ label: "Barman salary", amount: 100 }]);
   });
+  it("shows Nelspruit's club-made Salaries & Wages account inside the one Salaries & Wages line", () => {
+    const report = groupedIncome([
+      { account: "salary_wages", debit: 82, credit: 0, description: "Bank statement: UIF" },
+      { account: "salary_wages", debit: 4100, credit: 0, description: "Bank statement: Constance Salary" },
+      { account: "salary_wages", debit: 4100, credit: 0, description: "Constance Salary" },
+      { account: "salary_wages", debit: 35264, credit: 0, description: "Opening balances 31 Oct 2026: Salaries per Sage" },
+      { account: "salary_wages", debit: 0, credit: 5382, description: "Opening balances 31 Oct 2026: Moved into Sage total" },
+      { account: "general_expense", debit: 82, credit: 0, custom_account_id: "sw", description: "UIF payment Constance" },
+    ], accounts, false, "purchases", [], [], [{ id: "sw", name: "Salaries & Wages", category: "Expense" }]);
+    expect(report.expenses).toEqual([{ label: "Salaries & Wages", amount: 38246 }]);
+    expect(report.salaryDetails).toEqual([
+      { label: "UIF", amount: 82 }, { label: "Constance Salary", amount: 8200 },
+      { label: "Opening balance (prior period)", amount: 29882 }, { label: "UIF payment Constance", amount: 82 },
+    ]);
+    expect(report.generalExpenses).toBe(38246);
+  });
 });

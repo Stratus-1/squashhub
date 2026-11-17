@@ -762,7 +762,9 @@ export default function TournamentInvite() {
         <div className="space-y-1.5">
           <Label className="text-xs">Which do you want to play in?</Label>
           <p className="text-[11px] text-muted-foreground">
-            {multiDivisionAllowed
+            {prepaidNeedsCategory
+              ? "Choose one category."
+              : multiDivisionAllowed
               ? "You may enter more than one — tick every division you want to play."
               : "All leagues play at the same time until the bell — choose one."}
           </p>

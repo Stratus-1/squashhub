@@ -25,6 +25,7 @@ import {
   inviteLoginPath,
   inviteSignupPath,
   inviteState,
+  paidAwaitingCategory,
   inviteVerificationKind,
   inviteVerificationLabel,
   isInviteVerificationComplete,
@@ -131,6 +132,8 @@ export default function TournamentInvite() {
 
 
   const state = inviteState(data);
+  // Paid by card before choosing a category: choose it and accept — no second payment.
+  const prepaidNeedsCategory = paidAwaitingCategory(data);
   const verificationKind = inviteVerificationKind(data);
   const partnerNeedsVerify = !isTest && verificationKind !== "none";
   const partnerVerifyReady = isInviteVerificationComplete(verificationKind, verify);
@@ -794,7 +797,11 @@ export default function TournamentInvite() {
           This is a doubles entry — after you accept you must pick your partner right here to complete it.
         </p>
       )}
-      {feeCents > 0 && (
+      {prepaidNeedsCategory ? (
+        <p className="text-xs rounded-md border border-primary/40 bg-primary/5 p-2.5">
+          Your entry fee is already paid. Choose your category above and tap Accept to complete your entry — you won't be asked to pay again.
+        </p>
+      ) : feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           Accepting reserves your place — you'll go straight to the entry fee payment page.
         </p>
@@ -852,7 +859,7 @@ export default function TournamentInvite() {
             Decline
           </Button>
           <Button disabled={busy} onClick={() => act(true)}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 ? "Accept & pay" : "Accept"}
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 && !prepaidNeedsCategory ? "Accept & pay" : "Accept"}
           </Button>
         </div>
       )}

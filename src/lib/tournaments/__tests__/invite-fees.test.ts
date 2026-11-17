@@ -45,8 +45,8 @@ describe("inviteTotalFeeCents", () => {
     expect(inviteTotalFeeCents(p, [1, 2])).toBe(18000);
   });
 
-  it("no ticked events means every offered event (legacy single fee)", () => {
-    expect(inviteTotalFeeCents(base, [])).toBe(20000);
+  it("no ticked events shows the one-category price", () => {
+    expect(inviteTotalFeeCents(base, [])).toBe(10000);
     expect(inviteTotalFeeCents({ ...base, divisions: [] }, [])).toBe(10000);
   });
 
@@ -73,6 +73,9 @@ describe("inviteTotalFeeCents package prices", () => {
   });
   it("two categories cost R300, not 2 × R200", () => {
     expect(inviteTotalFeeCents(tiered, [1, 2])).toBe(30000);
+  });
+  it("nothing ticked yet shows the one-category package price (R200, not R300)", () => {
+    expect(inviteTotalFeeCents(tiered, [])).toBe(20000);
   });
   it("more categories than the last package row pay the last row's price", () => {
     expect(inviteTotalFeeCents(tiered, [1, 2, 3])).toBe(30000);

@@ -1113,7 +1113,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 <SelectContent>
                   <SelectItem value="all">All Accounts</SelectItem>
                   {(["Income", "Expense", "Asset", "Liability"] as const).map(cat => {
-                    const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat);
+                    const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat).sort((a, b) => compareLabel(CHART_OF_ACCOUNTS[a].label, CHART_OF_ACCOUNTS[b].label));
                     if (accts.length === 0) return null;
                     return (
                       <SelectGroup key={cat}>

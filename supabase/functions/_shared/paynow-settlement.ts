@@ -115,7 +115,7 @@ export async function settlePaynowSession(admin: any, session: any) {
       .eq("id", session.champ_registration_id)
       .maybeSingle();
 
-    await admin
+    const { error: regPaidErr } = await admin
       .from("club_champs_registrations")
       .update({
         status: "paid",
@@ -124,6 +124,15 @@ export async function settlePaynowSession(admin: any, session: any) {
         paid_at: new Date().toISOString(),
       })
       .eq("id", session.champ_registration_id);
+    if (regPaidErr) {
+      // Usually an invitation with no category chosen yet: keep the money on the
+      // invitation as a paid entry fee and alert the organisers instead of losing it.
+      console.error("tournament entry could not be marked paid; holding payment", regPaidErr);
+      const { error: holdErr } = await admin.rpc("champ_hold_unentered_payment", {
+        p_registration_id: session.champ_registration_id, p_amount: amount, p_ref: `PAYNOW-${ref}`,
+      });
+      if (holdErr) console.error("champ_hold_unentered_payment failed", holdErr);
+    }
 
     if (regRow?.fee_payment_id) {
       await admin

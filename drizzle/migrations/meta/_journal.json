@@ -3011,6 +3011,20 @@
       "when": 1794909915078,
       "tag": "0429_fix_step_pair_payment_context_no_partner",
       "breakpoints": true
+    },
+    {
+      "idx": 430,
+      "version": "7",
+      "when": 1794911238271,
+      "tag": "0430_hold_unentered_tournament_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 431,
+      "version": "7",
+      "when": 1794911284387,
+      "tag": "0431_hold_unentered_tournament_payments_apply",
+      "breakpoints": true
     }
   ]
 }

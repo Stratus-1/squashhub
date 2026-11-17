@@ -25,6 +25,7 @@ import {
   inviteLoginPath,
   inviteSignupPath,
   inviteState,
+  paidAwaitingCategory,
   inviteVerificationKind,
   inviteVerificationLabel,
   isInviteVerificationComplete,
@@ -131,13 +132,16 @@ export default function TournamentInvite() {
 
 
   const state = inviteState(data);
+  // Paid by card before choosing a category: choose it and accept — no second payment.
+  const prepaidNeedsCategory = paidAwaitingCategory(data);
   const verificationKind = inviteVerificationKind(data);
   const partnerNeedsVerify = !isTest && verificationKind !== "none";
   const partnerVerifyReady = isInviteVerificationComplete(verificationKind, verify);
   const divisions = useMemo(() => inviteDivisions(data), [data]);
   const mustChooseDivision = requiresDivisionChoice(data);
   // Bells runs every league at the same time, so only one entry is possible.
-  const multiDivisionAllowed = allowsMultipleDivisions(data);
+  // A payment already received covers one category: pick one, so nothing goes unpaid.
+  const multiDivisionAllowed = allowsMultipleDivisions(data) && !prepaidNeedsCategory;
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
   // Total follows the ticked events — events may be priced differently.
   const feeCents = useMemo(() => inviteTotalFeeCents(data, chosenDivisions), [data, chosenDivisions]);
@@ -758,7 +762,9 @@ export default function TournamentInvite() {
         <div className="space-y-1.5">
           <Label className="text-xs">Which do you want to play in?</Label>
           <p className="text-[11px] text-muted-foreground">
-            {multiDivisionAllowed
+            {prepaidNeedsCategory
+              ? "Choose one category."
+              : multiDivisionAllowed
               ? "You may enter more than one — tick every division you want to play."
               : "All leagues play at the same time until the bell — choose one."}
           </p>
@@ -794,7 +800,11 @@ export default function TournamentInvite() {
           This is a doubles entry — after you accept you must pick your partner right here to complete it.
         </p>
       )}
-      {feeCents > 0 && (
+      {prepaidNeedsCategory ? (
+        <p className="text-xs rounded-md border border-primary/40 bg-primary/5 p-2.5">
+          Your entry fee for one category is already paid. Choose your category above and tap Accept to complete your entry — you won't be asked to pay again.
+        </p>
+      ) : feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           Accepting reserves your place — you'll go straight to the entry fee payment page.
         </p>
@@ -852,7 +862,7 @@ export default function TournamentInvite() {
             Decline
           </Button>
           <Button disabled={busy} onClick={() => act(true)}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 ? "Accept & pay" : "Accept"}
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 && !prepaidNeedsCategory ? "Accept & pay" : "Accept"}
           </Button>
         </div>
       )}

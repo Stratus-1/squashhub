@@ -461,6 +461,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   // Organiser already entered this player (and paired them): this card is the
   // existing entry, never a self-entry form — no group entry, no partner picker.
   const adminEntered = isAdminEnteredRegistration(myReg);
+  // An invitation not yet accepted with no category: choose the category on the
+  // invitation first. Paying here would take money the entry cannot accept.
+  const needsCategoryFirst = !!myReg && !myReg.confirmed_at && !adminEntered
+    && !(Array.isArray(myReg.division_choices) && myReg.division_choices.length > 0)
+    && !["paid", "waived", "cancelled", "declined", "withdrawn"].includes(String(myReg.status))
+    && (!!typedCategories || divisionOptions.length > 1);
   const myCategory = (() => {
     const g = Array.isArray(myReg?.division_choices) ? Number(myReg.division_choices[0]) : NaN;
     if (!Number.isFinite(g)) return null;
@@ -537,14 +543,24 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           Your entry is marked "on account", but no matching charge is on your member account yet. The club will check it — nothing has been charged.
         </p>
       )}
-      {myReg && paymentRequired && entryFee > 0 && canReportPayment(feeState) && (
+      {myReg && !needsCategoryFirst && paymentRequired && entryFee > 0 && canReportPayment(feeState) && (
         <ReportPaymentButton champId={champ.id} clubId={clubId} memberId={memberId} suggestedCents={Math.round(entryFee * 100)} />
       )}
-      {myReg && myReg.partner_member_id && (
+      {myReg && !needsCategoryFirst && myReg.partner_member_id && (
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}
           onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => { refetch(); refetchCharge(); }} />
       )}
-      {myReg && canChoosePayment(feeState) && ["pending_payment", "pending_eft", "invited"].includes(String(myReg.status)) && (
+      {needsCategoryFirst && (
+        <p className="text-xs text-muted-foreground rounded-md border border-dashed p-2.5">
+          {String((myReg as any)?.fee_status) === "paid"
+            ? "Your entry fee is paid. Open your invitation to choose your category and complete your entry."
+            : "Open your invitation to choose your category first — the payment options appear after that."}
+          {(myReg as any)?.invite_token && (
+            <a className="ml-1 font-medium text-primary underline" href={`/i/${(myReg as any).invite_token}`}>Open invitation</a>
+          )}
+        </p>
+      )}
+      {myReg && !needsCategoryFirst && canChoosePayment(feeState) && ["pending_payment", "pending_eft", "invited"].includes(String(myReg.status)) && (
         <div className="space-y-2 mt-1">
           <div className="flex flex-wrap items-center gap-2">
             {cardReady && (

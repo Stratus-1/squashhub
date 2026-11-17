@@ -4664,3 +4664,6 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 ### 2026-11-16 — Nelspruit 31 Oct opening balances: income statement agrees with balance sheet; visitor fees shown in reports
 - Opening-balance journal `7b91d6d4-…` reclassified (audit `opening_balances_31oct_reclassified`): Sep–Oct SquashHub income lines kept (Sage "Sales" reduced by the same R44,302.07); Sage tuck-shop purchases (R56,753.84) moved from `bar_expense` to custom general expense "Tuck shop purchases (per Sage)" because the default cost-of-sales income statement replaces `bar_expense` with item costs and dropped them. Totals, bank and member balances unchanged; surplus 1 Mar–31 Oct R65,880.73 (Sage R66,369.37).
 - `visitor_income` was missing from `CHART_OF_ACCOUNTS` in `FinanceTab.tsx`, so visitor-pass fees never appeared on any club's Income Statement; added as "Fee Income — Visitors".
+
+### 2026-11-17 — Join page listed every regional club
+No Frills Doubles join page showed all NSA clubs although the organiser selected Kentron and Pierre van Ryneveld. Fix (migration 0428): `tournament_join_club_ids` returns host + selected clubs (fallback: all eligible); `tournament_join_context` uses it for the club list and "Enter as" shortcuts (existing registrations kept).

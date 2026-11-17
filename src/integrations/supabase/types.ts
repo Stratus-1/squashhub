@@ -26127,6 +26127,12 @@ export type Database = {
         }
         Returns: Json
       }
+      tournament_join_club_ids: {
+        Args: { p_champ_id: string }
+        Returns: {
+          club_id: string
+        }[]
+      }
       tournament_join_context: { Args: { p_champ_id: string }; Returns: Json }
       tournament_join_enter: {
         Args: { p_champ_id: string; p_member_id: string }

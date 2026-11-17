@@ -92,3 +92,8 @@
 - [x] WhatsApp John Dyason his link: choose one category + partner (sent 17 Nov).
 - [x] Stop payments before a category is chosen; hold any that still arrive and alert organisers.
 - [x] WhatsApp Bernard Welters his link: choose partner and pay R210 (sent 17 Nov).
+
+## Invitation page wording (17 Nov 2026)
+- [x] Entry fee shows the one-category price (R210) until categories are ticked.
+- [x] Doubles button says "Select partner & proceed to payment" instead of "Accept & pay".
+- [x] Accept button disabled until a category is ticked and the cellphone digits are typed.

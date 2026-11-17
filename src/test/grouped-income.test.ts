@@ -127,8 +127,8 @@ describe("grouped income statement", () => {
     ], accounts, false, "purchases", [], [], [{ id: "sw", name: "Salaries & Wages", category: "Expense" }]);
     expect(report.expenses).toEqual([{ label: "Salaries & Wages", amount: 38246 }]);
     expect(report.salaryDetails).toEqual([
-      { label: "UIF", amount: 82 }, { label: "Constance Salary", amount: 8200 },
-      { label: "Opening balance (prior period)", amount: 29882 }, { label: "UIF payment Constance", amount: 82 },
+      { label: "Constance Salary", amount: 8200 }, { label: "Opening balance (prior period)", amount: 29882 },
+      { label: "UIF", amount: 82 }, { label: "UIF payment Constance", amount: 82 },
     ]);
     expect(report.generalExpenses).toBe(38246);
   });

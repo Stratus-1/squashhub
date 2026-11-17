@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Scale, Printer } from "lucide-react";
+import { Scale } from "lucide-react";
+import { balanceSheetReport } from "@/lib/finance/report-export";
+import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { thisFinancialYear, previousFinancialYear, financialYearStart } from "@/lib/finance/financial-year";
 import { buildBalanceSheet, type BSLine, type BSAccountMeta } from "@/lib/finance/balance-sheet";
@@ -20,7 +21,7 @@ interface Props {
 type Preset = "this_fy" | "prev_fy" | "custom";
 
 export function BalanceSheetTab({ clubName, endMonth, lines, accounts, customAccounts }: Props) {
-  const { format: money } = useClubCurrency();
+  const { format: money, code: currencyCode } = useClubCurrency();
   const [preset, setPreset] = useState<Preset>("this_fy");
   const [asAt, setAsAt] = useState(thisFinancialYear(endMonth).to);
 
@@ -77,7 +78,7 @@ export function BalanceSheetTab({ clubName, endMonth, lines, accounts, customAcc
         </Select>
         <Label className="text-[10px] text-muted-foreground">As at</Label>
         <Input type="date" value={asAt} onChange={e => { setAsAt(e.target.value); setPreset("custom"); }} className="h-8 text-xs w-[140px]" />
-        <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => window.print()}><Printer className="w-3.5 h-3.5" /> Print</Button>
+        <ReportDownloadMenu build={() => balanceSheetReport({ bs, asAt, clubName, currencyCode })} money={money} />
       </div>
       <Section title="Assets" rows={bs.assets} total={bs.totalAssets} />
       <Section title="Liabilities" rows={bs.liabilities} total={bs.totalLiabilities} />

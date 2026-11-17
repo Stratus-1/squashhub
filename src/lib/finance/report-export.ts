@@ -27,7 +27,7 @@ export interface FinancialReport {
 
 const day = (iso: string) => format(new Date(`${iso}T12:00:00`), "d MMM yyyy");
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => Math.round(n * 100) / 100 + 0; // + 0 turns -0 into 0
 const fileBase = (title: string, clubName: string | undefined, suffix: string) => [clubName && slug(clubName), slug(title), suffix].filter(Boolean).join("_");
 
 type IncomeReport = ReturnType<typeof groupedIncome>;
@@ -160,7 +160,7 @@ export function reportPdf(r: FinancialReport, money: (n: number) => string): jsP
       const bold = row.kind === "subtotal" || row.kind === "total";
       const styles = { fontStyle: bold ? "bold" : "normal", ...(row.kind === "total" ? { fillColor: [245, 245, 245] } : {}), ...(row.kind === "detail" ? { textColor: [90, 90, 90] } : {}) };
       body.push([
-        { content: pdfText(row.label), styles: { ...styles, cellPadding: row.kind === "detail" ? { left: 8, top: 1.5, bottom: 1.5, right: 2 } : undefined } },
+        { content: pdfText(row.label), styles: row.kind === "detail" ? { ...styles, cellPadding: { left: 8, top: 1.8, bottom: 1.8, right: 1.8 } } : styles },
         ...row.values.map(v => ({ content: v === null ? "" : typeof v === "number" ? pdfText(money(v)) : pdfText(v), styles: { ...styles, halign: typeof v === "number" ? "right" : "left" } })),
       ]);
     }
@@ -170,7 +170,7 @@ export function reportPdf(r: FinancialReport, money: (n: number) => string): jsP
     head: [[pdfText(r.labelColumn), ...r.valueColumns.map(pdfText)]],
     headStyles: { fillColor: [30, 58, 95], textColor: 255 },
     body,
-    styles: { fontSize: 9, cellPadding: 1.8 },
+    styles: { fontSize: 9, cellPadding: 1.8, valign: "middle" },
     columnStyles: Object.fromEntries(r.valueColumns.map((c, i) => [i + 1, { cellWidth: c.startsWith("Category") ? 26 : 34, halign: "right" as const }])),
     theme: "plain",
     didDrawPage: () => {

@@ -4671,3 +4671,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-17 — Income statement showed Salaries & Wages twice (Nelspruit)
 - Cause: Nelspruit has a club-made expense account named "Salaries & Wages" (Nov UIF R82) alongside the standard salary account; both rows were labelled the same and each expanded the same drill-down.
 - Fix (display only, `src/lib/finance/grouped-income.ts`): club-made Expense accounts named Salary/Salaries & Wages without a cost-of-sales allocation fold into the one Salaries & Wages line; drill-down labels drop "Bank statement:" and opening-balance lines collapse into "Opening balance (prior period)". No journals changed; totals unchanged. Test in `src/test/grouped-income.test.ts`.
+
+### 2026-11-17 — Finance reports listed lines in random order
+- Income Statement (income, expenses, salary breakdown, bar/shop costs, tips), Balance Sheet sections and Trial Balance now sort lines alphabetically via `src/lib/finance/sort-label.ts`; Balance Sheet surplus lines stay last in Equity. Display only, no ledger changes. Test: `src/test/finance-report-order.test.ts`.

@@ -44,6 +44,7 @@ import { MemberCreditControl } from "./MemberCreditControl";
 import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
 import { transactionAccountGroups } from "@/lib/finance/transaction-accounts";
 import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
+import { compareLabel } from "@/lib/finance/sort-label";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -1112,7 +1113,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 <SelectContent>
                   <SelectItem value="all">All Accounts</SelectItem>
                   {(["Income", "Expense", "Asset", "Liability"] as const).map(cat => {
-                    const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat);
+                    const accts = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === cat).sort((a, b) => compareLabel(CHART_OF_ACCOUNTS[a].label, CHART_OF_ACCOUNTS[b].label));
                     if (accts.length === 0) return null;
                     return (
                       <SelectGroup key={cat}>
@@ -1255,7 +1256,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               {ALL_ACCOUNTS.filter(a => {
                 const b = trialBalance[a];
                 return b && (b.debit > 0 || b.credit > 0);
-              }).map(account => {
+              }).sort((a, b) => compareLabel(CHART_OF_ACCOUNTS[a].label, CHART_OF_ACCOUNTS[b].label)).map(account => {
                 const bal = trialBalance[account] || { debit: 0, credit: 0 };
                 const meta = CHART_OF_ACCOUNTS[account];
                 return (

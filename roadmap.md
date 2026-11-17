@@ -86,3 +86,8 @@
 - [ ] No Frills Doubles invite panel shows 'Player' instead of names and '3 of 367 reached' (16 Nov screenshot) — investigate.
 - [x] Tournament join: listed member without login → send activation email (click to set up login, return to entry)
 - [x] Tournament join: listed member with no email → player supplies email, saved on record, activation email sent
+
+## No Frills Doubles payments (17 Nov 2026)
+- [ ] John Dyason paid R210 by card with no category: record payment on his invitation, then WhatsApp his link asking him to choose category + partner.
+- [ ] Stop payments before a category is chosen; hold any that still arrive and alert organisers.
+- [ ] WhatsApp Bernard Welters his link: choose partner and pay R210.

@@ -1,3 +1,4 @@
+import { compareLabel } from "./sort-label";
 /**
  * Balance sheet built from the trial balance (journal lines) as at a date.
  * Income/expense lines are closed into equity: surplus before the financial
@@ -51,6 +52,7 @@ export function buildBalanceSheet(
     else if (EQUITY_ACCOUNTS.has(key)) equity.push({ key, label: e.label, amount: round(-e.dr) });
     else liabilities.push({ key, label: e.label, amount: round(-e.dr) });
   }
+  for (const rows of [assets, liabilities, equity]) rows.sort((a, b) => compareLabel(a.label, b.label));
   equity.push({ key: "accumulated_surplus", label: "Accumulated surplus (prior years)", amount: round(priorSurplus) });
   equity.push({ key: "current_surplus", label: "Current year surplus / (deficit)", amount: round(currentSurplus) });
   const sum = (r: BSRow[]) => round(r.reduce((s, x) => s + x.amount, 0));

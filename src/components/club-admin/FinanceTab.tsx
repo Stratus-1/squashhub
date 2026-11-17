@@ -1255,7 +1255,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               {ALL_ACCOUNTS.filter(a => {
                 const b = trialBalance[a];
                 return b && (b.debit > 0 || b.credit > 0);
-              }).map(account => {
+              }).sort((a, b) => compareLabel(CHART_OF_ACCOUNTS[a].label, CHART_OF_ACCOUNTS[b].label)).map(account => {
                 const bal = trialBalance[account] || { debit: 0, credit: 0 };
                 const meta = CHART_OF_ACCOUNTS[account];
                 return (

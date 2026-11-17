@@ -1,3 +1,4 @@
+import { byLabel } from "./sort-label";
 import { divisionMargins, type DivisionLedgerLine, type TradingCostBasis, type SaleCostSummary, type StockPurchaseReference } from "./division-margin";
 
 export interface StatementLine extends DivisionLedgerLine { description?: string | null; custom_account_id?: string | null }
@@ -71,10 +72,10 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
     const tipIncome = [...tipPeople]
       .map(([name, person]) => ({ label: `Tips — ${name}`, amount: person.received - person.paid, received: person.received, paid: person.paid }))
       .filter(row => Math.abs(row.amount) >= 0.005);
-    return { ...row, sales: row.sales - tipTotal, tipIncome, allocated: [...allocated].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005) };
+    return { ...row, sales: row.sales - tipTotal, tipIncome: byLabel(tipIncome), allocated: byLabel([...allocated].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005)) };
   });
   const primaryTotal = primary.reduce((sum, row) => sum + row.amount, 0);
   const grossIncome = primaryTotal + divisions.reduce((sum, row) => sum + row.profit, 0);
   const generalExpenses = expenses.reduce((sum, row) => sum + row.amount, 0);
-  return { primary, expenses, divisions, primaryTotal, grossIncome, generalExpenses, salaryDetails: [...salaryDetails].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005), netProfit: grossIncome - generalExpenses };
+  return { primary: byLabel(primary), expenses: byLabel(expenses), divisions, primaryTotal, grossIncome, generalExpenses, salaryDetails: byLabel([...salaryDetails].map(([label, amount]) => ({ label, amount })).filter(row => Math.abs(row.amount) >= 0.005)), netProfit: grossIncome - generalExpenses };
 }

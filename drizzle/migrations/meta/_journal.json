@@ -2997,6 +2997,13 @@
       "when": 1794838733624,
       "tag": "0427_lock_take_tournament_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 428,
+      "version": "7",
+      "when": 1794896357593,
+      "tag": "0428_tournament_join_selected_clubs",
+      "breakpoints": true
     }
   ]
 }

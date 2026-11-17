@@ -94,6 +94,6 @@
 - [x] WhatsApp Bernard Welters his link: choose partner and pay R210 (sent 17 Nov).
 
 ## Invitation page wording (17 Nov 2026)
-- [ ] Entry fee shows the one-category price (R210) until categories are ticked.
-- [ ] Doubles button says "Select partner & proceed to payment" instead of "Accept & pay".
-- [ ] Accept button disabled until a category is ticked and the cellphone digits are typed.
+- [x] Entry fee shows the one-category price (R210) until categories are ticked.
+- [x] Doubles button says "Select partner & proceed to payment" instead of "Accept & pay".
+- [x] Accept button disabled until a category is ticked and the cellphone digits are typed.

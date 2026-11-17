@@ -4667,3 +4667,7 @@ The signed Android smoke test reached the payment bridge and was rejected with `
 
 ### 2026-11-17 — Join page listed every regional club
 No Frills Doubles join page showed all NSA clubs although the organiser selected Kentron and Pierre van Ryneveld. Fix (migration 0428): `tournament_join_club_ids` returns host + selected clubs (fallback: all eligible); `tournament_join_context` uses it for the club list and "Enter as" shortcuts (existing registrations kept).
+
+### 2026-11-17 — Income statement showed Salaries & Wages twice (Nelspruit)
+- Cause: Nelspruit has a club-made expense account named "Salaries & Wages" (Nov UIF R82) alongside the standard salary account; both rows were labelled the same and each expanded the same drill-down.
+- Fix (display only, `src/lib/finance/grouped-income.ts`): club-made Expense accounts named Salary/Salaries & Wages without a cost-of-sales allocation fold into the one Salaries & Wages line; drill-down labels drop "Bank statement:" and opening-balance lines collapse into "Opening balance (prior period)". No journals changed; totals unchanged. Test in `src/test/grouped-income.test.ts`.

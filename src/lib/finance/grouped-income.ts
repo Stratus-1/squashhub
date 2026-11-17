@@ -6,6 +6,16 @@ export interface StatementCustomAccount { id: string; name: string; category: st
 export interface StatementRow { label: string; amount: number }
 export const DEFAULT_INCOME_STATEMENT_BASIS: TradingCostBasis = "cost_of_sales";
 
+/** A club-made expense account that is just another name for Salaries & Wages. */
+export const isSalaryAccountName = (name: string) => /^(salary|salaries)\s*(&|and)\s*wages?$/i.test(name.trim());
+
+/** Short, readable drill-down label for a salary line (statement/opening-balance prefixes removed). */
+export function salaryDetailLabel(description?: string | null) {
+  const text = (description ?? "").trim();
+  if (/^Opening balances?\b/i.test(text)) return "Opening balance (prior period)";
+  return text.replace(/^Salary — /, "").replace(/^Bank statement:\s*/i, "").trim() || "Other wages";
+}
+
 /** Trading costs belong above gross income, never again below it. */
 export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Record<string, StatementAccount>, hasShop: boolean, basis: TradingCostBasis = DEFAULT_INCOME_STATEMENT_BASIS, costs: SaleCostSummary[] = [], purchases: StockPurchaseReference[] = [], customAccounts: StatementCustomAccount[] = []) {
   const accounts = { ...standardAccounts, salary_wages: { label: "Salaries & Wages", category: "Expense" } };
@@ -16,6 +26,7 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
     }
     const custom = customAccounts.find(account => account.id === line.custom_account_id);
     if (!custom) return line;
+    if (custom.category === "Expense" && !custom.reporting_category && isSalaryAccountName(custom.name)) return { ...line, account: "salary_wages", custom_account_id: null };
     const allocation = custom.reporting_category ?? (custom.base_account === "bar_cost_of_sales" || custom.base_account === "shop_cost_of_sales" ? custom.base_account : null);
     if (allocation) return { ...line, account: allocation, description: custom.name };
     if (["bar_income", "shop_income", "bar_expense", "shop_expense"].includes(line.account)) return line;
@@ -25,7 +36,7 @@ export function groupedIncome(sourceLines: StatementLine[], standardAccounts: Re
   });
   const salaryDetails = new Map<string, number>();
   for (const line of lines.filter(line => line.account === "salary_wages")) {
-    const label = line.description?.replace(/^Salary — /, "").trim() || "Other wages";
+    const label = salaryDetailLabel(line.description);
     salaryDetails.set(label, (salaryDetails.get(label) ?? 0) + Number(line.debit) - Number(line.credit));
   }
   const tradingAccounts = new Set(["bar_income", "shop_income", "bar_expense", "shop_expense", "bar_cost_of_sales", "shop_cost_of_sales"]);

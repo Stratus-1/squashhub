@@ -4682,3 +4682,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Duane Rossouw (Uitsig No Frills Doubles, entered + paid) reopened his link and could not pick a partner.
 - Cause: the partner list only appears after the guest check (last 4 cellphone digits), which is empty on every reopen and gave no hint; signed-in invitees were asked too. `step_pair_payment_context` also crashed (500) for players without a partner (unassigned record).
 - Fix: `TournamentInvite.tsx` skips the check when signed in as the invitee, tells guests the list appears after the digits, and hides payment until every entered doubles event has a pairing (`partnersCompleteForPayment` in `src/lib/tournaments/doubles.ts`, fails open on load errors). Migration 0429 fixes the 500. Test: `src/test/doubles-partner-before-pay.test.ts`.
+
+## 2026-11-17 — Card payment before choosing a category was lost (No Frills Doubles, John Dyason)
+- Symptom: John paid R210 (PayFast) from the in-app tournament card while his invitation had no category; entry stayed "invited", only the gateway fee reached the books.
+- Cause: `TournamentRegisterCard` offered Pay buttons for unaccepted invitation rows; settlement's `status='paid'` update was refused by `beta_tournament_category_guard` and the error was ignored.
+- Fix: `champ_registration_payable` blocks tournament checkouts (PayFast/Yoco/Paynow/Stitch) until a category is chosen; settlements fall back to `champ_hold_unentered_payment` (paid fee on the invitation + books + audit + admin alert); `respond_tournament_invite_public` enters prepaid invitees as paid without a second charge; invite page shows "fee already paid — choose one category". John's payment recorded via the hold function.

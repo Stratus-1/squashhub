@@ -44,6 +44,7 @@ import { MemberCreditControl } from "./MemberCreditControl";
 import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
 import { transactionAccountGroups } from "@/lib/finance/transaction-accounts";
 import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
+import { compareLabel } from "@/lib/finance/sort-label";
 
 
 /* ─── Chart of Accounts definition ─── */

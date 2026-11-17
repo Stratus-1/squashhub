@@ -24,3 +24,11 @@ export const cancelTabCardMessage: Record<CancelTabCardResult, string> = {
   paid: "That card payment already went through, so the tab is paid.",
   not_card: "This tab is waiting for cash or the card machine at the bar, not an online card payment.",
 };
+
+/** A tab whose online card checkout was started but not yet confirmed by the gateway. */
+export function tabAwaitingCardPayment(tab: { status?: string | null; settled_method?: string | null } | null | undefined): boolean {
+  return !!tab && tab.status === "closing" && tab.settled_method === "online";
+}
+
+export const TAB_CARD_IN_PROGRESS_MESSAGE =
+  "Your card payment for this tab is still in progress. Finish it on the card page, or tap Cancel card payment to choose another way to pay.";

@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
         .select("id, club_id, guest_name, status")
         .eq("id", tabId).eq("token", tabToken).maybeSingle();
       if (!t || t.club_id !== qr.club_id) return json({ error: "Tab not found" });
+      if (t.status === "closing") {
+        return json({ error: "A payment for this tab is still in progress. Finish it, or tap Cancel card payment to choose another way to pay." });
+      }
       if (t.status !== "open") return json({ error: "This tab has already been settled" });
       tabRow = t;
       const { data: tabSales } = await admin

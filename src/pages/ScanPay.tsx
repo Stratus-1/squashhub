@@ -30,7 +30,7 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
-import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
+import { cancelTabCardPayment, cancelTabCardMessage, tabAwaitingCardPayment, TAB_CARD_IN_PROGRESS_MESSAGE } from "@/lib/bar/cancel-tab-card-payment";
 import { accountChargeStart, takeMemberTabDraft } from "@/lib/bar/member-tab-handoff";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useBarTips } from "@/hooks/use-bar-tips";
@@ -1058,9 +1058,11 @@ export default function ScanPay() {
                 <p className="text-[11px] text-muted-foreground">
                   {tab.status === "open"
                     ? "Keep ordering all evening, then settle the whole tab once."
-                    : "This tab is awaiting payment — settle it below."}
+                    : tabAwaitingCardPayment(tab)
+                      ? TAB_CARD_IN_PROGRESS_MESSAGE
+                      : "This tab is awaiting payment — settle it below."}
                 </p>
-                {tab.status === "closing" && tab.settled_method === "online" && (
+                {tabAwaitingCardPayment(tab) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -1086,7 +1088,7 @@ export default function ScanPay() {
                     <X className="w-3.5 h-3.5" /> Cancel card payment
                   </Button>
                 )}
-                <div className="space-y-2">
+                {!tabAwaitingCardPayment(tab) && <div className="space-y-2">
                   {club.account_tab_enabled !== false && (
                     <div className="space-y-2">
                       {!numberEntry || accountChargeTarget !== "tab" ? (
@@ -1166,7 +1168,7 @@ export default function ScanPay() {
                       </Button>
                     )}
                   </div>
-                </div>
+                </div>}
               </Card>
             )}
 

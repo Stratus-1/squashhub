@@ -97,3 +97,5 @@
 - [x] Entry fee shows the one-category price (R210) until categories are ticked.
 - [x] Doubles button says "Select partner & proceed to payment" instead of "Accept & pay".
 - [x] Accept button disabled until a category is ticked and the cellphone digits are typed.
+- [x] Reset Gerhard Fourie's test entry in Uitsig No Frills Doubles back to cancelled (no fees existed; 2 test category places removed).
+- [x] Bar tab: while an online card payment is unconfirmed, hide pay options and say it's in progress (was "already settled"); server message clarified, bar-card-pay deployed. Seen with James Paterson (Nelspruit, 17 Nov).

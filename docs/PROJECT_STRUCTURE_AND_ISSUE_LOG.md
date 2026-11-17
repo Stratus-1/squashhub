@@ -4691,3 +4691,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-17 — Registrations: summary counts as quick filters + doubles partners
 - Request: organisers had to scroll the whole invite list to see who registered/paid, and doubles partners were hidden when the tournament's stale `match_type` said singles (e.g. Uitsig No Frills Doubles).
 - Change (display only): `TournamentRegistrationsDialog` summary chips (All, Registered, Paid, Member account, Pending, Not entered yet, Proof to check, Active, Invited not activated, No account) are toggle filters; counts and rows share predicates in `src/lib/tournaments/registration-filters.ts`. Partner lines come from `champ_doubles_pairs` (per category, cancelled pairs skipped) with the registration partner column as fallback, shown whenever any pair exists. Test: `src/test/registration-filters.test.ts`. No data writes.
+
+### 2026-11-17 — Bar tab "already settled" while a card payment was still pending (Nelspruit, James Paterson)
+- Cause: a 10 Nov online card checkout left the member's in-app tab in `closing/online`; `open_my_bar_tab` returns closing tabs, ScanPay still showed every pay button, and `bar-card-pay` refused with "This tab has already been settled".
+- Fix: `tabAwaitingCardPayment()` (src/lib/bar/cancel-tab-card-payment.ts) hides pay options and shows an in-progress message with Cancel card payment; `bar-card-pay` returns an in-progress message for closing tabs. Test: src/test/bar-tab-card-in-progress.test.ts. No payment/ledger logic changed.

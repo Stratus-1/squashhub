@@ -490,6 +490,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       </p>
                       {hasPairs && (() => {
                         const partners = partnerList(r);
+                        if (!partners.length && !matchesRegistrationFilter(r, "registered", filterCtx)) return null;
                         if (!partners.length) return <p className="text-xs text-muted-foreground">Partner: <span className="italic">none yet</span></p>;
                         return partners.map((p) => (
                           <p key={`${p.partnerId}-${p.group ?? "x"}`} className="text-xs text-muted-foreground break-words">

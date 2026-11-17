@@ -308,14 +308,49 @@ export function inviteTotalFeeCents(payload: InvitePayload | null | undefined, c
   if (!payload?.payment_required) return 0;
   const divs = inviteDivisions(payload);
   if (!divs.length) return flat;
-  const picks = chosen.length ? chosen : divs.map((d) => d.group_number);
   const tiered = inviteFeeTiers(payload);
-  if (tiered) return tierFeeCents(tiered, divs.length ? picks.length : 1) ?? flat;
+  // Nothing ticked yet: show the price of a single category (the cheapest),
+  // never the price of entering everything.
+  if (!chosen.length) {
+    if (tiered) return tierFeeCents(tiered, 1) ?? flat;
+    if (!divs.some((d) => d.fee_cents != null)) return flat;
+    return Math.min(...divs.map((d) => Math.max(0, Number(d.fee_cents ?? flat))));
+  }
+  const picks = chosen;
+  if (tiered) return tierFeeCents(tiered, picks.length) ?? flat;
   if (!divs.some((d) => d.fee_cents != null)) return flat * picks.length;
   return picks.reduce((sum, g) => {
     const d = divs.find((x) => x.group_number === g);
     return sum + Math.max(0, Number(d?.fee_cents ?? flat));
   }, 0);
+}
+
+/**
+ * Main invitation button. Doubles partners are chosen on the next screen, so a
+ * doubles entry says so instead of "Accept & pay".
+ */
+export function inviteAcceptLabel(opts: { feeCents: number; prepaid: boolean; doubles: boolean }): string {
+  const pays = opts.feeCents > 0 && !opts.prepaid;
+  if (opts.doubles) return pays ? "Select partner & proceed to payment" : "Select your partner";
+  return pays ? "Accept & pay" : "Accept";
+}
+
+/**
+ * Why the main invitation button is still disabled (null = ready): a category
+ * must be ticked and the identity check typed before continuing.
+ */
+export function inviteAcceptBlocker(opts: {
+  mustChooseDivision: boolean;
+  chosenCount: number;
+  verifyReady: boolean;
+  verifyLabel: string;
+}): string | null {
+  const needCategory = opts.mustChooseDivision && opts.chosenCount === 0;
+  const needVerify = !opts.verifyReady;
+  if (needCategory && needVerify) return `Tick a category and type ${opts.verifyLabel.toLowerCase()} to continue.`;
+  if (needCategory) return "Tick a category to continue.";
+  if (needVerify) return `Type ${opts.verifyLabel.toLowerCase()} to continue.`;
+  return null;
 }
 
 /** Where to send the visitor after a successful accept. */

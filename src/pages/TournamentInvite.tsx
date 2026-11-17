@@ -21,6 +21,8 @@ import {
   defaultDivisionSelection,
   inviteDivisions,
   inviteTotalFeeCents,
+  inviteAcceptLabel,
+  inviteAcceptBlocker,
   inviteFeeTiers,
   inviteLoginPath,
   inviteSignupPath,
@@ -730,6 +732,22 @@ export default function TournamentInvite() {
   const busy = respond.isPending;
   const verifyLabel = inviteVerificationLabel(verificationKind);
   const verifyReady = isInviteVerificationComplete(verificationKind, verify);
+  // Doubles if a ticked category is doubles, or (nothing ticked yet) every
+  // category on offer is doubles.
+  const doublesEntry =
+    !adminEntered &&
+    (chosenDivisions.length > 0
+      ? doublesDivisions(divisions, chosenDivisions).length > 0
+      : divisions.length > 0 && doublesDivisions(divisions, divisions.map((d) => d.group_number)).length === divisions.length);
+  const acceptLabel = inviteAcceptLabel({ feeCents, prepaid: prepaidNeedsCategory, doubles: doublesEntry });
+  const acceptBlocker = isTest
+    ? null
+    : inviteAcceptBlocker({
+        mustChooseDivision: mustChooseDivision || divisions.length > 1,
+        chosenCount: chosenDivisions.length,
+        verifyReady,
+        verifyLabel,
+      });
 
   function act(accept: boolean) {
     if (isTest) {
@@ -806,7 +824,9 @@ export default function TournamentInvite() {
         </p>
       ) : feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
-          Accepting reserves your place — you'll go straight to the entry fee payment page.
+          {doublesEntry
+            ? "Next you choose your doubles partner, then the payment options appear."
+            : "Accepting reserves your place — you'll go straight to the entry fee payment page."}
         </p>
       )}
 
@@ -857,13 +877,16 @@ export default function TournamentInvite() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <Button variant="outline" disabled={busy} onClick={() => setConfirmDecline(true)}>
-            Decline
-          </Button>
-          <Button disabled={busy} onClick={() => act(true)}>
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 && !prepaidNeedsCategory ? "Accept & pay" : "Accept"}
-          </Button>
+        <div className="space-y-1.5 pt-1">
+          <div className="grid grid-cols-[1fr_2fr] gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => setConfirmDecline(true)}>
+              Decline
+            </Button>
+            <Button className="h-auto min-h-10 whitespace-normal leading-tight py-2" disabled={busy || !!acceptBlocker} onClick={() => act(true)}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : acceptLabel}
+            </Button>
+          </div>
+          {acceptBlocker && <p className="text-[11px] text-muted-foreground text-right">{acceptBlocker}</p>}
         </div>
       )}
       {!isTest && (

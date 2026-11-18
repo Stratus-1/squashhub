@@ -3039,6 +3039,13 @@
       "when": 1794987246813,
       "tag": "0433_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 434,
+      "version": "7",
+      "when": 1794995901251,
+      "tag": "0434_bar_admin_tab_to_member_account",
+      "breakpoints": true
     }
   ]
 }

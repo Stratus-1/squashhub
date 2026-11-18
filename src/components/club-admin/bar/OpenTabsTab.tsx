@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Trash2 } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Trash2, Wallet } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { canPutTabOnAccount } from "@/lib/bar/open-tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
@@ -17,7 +19,11 @@ type OpenTab = {
   operator: string | null;
   total: number;
   lines: TabLine[];
+  club_member_id?: string | null;
+  member_name?: string | null;
+  has_tip?: boolean;
 };
+type MemberHit = { id: string; name: string | null; club_member_number: string | null };
 
 const money = (n: number) => `R${Number(n || 0).toFixed(2)}`;
 
@@ -38,7 +44,46 @@ function isPreviousDay(iso: string) {
 export function OpenTabsTab({ clubId }: { clubId: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [removing, setRemoving] = useState<OpenTab | null>(null);
+  const [moving, setMoving] = useState<OpenTab | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [pickedMember, setPickedMember] = useState<MemberHit | null>(null);
   const qc = useQueryClient();
+  const closeMove = () => { setMoving(null); setMemberSearch(""); setPickedMember(null); };
+  const moveToAccount = useMutation({
+    mutationFn: async ({ tabId, memberId }: { tabId: string; memberId: string | null }) => {
+      const { data, error } = await (supabase as any).rpc("bar_admin_tab_to_member_account", {
+        _club_id: clubId, _tab_id: tabId, _club_member_id: memberId,
+      });
+      if (error) throw error;
+      return data as { total: number; member_name: string | null };
+    },
+    onSuccess: (res) => {
+      closeMove();
+      toast.success(`${money(res?.total ?? 0)} put on ${res?.member_name ?? "the member"}'s account`);
+      qc.invalidateQueries({ queryKey: ["bar-open-tabs", clubId] });
+      qc.invalidateQueries({ queryKey: ["bar-counter-board"] });
+    },
+    onError: (error: Error) => {
+      const msg = error.message || "";
+      toast.error(msg.startsWith("ACCOUNT_LIMIT")
+        ? "This member's account limit would be exceeded. They need to pay or top up first."
+        : msg || "Could not put tab on member account");
+    },
+  });
+  const { data: memberHits = [] } = useQuery({
+    queryKey: ["bar-open-tab-member-search", clubId, memberSearch.trim()],
+    enabled: !!moving && !moving.club_member_id && memberSearch.trim().length >= 2,
+    queryFn: async () => {
+      const q = memberSearch.trim().replace(/[%,()]/g, " ");
+      const { data, error } = await (supabase as any).from("club_members")
+        .select("id, name, club_member_number")
+        .eq("club_id", clubId).eq("status", "active").neq("role", "visitor")
+        .or(`name.ilike.%${q}%,club_member_number.ilike.%${q}%`)
+        .order("name").limit(8);
+      if (error) throw error;
+      return (data ?? []) as MemberHit[];
+    },
+  });
   const removeTab = useMutation({
     mutationFn: async (tabId: string) => {
       const { error } = await supabase.rpc("bar_admin_remove_zero_tab", { _club_id: clubId, _tab_id: tabId });
@@ -171,6 +216,14 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
                       )}
                     </div>
                   )}
+                  {canPutTabOnAccount(t) && (
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">{t.member_name ? `Member: ${t.member_name}` : "Not linked to a member"}</span>
+                      <Button variant="outline" size="sm" aria-label={`Put tab for ${t.guest_name} on member account`} onClick={() => { setMoving(t); setMemberSearch(t.club_member_id ? "" : t.guest_name); }} disabled={moveToAccount.isPending}>
+                        <Wallet className="mr-1 h-4 w-4" /> Put on member account
+                      </Button>
+                    </div>
+                  )}
                   {t.status === "open" && Number(t.total) === 0 && (
                     <div className="mt-2 flex justify-end">
                       <Button variant="outline" size="sm" aria-label={`Remove zero-outstanding tab for ${t.guest_name}`} onClick={() => setRemoving(t)} disabled={removeTab.isPending}>
@@ -187,6 +240,59 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
           </p>
         </>
       )}
+      <AlertDialog open={moving !== null} onOpenChange={open => { if (!open && !moveToAccount.isPending) closeMove(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Put tab on member account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {moving ? `${moving.guest_name} · ${money(moving.total)}. ` : ""}
+              The items move to the member's account and any credit they have pays for them. The tab then closes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {moving && !moving.club_member_id && (
+            <div className="space-y-2">
+              <Input
+                autoFocus
+                placeholder="Search member name or number"
+                value={memberSearch}
+                onChange={e => { setMemberSearch(e.target.value); setPickedMember(null); }}
+              />
+              <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+                {memberSearch.trim().length < 2 ? (
+                  <p className="p-2 text-xs text-muted-foreground">Type at least two letters.</p>
+                ) : memberHits.length === 0 ? (
+                  <p className="p-2 text-xs text-muted-foreground">No active members found.</p>
+                ) : memberHits.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPickedMember(m)}
+                    className={`flex w-full justify-between px-2 py-1.5 text-left text-sm hover:bg-muted ${pickedMember?.id === m.id ? "bg-muted font-medium" : ""}`}
+                  >
+                    <span>{m.name ?? "Member"}</span>
+                    <span className="text-xs text-muted-foreground">{m.club_member_number ?? ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {moving?.club_member_id && (
+            <p className="text-sm">Charge to <span className="font-medium">{moving.member_name ?? "the linked member"}</span>.</p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={moveToAccount.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={moveToAccount.isPending || (!!moving && !moving.club_member_id && !pickedMember)}
+              onClick={event => {
+                event.preventDefault();
+                if (moving) moveToAccount.mutate({ tabId: moving.tab_id, memberId: moving.club_member_id ? null : pickedMember?.id ?? null });
+              }}
+            >
+              {moveToAccount.isPending ? "Saving…" : pickedMember ? `Charge ${pickedMember.name ?? "member"}` : "Put on account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={removing !== null} onOpenChange={open => { if (!open && !removeTab.isPending) setRemoving(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -33,6 +33,7 @@
 - [x] Nelspruit Makro payments reviewed: stay recorded as bar cost of sales (not Stock on hand), tuck-shop stays under Bar — Willem's choice, no ledger changes.
 
 ## Open tasks
+- [x] Open tabs: "Put on member account" button for treasurer/bar managers (Nelspruit, Wendy Truter case — Wendy had already moved hers).
 - [x] Doubles invitation: partner list always shows when a player reopens their link (incl. after paying), partner chosen before payment; fix Duane Rossouw (Uitsig No Frills Doubles). Preview-only until publish.
 - [ ] Check "not linked with Stitch" pay button error on Uitsig doubles invitation (player report 17 Nov) — Uitsig's Stitch setup is present; needs the exact screen/time to trace.
 - [x] Reclassify Bamanye Ntonjane's 27 October R23/R20 as direct bar sales, removing member credits without changing bank receipts.

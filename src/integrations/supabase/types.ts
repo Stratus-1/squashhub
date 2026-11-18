@@ -22149,6 +22149,10 @@ export type Database = {
         Args: { _club_id: string; _tab_id: string }
         Returns: undefined
       }
+      bar_admin_tab_to_member_account: {
+        Args: { _club_id: string; _club_member_id?: string; _tab_id: string }
+        Returns: Json
+      }
       bar_allow_negative_stock: { Args: { _club: string }; Returns: boolean }
       bar_can_manage_pins: {
         Args: { _club_id: string; _user_id: string }

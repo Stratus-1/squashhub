@@ -19,3 +19,20 @@ describe("bar counter open-tab list", () => {
     expect(sortAndFilterOpenTabs(tabs, "nobody")).toEqual([]);
   });
 });
+
+import { canPutTabOnAccount } from "./open-tabs";
+
+describe("put open tab on member account", () => {
+  it("allows an open tab with an amount owing and no tip", () => {
+    expect(canPutTabOnAccount({ status: "open", total: 94 })).toBe(true);
+  });
+  it("refuses a tab whose payment is in progress", () => {
+    expect(canPutTabOnAccount({ status: "closing", total: 94 })).toBe(false);
+  });
+  it("refuses an empty tab", () => {
+    expect(canPutTabOnAccount({ status: "open", total: 0 })).toBe(false);
+  });
+  it("refuses a tab carrying a tip", () => {
+    expect(canPutTabOnAccount({ status: "open", total: 104, has_tip: true })).toBe(false);
+  });
+});

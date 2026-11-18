@@ -4711,3 +4711,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-18 — Admin Member Statement missing card-paid bar purchases
 - My Account merged GL control entries with card/cash bar purchases (`my_bar_purchases`), but Finance → Member Statement showed GL entries only, with card items in a separate, easily missed list (which also mislabelled member-account-settled tabs as card payments). Extracted `directBarStatementLines` (`src/lib/finance/direct-bar-lines.ts`), used by both screens; `my_bar_purchases` now also allows Finance-permission users; `MemberBarPurchases` reduced to unpaid open-tab items. Verified on Carel Ras (Uitsig): net R311 on both.
+
+### 2026-11-18 — Open tabs: "Put on member account" for treasurers
+- Issue: Nelspruit (Wendy Truter) paid R94 by EFT top-up while her R94 bar tab stayed open; the treasurer had no way to apply the credit. Wendy later moved the tab herself (balance R0).
+- Fix: migration 0434 adds `bar_admin_tab_to_member_account` and member info on `bar_open_tabs`; Open tabs shows a "Put on member account" button (member search for unlinked tabs). Account-limit rules still apply; prices are never changed.

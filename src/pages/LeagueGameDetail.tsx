@@ -1,5 +1,6 @@
 import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel, splitPairLabelDisplay } from "@/lib/leagues/original-pair-bonus";
 import { checkDoublesSub } from "@/lib/leagues/doubles-sub-eligibility";
+import { applyFixtureResultChange, applyRubberChange, liveRubberPollMs } from "@/lib/leagues/live-rubber-cache";
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -402,6 +403,9 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
   });
 
+  // True while the live-score channel for this fixture is connected; the
+  // rubber poll below then only runs as a slow safety net.
+  const [liveChannelConnected, setLiveChannelConnected] = useState(false);
   const { data: existingMatches, isFetched: existingMatchesFetched } = useQuery({
     queryKey: ["league-match-results", fixtureId],
     queryFn: async () => {
@@ -411,8 +415,9 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
     // Realtime pushes live points; this poll is only a fallback, so keep it
     // slow and never run it while the screen/tab is hidden (DB load).
-    refetchInterval: () => (
-      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame) ? 10_000 : false
+    refetchInterval: () => liveRubberPollMs(
+      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame),
+      liveChannelConnected,
     ),
     refetchIntervalInBackground: false,
   });
@@ -422,25 +427,45 @@ export default function LeagueGameDetail() {
   // We do NOT overwrite local marker state for the position currently being marked.
   useEffect(() => {
     if (!fixtureId) return;
+    let wasConnected = false;
     const ch = supabase
       .channel(`league-fixture:${fixtureId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "league_match_results", filter: `fixture_id=eq.${fixtureId}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
-          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+        (payload: any) => {
+          // Apply the changed rubber straight into the cache instead of
+          // re-downloading the whole fixture for every viewer on every point.
+          // Fixture totals arrive via their own change below.
+          const key = ["league-match-results", fixtureId];
+          const next = applyRubberChange(queryClient.getQueryData<any[]>(key), payload, fixtureId);
+          if (next === undefined) queryClient.invalidateQueries({ queryKey: key });
+          else queryClient.setQueryData(key, next);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "league_fixture_results", filter: `fixture_id=eq.${fixtureId}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+        (payload: any) => {
+          const key = ["league-fixture-result", fixtureId];
+          const next = applyFixtureResultChange(queryClient.getQueryData<any>(key), payload, fixtureId);
+          if (next === undefined) queryClient.invalidateQueries({ queryKey: key });
+          else queryClient.setQueryData(key, next);
         }
       )
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+      .subscribe((status) => {
+        const ok = status === "SUBSCRIBED";
+        setLiveChannelConnected(ok);
+        // On a reconnect (not the first connect) catch up on anything missed
+        // while live updates were down.
+        const reconnect = ok && wasConnected;
+        if (ok) wasConnected = true;
+        if (reconnect) {
+          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+        }
+      });
+    return () => { setLiveChannelConnected(false); supabase.removeChannel(ch); };
   }, [fixtureId, queryClient]);
 
   // ---- Soft marker presence: live map of who is currently marking which position ----

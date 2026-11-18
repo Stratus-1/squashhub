@@ -4695,3 +4695,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-17 — Bar tab "already settled" while a card payment was still pending (Nelspruit, James Paterson)
 - Cause: a 10 Nov online card checkout left the member's in-app tab in `closing/online`; `open_my_bar_tab` returns closing tabs, ScanPay still showed every pay button, and `bar-card-pay` refused with "This tab has already been settled".
 - Fix: `tabAwaitingCardPayment()` (src/lib/bar/cancel-tab-card-payment.ts) hides pay options and shows an in-progress message with Cancel card payment; `bar-card-pay` returns an in-progress message for closing tabs. Test: src/test/bar-tab-card-in-progress.test.ts. No payment/ledger logic changed.
+
+### 2026-11-18 — League night slowdown / app stuck on opening spinner
+- Symptom: 17 Nov ~20:26 the app (Uitsig, Rachel) spun forever on open; simple lookups took up to 30 s.
+- Cause: league scorecard viewers refetched every rubber and the fixture totals on each realtime point change (plus a 10 s poll), ~258k rubber lookups; the totals trigger doubled the refetches. Opening gates had no timeout message.
+- Fix: `LeagueGameDetail` patches realtime rows into the cache (`src/lib/leagues/live-rubber-cache.ts`), polls 60 s while live updates are connected (10 s only when disconnected) and catches up on reconnect. All opening spinners in `App.tsx` use `StartupSpinner`, which shows "Taking longer than usual… / Tap to retry" after 12 s. Tests: `src/test/live-rubber-cache.test.ts`.

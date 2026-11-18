@@ -133,6 +133,7 @@ import PayInvoice from "./pages/PayInvoice";
 import Sla from "./pages/Sla";
 import LightsIntegration from "./pages/LightsIntegration";
 import { SiteFooter } from "@/components/SiteFooter";
+import { StartupSpinner } from "@/components/StartupSpinner";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
 const queryClient = new QueryClient({
@@ -162,9 +163,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <StartupSpinner />
     );
   }
   if (!user) {
@@ -205,7 +204,7 @@ function AuthGate() {
   }, [hardLogout, user, signOut]);
 
   if (hardLogout && (user || loggingOut)) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+    return <StartupSpinner />;
   }
 
   if (!user) {
@@ -214,7 +213,7 @@ function AuthGate() {
   }
 
   if (rolesLoading || (clubSubdomain && clubDataLoading)) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+    return <StartupSpinner />;
   }
 
   const isPlatformAdmin = !clubSubdomain && (roles || []).includes("admin");
@@ -237,9 +236,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <StartupSpinner />
     );
   }
 
@@ -339,17 +336,13 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   if (isSuperAdmin || isAssociationAdmin) return <>{children}</>;
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <StartupSpinner />
     );
   }
   if (!myClubMember) {
     if (hasMembershipElsewhere === null) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        </div>
+        <StartupSpinner />
       );
     }
 
@@ -402,9 +395,7 @@ function RootClubGate({ children }: { children: React.ReactNode }) {
 
   if (needsClub === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <StartupSpinner />
     );
   }
   if (needsClub) return <Navigate to="/find-club" replace />;
@@ -476,9 +467,7 @@ function AppRoutes() {
 
   if (loading || clubLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <StartupSpinner />
     );
   }
 
@@ -507,9 +496,7 @@ function AppRoutes() {
   // Desktop sidebar shell only for authenticated, non-admin, non-TV routes
   const shellEnabled = !!user && !isAdminRoute && !isTvRoute && !isMobileCheckout;
   const routeFallback = (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-    </div>
+    <StartupSpinner />
   );
 
   return (

@@ -21567,6 +21567,10 @@ export type Database = {
           phone: string
         }[]
       }
+      _family_request_email_officials: {
+        Args: { _family_member_id: string }
+        Returns: number
+      }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
       _league_fee_next_due: {

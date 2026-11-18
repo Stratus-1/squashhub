@@ -4715,3 +4715,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-18 — Open tabs: "Put on member account" for treasurers
 - Issue: Nelspruit (Wendy Truter) paid R94 by EFT top-up while her R94 bar tab stayed open; the treasurer had no way to apply the credit. Wendy later moved the tab herself (balance R0).
 - Fix: migration 0434 adds `bar_admin_tab_to_member_account` and member info on `bar_open_tabs`; Open tabs shows a "Put on member account" button (member search for unlinked tabs). Account-limit rules still apply; prices are never changed.
+
+### 2026-11-18 — Family package requests now email club officials (migration 0435)
+- Issue: Gordons Bay admins only got an in-app notice when Paul Keanly added Oran; no email went out, so the request sat pending.
+- Fix: `family_add_member` calls `_family_request_email_officials` (service-only) to queue one `family_request_approval` email per admin, members-approver and current office bearer (club officer posts + open `club_offices`). Best effort; approval authority (`family_review_addition`) unchanged. Pending requests were backfilled once.

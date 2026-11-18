@@ -123,3 +123,8 @@
 
 ## Nelspruit (18 Nov 2026)
 - [ ] Wendy Truter R94: EFT top-up confirmed (bank + account credit) but her R94 tab stays open — move tab onto her account (awaiting Willem yes); lasting fix: admin "Put on member account" on Open tabs (awaiting yes)
+
+## Family package approvals (18 Nov)
+- [x] Check Paul Keanly (Gordons Bay) family request: who was notified, approval status
+- [x] Email all office bearers/admins when a family addition needs approval
+- [x] Answer: approve from email link / in-app notification (one-tap approve)

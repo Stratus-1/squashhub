@@ -4719,3 +4719,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-18 — Family package requests now email club officials (migration 0435)
 - Issue: Gordons Bay admins only got an in-app notice when Paul Keanly added Oran; no email went out, so the request sat pending.
 - Fix: `family_add_member` calls `_family_request_email_officials` (service-only) to queue one `family_request_approval` email per admin, members-approver and current office bearer (club officer posts + open `club_offices`). Best effort; approval authority (`family_review_addition`) unchanged. Pending requests were backfilled once.
+
+### 2026-11-18 — One-tap family request approval page (migration 0436)
+- Request: approve family package requests straight from the email / in-app notice instead of navigating Club Admin.
+- Fix: `/family-request/:id` (`src/pages/FamilyRequestReview.tsx`, sign-in required) reads via approver-only `family_request_review_context` and calls the unchanged `family_review_addition`. Officials' emails ("Approve or decline") and admin notices now link there; `_family_request_email_officials(id, _resend)` can resend reminders for still-pending requests. Gordons Bay (Paul Keanly → Oran) reminder resent.

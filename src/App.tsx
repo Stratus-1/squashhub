@@ -55,6 +55,7 @@ const PayReturn = lazy(() => import("./pages/PayReturn"));
 const ScanPay = lazy(() => import("./pages/ScanPay"));
 const AgmVote = lazy(() => import("./pages/AgmVote"));
 const AgmInvite = lazy(() => import("./pages/AgmInvite"));
+const FamilyRequestReview = lazy(() => import("./pages/FamilyRequestReview"));
 const ClubDocument = lazy(() => import("./pages/ClubDocument"));
 const AgmNominate = lazy(() => import("./pages/AgmNominate"));
 const MatchDay = lazy(() => import("./pages/MatchDayShell"));
@@ -597,6 +598,7 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
+        <Route path="/family-request/:id" element={<ProtectedRoute><FamilyRequestReview /></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><CapabilityRoute capability="bar"><HonestyBar /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/beta-tournament/:champId" element={<ProtectedRoute><BetaTournamentOperate /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><ClubChampsView /></CapabilityRoute></ProtectedRoute>} />

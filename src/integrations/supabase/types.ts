@@ -21568,7 +21568,7 @@ export type Database = {
         }[]
       }
       _family_request_email_officials: {
-        Args: { _family_member_id: string }
+        Args: { _family_member_id: string; _resend?: boolean }
         Returns: number
       }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
@@ -23705,6 +23705,10 @@ export type Database = {
       family_remove_member: {
         Args: { _family_member_id: string; _standard_category_id?: string }
         Returns: undefined
+      }
+      family_request_review_context: {
+        Args: { _family_member_id: string }
+        Returns: Json
       }
       family_resolve_category_change: {
         Args: { _approve: boolean; _family_member_id: string }

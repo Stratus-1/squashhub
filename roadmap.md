@@ -121,4 +121,4 @@
 - [ ] Capture date of birth from SportyHQ (private birth date + first 6 ID digits) — blocked: SportyHQ shows no birth dates publicly and now blocks the automatic reader
 
 ## Nelspruit (18 Nov 2026)
-- [ ] Wendy Truter R94 open tab (17 Nov 20:57) still listed after Rachel approved her proof of payment — investigate
+- [ ] Wendy Truter R94: EFT top-up confirmed (bank + account credit) but her R94 tab stays open — move tab onto her account (awaiting Willem yes); lasting fix: admin "Put on member account" on Open tabs (awaiting yes)

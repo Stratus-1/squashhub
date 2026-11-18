@@ -115,7 +115,7 @@
 
 ## Northern District Juniors (18 Nov 2026)
 - [x] Reference document of current SSA regions/associations/leagues/clubs (docs/SQUASH_SA_STRUCTURE.md)
-- [ ] Junior district structure proposal — awaiting Willem's answers
+- [ ] Build junior districts (one per province: Limpopo, Mpumalanga, North West, maybe more) — awaiting go-ahead
 - [ ] Auto-sort clubs into junior districts by province — awaiting approval
 - [ ] Re-scrape SportyHQ juniors + clubs — awaiting approval (background)
-- [ ] Capture date of birth from SportyHQ for scraped players — awaiting decision on where to store it (ID field vs private birth date)
+- [ ] Capture date of birth from SportyHQ (private birth date + first 6 ID digits) — blocked: SportyHQ shows no birth dates publicly and now blocks the automatic reader

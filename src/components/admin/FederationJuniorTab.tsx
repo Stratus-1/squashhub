@@ -173,7 +173,7 @@ export function FederationJuniorTab() {
 
   return (
     <div className="grid gap-3 lg:grid-cols-[1fr_340px]">
-      <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
+      <Card className="min-w-0 bg-white/[0.04] border-white/10 backdrop-blur-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-white/90">Junior structure</CardTitle>
           <p className="text-[11px] text-white/45">
@@ -187,14 +187,14 @@ export function FederationJuniorTab() {
           {m.zones.length === 0 && <p className="text-xs text-white/50 px-2">No zones yet.</p>}
           {m.zones.map((z) => (
             <div key={z.id} className="pl-4">
-              <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer" onClick={() => toggle(z.id)}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer" onClick={() => toggle(z.id)}>
                 {open.has(z.id) ? <ChevronRight className="w-3.5 h-3.5 text-white/50" /> : <ChevronDown className="w-3.5 h-3.5 text-white/50" />}
                 <span className="text-sm text-white/90">{z.name}</span>
                 <Badge variant="outline" className="text-[10px] border-white/20 text-white/60">Zone</Badge>
                 <span className="ml-auto"><Count id={z.id} /></span>
               </div>
               {!open.has(z.id) && (
-                <div className="pl-5 space-y-0.5">
+                <div className="pl-2 sm:pl-5 space-y-0.5">
                   {m.kids(z.id).map((pg) => {
                     const p = m.byId.get(pg.child_org_id);
                     if (!p) return null;
@@ -202,14 +202,14 @@ export function FederationJuniorTab() {
                     const pOpen = open.has(p.id);
                     return (
                       <div key={p.id} {...dropProps(p.id)} className={`rounded-lg ${dragId ? "ring-1 ring-dashed ring-primary/40" : ""}`}>
-                        <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer" onClick={() => toggle(p.id)}>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 px-2 rounded-lg hover:bg-white/[0.05] cursor-pointer" onClick={() => toggle(p.id)}>
                           {pOpen ? <ChevronDown className="w-3.5 h-3.5 text-white/50" /> : <ChevronRight className="w-3.5 h-3.5 text-white/50" />}
                           <span className="text-sm text-white/90">{p.name}</span>
                           <Badge variant="outline" className="text-[10px] border-white/20 text-white/60">Provincial</Badge>
                           <span className="ml-auto"><Count id={p.id} /></span>
                         </div>
                         {pOpen && (
-                          <div className="pl-6 pb-1 space-y-0.5">
+                          <div className="pl-2 sm:pl-6 pb-1 space-y-0.5">
                             {m.kids(p.id).map((g) => {
                               const c = m.byId.get(g.child_org_id);
                               if (!c) return null;
@@ -220,16 +220,16 @@ export function FederationJuniorTab() {
                                 : [];
                               return (
                                 <div key={g.id}>
-                                  <div {...dragProps(c.id)} className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-white/[0.05] cursor-grab">
+                                  <div {...dragProps(c.id)} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1 px-2 rounded-lg hover:bg-white/[0.05] cursor-grab">
                                     <GripVertical className="w-3 h-3 text-white/25" />
                                     {isAssoc ? (
                                       <button type="button" onClick={() => toggle(g.id)} aria-label="Show clubs">
                                         {cOpen ? <ChevronDown className="w-3.5 h-3.5 text-white/50" /> : <ChevronRight className="w-3.5 h-3.5 text-white/50" />}
                                       </button>
                                     ) : <span className="w-3.5" />}
-                                    <span className="text-[13px] text-white/85 truncate">{c.name}</span>
-                                    <Badge variant="outline" className="text-[10px] border-white/20 text-white/55">{isAssoc ? "Whole association" : "Single club"}</Badge>
-                                    <span className="ml-auto flex items-center gap-1">
+                                    <span className="text-[13px] text-white/85 truncate min-w-[65%] sm:min-w-0 flex-1">{c.name}</span>
+                                    <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-white/20 text-white/55">{isAssoc ? "Whole association" : "Single club"}</Badge>
+                                    <span className="ml-auto flex items-center gap-1 shrink-0">
                                       {isAssoc && <span className="text-[11px] text-white/45">{clubs.length} club{clubs.length === 1 ? "" : "s"}</span>}
                                       <MoveTo id={c.id} current={p.id} />
                                       <Button size="icon" variant="ghost" className="h-6 w-6 text-white/50" onClick={() => remove(g)} aria-label={`Remove ${c.name}`}>
@@ -238,14 +238,14 @@ export function FederationJuniorTab() {
                                     </span>
                                   </div>
                                   {isAssoc && cOpen && (
-                                    <div className="pl-10 space-y-0.5">
+                                    <div className="pl-4 sm:pl-10 space-y-0.5">
                                       {clubs.map((cl) => {
                                         const ex = excluded.find((e) => e.child_org_id === cl.id);
                                         return (
-                                          <div key={cl.id} className={`flex items-center gap-2 px-2 py-0.5 text-[12px] ${ex ? "text-white/35 line-through" : "text-white/70"}`}>
-                                            <span className="truncate">{cl.name}</span>
-                                            <span className="text-[11px] text-white/40 no-underline">{(cl.club_id && data.juniors.get(cl.club_id)) || 0} juniors</span>
-                                            <Button size="sm" variant="ghost" className="ml-auto h-6 px-2 text-[11px] text-white/55" onClick={() => toggleExclude(p.id, cl.id, ex)}>
+                                          <div key={cl.id} className={`flex items-center gap-2 pl-2 py-0.5 text-[12px] ${ex ? "text-white/35 line-through" : "text-white/70"}`}>
+                                            <span className="truncate min-w-0 flex-1">{cl.name}</span>
+                                            <span className="text-[11px] text-white/40 whitespace-nowrap">{(cl.club_id && data.juniors.get(cl.club_id)) || 0} juniors</span>
+                                            <Button size="sm" variant="ghost" className="shrink-0 h-6 px-1.5 text-[11px] text-white/55" onClick={() => toggleExclude(p.id, cl.id, ex)}>
                                               {ex ? <><Eye className="w-3 h-3 mr-1" />Include</> : <><EyeOff className="w-3 h-3 mr-1" />Leave out</>}
                                             </Button>
                                           </div>
@@ -276,7 +276,7 @@ export function FederationJuniorTab() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white/[0.04] border-white/10 backdrop-blur-md">
+      <Card className="min-w-0 bg-white/[0.04] border-white/10 backdrop-blur-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-white/90">Clubs with no association ({m.unlinked.length})</CardTitle>
           <p className="text-[11px] text-white/45">Drag onto a provincial association, or use "Move to…".</p>
@@ -286,7 +286,7 @@ export function FederationJuniorTab() {
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or town…"
               className="h-8 text-xs bg-white/[0.06] border-white/10 text-white placeholder:text-white/40" />
             <Select value={province} onValueChange={setProvince}>
-              <SelectTrigger className="h-8 w-[150px] text-xs bg-white/[0.06] border-white/10 text-white"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-[150px] shrink-0 text-xs bg-white/[0.06] border-white/10 text-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All provinces</SelectItem>
                 {SA_PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}

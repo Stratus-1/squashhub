@@ -5,6 +5,7 @@
     "noImplicitAny": true
   },
   "imports": {
-    "npm:svix@1.42.0": "npm:svix@1.42.0"
+    "npm:svix@1.42.0": "npm:svix@1.42.0",
+    "npm:@lovable.dev/email-js@0.1.0": "npm:@lovable.dev/email-js@0.1.0"
   }
 }

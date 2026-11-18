@@ -4728,3 +4728,5 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Uitsig No Frills Doubles card read "6 unique players · 8 category entries · 8 paid · 0 outstanding" while Registrations showed 4 registered/paid.
 - Cause: `countEntries` counted every row × (player + partner), so pairs who both registered counted four entries, and unpaid partners (Jason Maher, Andre de Beer) inherited the entrant's "paid".
 - Fix: `src/lib/tournaments/entry-counts.ts` counts per person per category; a partner with their own live entry is counted from it, otherwise from their own registration's fee status. Now 6 players · 6 entries · 4 paid · 2 outstanding. Test: `src/test/entry-counts-payment.test.ts`.
+
+- 2026-11-18 — Mobile Bar open-tab settlement: `player-admin-inspection` action `player_bar_settle_tab` (verified club/member/in-app tab scope; member_account via `bar_qr_charge_guest_tab_member_session` sync-secret path, cash/terminal via `settle_bar_guest_tab`; per-club bar_account_tab/bar_cash/bar_card_swipe switches enforced). No new tables/functions.

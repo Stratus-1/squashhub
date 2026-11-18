@@ -29,6 +29,7 @@ type Body = {
   contentType?: string;
   extension?: string;
   path?: string;
+  method?: string;
 };
 
 // EFT top-up proof (mobile): same bucket, path shape and pending row as the
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
   }
 
   // ---------- Member-scoped actions ----------
-  if (!["player_billing_link", "door_ble_config", "player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale", "player_eft_topup_upload_url", "player_eft_topup_confirm"].includes(String(body.action))) {
+  if (!["player_billing_link", "door_ble_config", "player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale", "player_bar_settle_tab", "player_eft_topup_upload_url", "player_eft_topup_confirm"].includes(String(body.action))) {
     return json(400, { error: "Unknown action" });
   }
   if (!isUuid(body.clubId) || !isUuid(body.memberId)) return json(400, { error: "clubId and memberId required" });
@@ -255,7 +256,7 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, transactionId: inserted.id });
   }
 
-  if (["player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale"].includes(String(body.action))) {
+  if (["player_bar_data", "player_bar_order", "player_bar_online_checkout", "player_bar_verify_sale", "player_bar_settle_tab"].includes(String(body.action))) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!email || email.length > 254 || !email.includes("@")) return json(400, { error: "email required" });
     if (!member.user_id) return json(403, { error: "Member has no linked login" });
@@ -264,7 +265,7 @@ Deno.serve(async (req) => {
       return json(403, { error: "Email does not match this member's login" });
     }
     const { data: club } = await db.from("clubs")
-      .select("id, name, subdomain, currency_code, currency_symbol, honesty_bar_enabled, bar_order_process_enabled, bar_account_tab_enabled, bar_pay_online_enabled, bar_card_swipe_enabled, payment_gateway, payment_gateways")
+      .select("id, name, subdomain, currency_code, currency_symbol, honesty_bar_enabled, bar_order_process_enabled, bar_account_tab_enabled, bar_pay_online_enabled, bar_card_swipe_enabled, bar_cash_enabled, payment_gateway, payment_gateways")
       .eq("id", body.clubId).maybeSingle();
     if (!club?.honesty_bar_enabled) return json(403, { error: "The club bar is not enabled" });
 
@@ -370,6 +371,44 @@ Deno.serve(async (req) => {
       const payload = await result.json().catch(() => null);
       if (!result.ok) return json(result.status, { error: payload?.error || "Could not verify bar payment" });
       return json(200, payload);
+    }
+
+    // Settle the member's own open in-app tab through the existing web writers:
+    // member account -> bar_qr_charge_guest_tab_member_session (sync-secret path),
+    // cash / card machine -> settle_bar_guest_tab. Club switches are checked here
+    // and re-enforced inside both RPCs.
+    if (body.action === "player_bar_settle_tab") {
+      const method = typeof body.method === "string" ? body.method.trim().toLowerCase() : "";
+      if (!["member_account", "cash", "terminal"].includes(method)) {
+        return json(400, { error: "method must be member_account, cash or terminal" });
+      }
+      if (!isUuid(body.tabId)) return json(400, { error: "tabId required" });
+      if (method === "member_account" && club.bar_account_tab_enabled === false) {
+        return json(403, { error: "Member account charges are not enabled for this club" });
+      }
+      if (method === "cash" && club.bar_cash_enabled !== true) {
+        return json(403, { error: "Cash payments are not enabled at this club" });
+      }
+      if (method === "terminal" && club.bar_card_swipe_enabled === false) {
+        return json(403, { error: "Card machine payments are not enabled at this club" });
+      }
+      const { data: tab } = await db.from("bar_guest_tabs")
+        .select("id, token, status")
+        .eq("id", body.tabId).eq("club_id", body.clubId)
+        .eq("club_member_id", body.memberId).eq("opened_source", "in_app")
+        .in("status", ["open", "closing"]).maybeSingle();
+      if (!tab) return json(404, { error: "Your open club tab was not found" });
+      if (tab.status !== "open") return json(409, { error: "This tab already has a payment being processed" });
+      const { data: result, error } = method === "member_account"
+        ? await db.rpc("bar_qr_charge_guest_tab_member_session", {
+          _tab_id: tab.id, _token: tab.token, _club_member_id: body.memberId, _sync_secret: secret,
+        })
+        : await db.rpc("settle_bar_guest_tab", { _tab_id: tab.id, _token: tab.token, _method: method });
+      if (error) {
+        const status = error.code === "42501" ? 403 : 400;
+        return json(status, { error: error.message || "Could not settle your club tab" });
+      }
+      return json(200, { ok: true, method, tabId: tab.id, result });
     }
 
     const { data: qr } = await db.from("qr_short_codes").select("code")

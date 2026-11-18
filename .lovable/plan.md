@@ -14,6 +14,7 @@ Squash South Africa                    (national)
 ```
 
 Agreed rules:
+- A junior can belong to two associations at once. For example, a Pretoria junior plays NSA league through his club and also plays junior competitions through his provincial junior association. Nothing has to be chosen or switched: his club membership covers both.
 - Juniors stay in their own clubs. Their age (from the private date of birth) makes them junior. Only the age group is ever shown.
 - Riverside and Lakeside stay under Regional test and are left out.
 - Vaal Triangle stays as it is. Gauteng clubs stay in Gauteng and Free State clubs in the Free State. Gauteng is not in the zone for now.

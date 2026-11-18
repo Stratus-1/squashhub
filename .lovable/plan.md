@@ -24,7 +24,7 @@ Only two associations have anything in that second list today: Northern Squash A
 - Correctional Services and Riverside: kept as they are until you decide.
 
 ## Rollout
-- First, line up the two lists: the 25 Northern Squash Association clubs and 9 Mpumalanga Lowveld clubs are checked against the structure; I'll show you any club where they disagree before switching over (currently Correctional Services and Riverside).
+- First, every association's list is rebuilt from the Super Admin tree, so each association login shows the same clubs as the tree. The only clubs where the two disagree today are Correctional Services (tree: KZN, list: Northern Squash Association) and Riverside (tree: Regional test); I'll confirm those two with you before switching over.
 - Test with Northern Squash Association and Western Province logins on desktop and phone, then publish.
 
 ## Technical details

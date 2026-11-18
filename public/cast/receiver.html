@@ -62,8 +62,8 @@
         const setText = (id, value) => { byId(id).textContent = String(value ?? ""); };
         const display = (raw) => {
           let message;
-          try { message = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return; }
-          if (!message || message.type !== "scoreboard" || !message.scoreboard) return;
+          try { message = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return null; }
+          if (!message || message.type !== "scoreboard" || !message.scoreboard) return null;
           const score = message.scoreboard;
           const a = score.sideA || {};
           const b = score.sideB || {};
@@ -93,10 +93,29 @@
             item.textContent = `G${index + 1}  ${Number(game.a) || 0}–${Number(game.b) || 0}`;
             return item;
           }));
+          return {
+            title: score.title || "Live match",
+            pointsA: Number(a.points) || 0,
+            pointsB: Number(b.points) || 0,
+            gamesA: Number(a.games) || 0,
+            gamesB: Number(b.games) || 0,
+            completedGames: games.length,
+          };
         };
         const start = () => {
           const receiver = cast.framework.CastReceiverContext.getInstance();
-          receiver.addCustomMessageListener(namespace, (event) => display(event.data));
+          receiver.addCustomMessageListener(namespace, (event) => {
+            let message;
+            try { message = typeof event.data === "string" ? JSON.parse(event.data) : event.data; } catch { return; }
+            const rendered = display(message);
+            if (rendered && typeof message?.testId === "string") {
+              receiver.sendCustomMessage(namespace, event.senderId, {
+                type: "scoreboard-rendered",
+                testId: message.testId,
+                rendered,
+              });
+            }
+          });
           receiver.start();
         };
         window.addEventListener("load", () => {

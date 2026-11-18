@@ -22757,7 +22757,12 @@ export type Database = {
         Returns: Json
       }
       bar_qr_charge_guest_tab_member_session: {
-        Args: { _club_member_id: string; _tab_id: string; _token: string }
+        Args: {
+          _club_member_id: string
+          _sync_secret?: string
+          _tab_id: string
+          _token: string
+        }
         Returns: Json
       }
       bar_qr_charge_member: {

@@ -9,7 +9,7 @@ Reference snapshot of how regions, associations, regional leagues and clubs are 
 - Club records (SportyHQ-imported + own): **772**
 - Clubs actively using SquashHub (at least one member with a login): **21**
 - Clubs with no parent association yet: **277**
-- Province known from club address: **553**; from association only: **29**; unknown: **190**
+- Province known from club address: **551**; from association only: **24**; unknown: **189**
 
 ```text
 Squash South Africa (national)
@@ -24,14 +24,14 @@ Club-owned internal leagues (Nelspruit, Riverside, Highveld, Lakeside) sit under
 
 | Province | Clubs | On SquashHub |
 |---|---:|---:|
-| Unknown | 190 | 1 |
-| Gauteng | 148 | 10 |
+| Unknown | 189 | 0 |
+| Gauteng | 149 | 11 |
 | Western Cape | 137 | 3 |
-| KwaZulu-Natal | 95 | 1 |
+| KwaZulu-Natal | 94 | 0 |
 | Eastern Cape | 88 | 0 |
 | Free State | 43 | 0 |
 | Limpopo | 24 | 0 |
-| Mpumalanga | 21 | 5 |
+| Mpumalanga | 22 | 6 |
 | North West | 14 | 0 |
 | Northern Cape | 11 | 0 |
 | Zimbabwe | 1 | 1 |
@@ -51,7 +51,7 @@ Club-owned internal leagues (Nelspruit, Riverside, Highveld, Lakeside) sit under
 | Griqualand West Squash Association | 10 | Northern Cape (10) | 0 |
 | Joburg Squash | 58 | Gauteng (58) | 0 |
 | KZN Schools Squash Association | 19 | KwaZulu-Natal (19) | 0 |
-| KZN Squash Union | 24 | KwaZulu-Natal (24) | 1 |
+| KZN Squash Union | 24 | KwaZulu-Natal (23), Gauteng (1) | 1 |
 | Limpopo Squash Association | 24 | Limpopo (24) | 0 |
 | Lower South Coast Squash Association | 6 | KwaZulu-Natal (6) | 0 |
 | Midlands Squash Union | 18 | KwaZulu-Natal (18) | 0 |
@@ -62,7 +62,7 @@ Club-owned internal leagues (Nelspruit, Riverside, Highveld, Lakeside) sit under
 | North West Squash | 13 | North West (12), Free State (1) | 0 |
 | Northern Natal Squash Association | 4 | KwaZulu-Natal (4) | 0 |
 | Northern Squash Association | 22 | Gauteng (22) | 8 |
-| Regional test | 2 | Unknown (2) | 1 |
+| Regional test | 2 | Unknown (1), Mpumalanga (1) | 1 |
 | South African National Defence Force | 3 | Western Cape (1), North West (1), Gauteng (1) | 0 |
 | Vaal Triangle Squash Association | 7 | Gauteng (6), Free State (1) | 1 |
 | Western Province Junior Squash | 25 | Western Cape (20), Unknown (5) | 0 |
@@ -75,7 +75,7 @@ Clubs that would sort automatically into a northern junior district by province.
 
 ### Limpopo (24 clubs)
 
-| Club | Current association | Source | Members on SquashHub |
+| Club | Current association | Source | Member records |
 |---|---|---|---:|
 | Akademie Reformia | Limpopo Squash Association | address | 0 |
 | Ben Vorster High | Limpopo Squash Association | address | 1 |
@@ -104,22 +104,22 @@ Clubs that would sort automatically into a northern junior district by province.
 
 ### Mpumalanga (21 clubs)
 
-| Club | Current association | Source | Members on SquashHub |
+| Club | Current association | Source | Member records |
 |---|---|---|---:|
 | Delmas Squash Club | Eastern Gauteng Squash Association | address | 0 |
-| ✅ Highveld Squash Club | Mpumalanga Highveld Squash Association | association | 24 |
+| ✅ Highveld Squash Club | Mpumalanga Highveld Squash Association | known club | 24 |
 | Sasol Recreation Club | Mpumalanga Highveld Squash Association | address | 1 |
 | Standerton Country Club | Mpumalanga Highveld Squash Association | address | 0 |
 | ✅ De Kaap Squash Club | Mpumalanga Lowveld Squash Association | association | 10 |
 | Komati Poort Squash Club | Mpumalanga Lowveld Squash Association | address | 0 |
 | Lydenburg Squash Club | Mpumalanga Lowveld Squash Association | address | 0 |
 | Malelane Muurbalklub | Mpumalanga Lowveld Squash Association | address | 0 |
-| ✅ Nelspruit Squash Club | Mpumalanga Lowveld Squash Association | association | 187 |
+| ✅ Nelspruit Squash Club | Mpumalanga Lowveld Squash Association | known club | 187 |
 | Ngodwana Squash Club | Mpumalanga Lowveld Squash Association | association | 0 |
 | Sabie Country Club | Mpumalanga Lowveld Squash Association | address | 0 |
 | Uplands College | Mpumalanga Lowveld Squash Association | address | 3 |
 | ✅ White River Squash Club | Mpumalanga Lowveld Squash Association | association | 12 |
-| ✅ Highveld Squash Club | Mpumalanga West Junior Squash | association | 24 |
+| ✅ Highveld Squash Club | Mpumalanga West Junior Squash | known club | 24 |
 | Anglo Thermal Coal | Mpumalanga West Squash Association | address | 0 |
 | Bella Vista Squash Club | Mpumalanga West Squash Association | address | 0 |
 | High Technical School Middelburg | Mpumalanga West Squash Association | address | 3 |
@@ -127,10 +127,11 @@ Clubs that would sort automatically into a northern junior district by province.
 | Middelburg Country Club | Mpumalanga West Squash Association | address | 3 |
 | Reyno Ridge Club | Mpumalanga West Squash Association | address | 0 |
 | Witbank Club | Mpumalanga West Squash Association | address | 1 |
+| ✅ Riverside Squash Club | Regional test | known club | 130 |
 
 ### North West (14 clubs)
 
-| Club | Current association | Source | Members on SquashHub |
+| Club | Current association | Source | Member records |
 |---|---|---|---:|
 | M L Fick Primary School | (No parent association) | address | 0 |
 | Coligny Squash Club | North West Squash | address | 0 |
@@ -146,6 +147,15 @@ Clubs that would sort automatically into a northern junior district by province.
 | Vaal Reef Squash Club | North West Squash | address | 0 |
 | Ventersdorp Squash Club | North West Squash | address | 0 |
 | Potchefstroom Defence Squash Club | South African National Defence Force | address | 0 |
+
+## Data issues to fix before sorting
+
+- **Glenwood** (Pretoria club playing in the Northern Squash Association league) is linked under **KZN Squash Union** — looks like a mix-up with Glenwood in Durban.
+- **Highveld Squash Club** (Witbank) is linked under two associations: Mpumalanga Highveld and Mpumalanga West Junior Squash.
+- **Riverside Squash Club** (Nelspruit) and **Lakeside Squash Club** sit under the **Regional test** association, and their addresses name no province; Riverside is placed in Mpumalanga from what we know, Lakeside is unknown.
+- **Delmas Squash Club** is in Mpumalanga by address but sits under Eastern Gauteng.
+- **M L Fick Primary School** (North West) has no parent association; **Potchefstroom Defence Squash Club** sits under the Defence Force.
+- 189 clubs have no address or association, so their province is unknown (mostly outside the north).
 
 ## Regional and internal leagues on SquashHub
 
@@ -191,7 +201,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 
 ## Full club list per association
 
-✅ = club on SquashHub (at least one member with a login). Members = club member records on SquashHub.
+✅ = club on SquashHub (at least one member with a login). Members = member records on SquashHub (imported or registered; most have no login yet).
 
 ### Boland Squash (38)
 
@@ -521,7 +531,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | Durban Country Club Squash | KwaZulu-Natal | 5 |
 | Durban High Schools | KwaZulu-Natal | 0 |
 | Durban University of Technology | KwaZulu-Natal | 0 |
-| ✅ Glenwood | KwaZulu-Natal *(association)* | 122 |
+| ✅ Glenwood | Gauteng *(known club)* | 122 |
 | Kloof Country Club | KwaZulu-Natal | 65 |
 | Ladysmith Country Club | KwaZulu-Natal | 1 |
 | Mount Edgecombe Country Club | KwaZulu-Natal | 7 |
@@ -600,7 +610,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 
 | Club | Province | Members |
 |---|---|---:|
-| ✅ Highveld Squash Club | Mpumalanga *(association)* | 24 |
+| ✅ Highveld Squash Club | Mpumalanga *(known club)* | 24 |
 | Sasol Recreation Club | Mpumalanga | 1 |
 | Standerton Country Club | Mpumalanga | 0 |
 
@@ -612,7 +622,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | Komati Poort Squash Club | Mpumalanga | 0 |
 | Lydenburg Squash Club | Mpumalanga | 0 |
 | Malelane Muurbalklub | Mpumalanga | 0 |
-| ✅ Nelspruit Squash Club | Mpumalanga *(association)* | 187 |
+| ✅ Nelspruit Squash Club | Mpumalanga *(known club)* | 187 |
 | Ngodwana Squash Club | Mpumalanga *(association)* | 0 |
 | Sabie Country Club | Mpumalanga | 0 |
 | Uplands College | Mpumalanga | 3 |
@@ -622,7 +632,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 
 | Club | Province | Members |
 |---|---|---:|
-| ✅ Highveld Squash Club | Mpumalanga *(association)* | 24 |
+| ✅ Highveld Squash Club | Mpumalanga *(known club)* | 24 |
 
 ### Mpumalanga West Squash Association (7)
 
@@ -670,7 +680,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | ✅ Adelaar | Gauteng *(association)* | 74 |
 | Afrikaanse Hoër Seunskool | Gauteng | 3 |
 | ✅ CBCTUT | Gauteng *(association)* | 70 |
-| ✅ CSIR | Gauteng *(association)* | 120 |
+| ✅ CSIR | Gauteng *(known club)* | 120 |
 | ✅ Centurion | Gauteng *(association)* | 112 |
 | Harlequins Defence | Gauteng *(association)* | 57 |
 | Hoërskool Eldoraigne | Gauteng | 2 |
@@ -695,7 +705,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | Club | Province | Members |
 |---|---|---:|
 | Lakeside Squash Club | Unknown *(unknown)* | 4 |
-| ✅ Riverside Squash Club | Unknown *(unknown)* | 130 |
+| ✅ Riverside Squash Club | Mpumalanga *(known club)* | 130 |
 
 ### South African National Defence Force (3)
 
@@ -762,7 +772,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | Claremont Primary School | Western Cape | 0 |
 | Defence Squash Club Wynberg | Western Cape | 1 |
 | Distell Squash Club | Western Cape | 0 |
-| ✅ Durbanville Squash Club | Western Cape | 332 |
+| ✅ Durbanville Squash Club | Western Cape *(known club)* | 332 |
 | Elgin Squash Club (WP) | Western Cape | 1 |
 | Evertsdal Squash | Western Cape | 104 |
 | Fish Hoek Squash Club | Western Cape | 77 |
@@ -1046,7 +1056,7 @@ League bodies that clubs run fixtures under in the app. One row per league; club
 | St Dunstan's College Benoni | Gauteng | 1 |
 | St Dunstans High | Unknown *(unknown)* | 1 |
 | St George's College | Unknown *(unknown)* | 0 |
-| ✅ St John's | Zimbabwe | 59 |
+| ✅ St John's | Zimbabwe *(known club)* | 59 |
 | St Marks | Unknown *(unknown)* | 0 |
 | St Martin's | Unknown *(unknown)* | 0 |
 | St Mary's DSG (Pretoria) Squash | Gauteng | 14 |

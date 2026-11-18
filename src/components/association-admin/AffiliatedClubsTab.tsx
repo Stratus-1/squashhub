@@ -39,6 +39,7 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
   const [newClubName, setNewClubName] = useState("");
   const [newClubContact, setNewClubContact] = useState("");
   const [newClubEmail, setNewClubEmail] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   // Affiliated clubs for this association
   const { data: affiliations = [], isLoading } = useQuery({
@@ -137,8 +138,9 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
 
   const removeAffiliation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await fromExt("association_affiliated_clubs").delete().eq("id", id);
+      const { data, error } = await fromExt("association_affiliated_clubs").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("This club could not be removed. Set it to Inactive instead.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["association-affiliations", clubId] });
@@ -146,6 +148,8 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
     },
     onError: (e: any) => toast.error(e.message || "Failed to remove"),
   });
+
+  const inactiveCount = affiliations.filter(a => a.status === "inactive").length;
 
   const statusVariant = (s: string): "default" | "secondary" | "outline" | "destructive" => {
     if (s === "active") return "default";
@@ -208,9 +212,9 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {affiliations.map(a => (
-              <div key={a.id} className="flex items-center justify-between gap-3 p-3 rounded-md border bg-card">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+            {[...affiliations.filter(a => a.status !== "inactive"), ...(showInactive ? affiliations.filter(a => a.status === "inactive") : [])].map(a => (
+              <div key={a.id} className={`flex flex-wrap items-center justify-end gap-2 sm:gap-3 p-3 rounded-md border bg-card ${a.status === "inactive" ? "opacity-60" : ""}`}>
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-0">
                   {a.clubs?.logo_url ? (
                     <img src={a.clubs.logo_url} alt={a.clubs.name} className="w-10 h-10 rounded object-contain border" />
                   ) : (
@@ -248,6 +252,11 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
                 </Button>
               </div>
             ))}
+            {inactiveCount > 0 && (
+              <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={() => setShowInactive(v => !v)}>
+                {showInactive ? "Hide" : "Show"} inactive clubs ({inactiveCount})
+              </Button>
+            )}
           </div>
         )}
       </Card>

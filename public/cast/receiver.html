@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080a0d" />
+    <title>SquashHub Live Score</title>
+    <script>
+      window.__squashHubCastApiReady = false;
+      window.__onGCastApiAvailable = (available) => {
+        window.__squashHubCastApiReady = available === true;
+        if (available && window.__startSquashHubReceiver) window.__startSquashHubReceiver();
+      };
+    </script>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, Roboto, Arial, sans-serif; background: #080a0d; color: #f7f8fa; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% -15%, #202a31 0%, #11161b 45%, #080a0d 78%); }
+      main { min-height: 100vh; display: flex; flex-direction: column; padding: clamp(24px, 4vw, 64px); }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 24px; border-bottom: 1px solid #34404a; padding-bottom: 20px; }
+      .brand { color: #a6f239; font-weight: 900; font-size: clamp(16px, 2vw, 26px); letter-spacing: .11em; }
+      .meta { color: #b9c2cc; font-size: clamp(14px, 1.8vw, 22px); text-align: right; }
+      #title { color: white; font-weight: 850; font-size: clamp(28px, 4vw, 58px); margin: clamp(26px, 4vh, 54px) 0 8px; }
+      #format { color: #a6f239; font-size: clamp(14px, 1.7vw, 20px); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: clamp(18px, 3vw, 44px); flex: 1; margin: clamp(24px, 4vh, 52px) 0; }
+      .team { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: clamp(22px, 4vw, 52px); border: 1px solid #4b5661; border-radius: 28px; background: linear-gradient(145deg, rgba(39,46,54,.92), rgba(22,26,31,.96)); }
+      .team.serving { border-color: #a6f239; box-shadow: inset 0 0 0 1px #a6f23944, 0 0 34px #a6f2391c; }
+      .team-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .side-name { font-size: clamp(20px, 2.5vw, 34px); font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+      .side-subtitle { color: #aeb7c0; font-size: clamp(13px, 1.5vw, 18px); margin-top: 9px; }
+      .serve { color: #a6f239; font-size: clamp(12px, 1.2vw, 16px); font-weight: 900; letter-spacing: .1em; }
+      .score { font-variant-numeric: tabular-nums; text-align: center; color: white; font-size: clamp(90px, 18vw, 240px); font-weight: 900; line-height: .95; align-self: center; }
+      .games { color: #a6f239; text-align: center; font-size: clamp(18px, 3vw, 38px); font-weight: 900; margin-top: 16px; }
+      .completed { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px; border: 1px solid #34404a; border-radius: 18px; background: #14191e; }
+      .completed-label { color: #aeb7c0; margin-right: 8px; font-weight: 700; }
+      .game { background: #252c33; border: 1px solid #46515c; border-radius: 999px; padding: 10px 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      #waiting { margin: auto; color: #c6ced7; text-align: center; font-size: clamp(22px, 3vw, 38px); }
+      #waiting strong { display: block; color: #a6f239; margin-bottom: 14px; }
+      #status { color: #a6f239; font-weight: 900; letter-spacing: .12em; }
+      @media (max-aspect-ratio: 1/1) { .teams { grid-template-columns: 1fr; } .score { font-size: clamp(72px, 18vw, 150px); } .team { min-height: 28vh; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><div class="brand">SQUASH HUB</div><div class="meta"><span id="court">Waiting for match</span><br /><span id="status">READY TO CONNECT</span></div></header>
+      <div id="waiting"><strong>SquashHub Live Score</strong>Start casting from the Player app to show the live match.</div>
+      <section id="board" hidden>
+        <div id="format"></div>
+        <h1 id="title"></h1>
+        <div class="teams">
+          <article id="team-a" class="team">
+            <div class="team-head"><div><div id="name-a" class="side-name"></div><div id="subtitle-a" class="side-subtitle"></div></div><span id="serve-a" class="serve"></span></div>
+            <div><div id="points-a" class="score">0</div><div id="games-a" class="games">0 GAMES</div></div>
+          </article>
+          <div class="score">:</div>
+          <article id="team-b" class="team">
+            <div class="team-head"><div><div id="name-b" class="side-name"></div><div id="subtitle-b" class="side-subtitle"></div></div><span id="serve-b" class="serve"></span></div>
+            <div><div id="points-b" class="score">0</div><div id="games-b" class="games">0 GAMES</div></div>
+          </article>
+        </div>
+        <div id="completed" class="completed" hidden><span class="completed-label">COMPLETED GAMES</span><div id="game-list" style="display:contents"></div></div>
+      </section>
+    </main>
+    <script>
+      (() => {
+        const namespace = "urn:x-cast:com.stratus.squashhub.scoreboard";
+        const byId = (id) => document.getElementById(id);
+        const setText = (id, value) => { byId(id).textContent = String(value ?? ""); };
+        const display = (raw) => {
+          let message;
+          try { message = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return; }
+          if (!message || message.type !== "scoreboard" || !message.scoreboard) return;
+          const score = message.scoreboard;
+          const a = score.sideA || {};
+          const b = score.sideB || {};
+          byId("waiting").hidden = true;
+          byId("board").hidden = false;
+          setText("title", score.title || "Live match");
+          setText("format", score.scoringFormat || "LIVE SCORE");
+          setText("court", score.courtLabel || "Squash court");
+          setText("status", score.matchOver ? "MATCH COMPLETE" : "LIVE SCORE");
+          setText("name-a", a.label || "Player A");
+          setText("name-b", b.label || "Player B");
+          setText("subtitle-a", a.subtitle || "");
+          setText("subtitle-b", b.subtitle || "");
+          setText("points-a", Number(a.points) || 0);
+          setText("points-b", Number(b.points) || 0);
+          setText("games-a", `${Number(a.games) || 0} GAMES`);
+          setText("games-b", `${Number(b.games) || 0} GAMES`);
+          byId("team-a").classList.toggle("serving", a.serving === true);
+          byId("team-b").classList.toggle("serving", b.serving === true);
+          setText("serve-a", a.serving ? "SERVING" : "");
+          setText("serve-b", b.serving ? "SERVING" : "");
+          const games = Array.isArray(score.completedGames) ? score.completedGames : [];
+          byId("completed").hidden = games.length === 0;
+          byId("game-list").replaceChildren(...games.map((game, index) => {
+            const item = document.createElement("span");
+            item.className = "game";
+            item.textContent = `G${index + 1}  ${Number(game.a) || 0}–${Number(game.b) || 0}`;
+            return item;
+          }));
+        };
+        const start = () => {
+          const receiver = cast.framework.CastReceiverContext.getInstance();
+          receiver.addCustomMessageListener(namespace, (event) => display(event.data));
+          receiver.start();
+        };
+        window.__startSquashHubReceiver = start;
+        window.addEventListener("load", () => {
+          if (window.__squashHubCastApiReady && window.cast && cast.framework) start();
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -112,3 +112,10 @@
 
 ## Member statement completeness (18 Nov 2026)
 - [x] Admin Member Statement now lists card/cash bar purchases and their payments exactly as My Account does (shared helper); open-tab unpaid items stay in a separate note.
+
+## Northern District Juniors (18 Nov 2026)
+- [x] Reference document of current SSA regions/associations/leagues/clubs (docs/SQUASH_SA_STRUCTURE.md)
+- [ ] Junior district structure proposal — awaiting Willem's answers
+- [ ] Auto-sort clubs into junior districts by province — awaiting approval
+- [ ] Re-scrape SportyHQ juniors + clubs — awaiting approval (background)
+- [ ] Capture date of birth from SportyHQ for scraped players — awaiting decision on where to store it (ID field vs private birth date)

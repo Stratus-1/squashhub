@@ -4723,3 +4723,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-18 — One-tap family request approval page (migration 0436)
 - Request: approve family package requests straight from the email / in-app notice instead of navigating Club Admin.
 - Fix: `/family-request/:id` (`src/pages/FamilyRequestReview.tsx`, sign-in required) reads via approver-only `family_request_review_context` and calls the unchanged `family_review_addition`. Officials' emails ("Approve or decline") and admin notices now link there; `_family_request_email_officials(id, _resend)` can resend reminders for still-pending requests. Gordons Bay (Paul Keanly → Oran) reminder resent.
+
+### 2026-11-18 — Tournament card double-counted doubles entries
+- Symptom: Uitsig No Frills Doubles card read "6 unique players · 8 category entries · 8 paid · 0 outstanding" while Registrations showed 4 registered/paid.
+- Cause: `countEntries` counted every row × (player + partner), so pairs who both registered counted four entries, and unpaid partners (Jason Maher, Andre de Beer) inherited the entrant's "paid".
+- Fix: `src/lib/tournaments/entry-counts.ts` counts per person per category; a partner with their own live entry is counted from it, otherwise from their own registration's fee status. Now 6 players · 6 entries · 4 paid · 2 outstanding. Test: `src/test/entry-counts-payment.test.ts`.

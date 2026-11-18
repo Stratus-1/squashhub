@@ -28,3 +28,24 @@ describe("entry counts are independent of payment", () => {
     expect(c).toMatchObject({ totalEntries: 1, paidEntries: 0, outstandingEntries: 0 });
   });
 });
+
+describe("doubles entry counts (Uitsig No Frills shape)", () => {
+  const paid = (id: string, partner: string, divs: number[]) =>
+    ({ club_member_id: id, partner_member_id: partner, division_choices: divs, status: "paid", registration_status: "registered", fee_status: "paid" });
+  const invitedDue = (id: string) =>
+    ({ club_member_id: id, partner_member_id: null, division_choices: [], status: "pending_payment", registration_status: "invited", fee_status: "due" });
+  const rows = [
+    paid("bernice", "neill", [3]), paid("neill", "bernice", [3]),
+    paid("duane", "jason", [1]), invitedDue("jason"),
+    paid("john", "andre", [1]), invitedDue("andre"),
+    invitedDue("someone"),
+  ];
+  it("both partners registered = 2 category entries, not 4", () => {
+    const c = countEntries([paid("bernice", "neill", [3]), paid("neill", "bernice", [3])]);
+    expect(c).toMatchObject({ uniquePlayers: 2, totalEntries: 2, paidEntries: 2, outstandingEntries: 0 });
+  });
+  it("partner who hasn't paid yet is outstanding, never paid by the entrant's fee", () => {
+    const c = countEntries(rows);
+    expect(c).toMatchObject({ uniquePlayers: 6, totalEntries: 6, paidEntries: 4, outstandingEntries: 2, invitedPlayers: 1 });
+  });
+});

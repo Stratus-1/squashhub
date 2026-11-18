@@ -26,7 +26,29 @@ Agreed rules:
 - Create Northerns Junior Squash (zone) under Squash SA.
 - Create Mpumalanga Junior Squash, Limpopo Junior Squash, North West Junior Squash and Vaal Triangle Junior Squash under it.
 - Link each regional association to its province, using the matching associations from the structure document (shown to you for approval before saving).
-- A small Super Admin screen to add or remove associations and single clubs, with a preview of the clubs and junior counts before saving.
+- A Super Admin structure screen (see below) for adding, moving or removing associations and clubs, with a preview of the clubs and junior counts before saving.
+
+### How the structure screen looks
+```text
+[ Senior structure | Junior structure ]     search: ______
+
+ Squash South Africa                      | Clubs with no association (277)
+  └ Northerns Junior Squash (zone)        |  [Sasol]  [School X]  [Club Y] ...
+     ├ Mpumalanga Junior Squash           |  filter by province
+     │   ├ Mpumalanga West Junior Squash  |
+     │   │   └ Highveld Squash Club ...   |
+     │   └ + Sasol (single club)          |
+     ├ Limpopo Junior Squash              |
+     ├ North West Junior Squash           |
+     └ Vaal Triangle Junior Squash        |
+```
+- Two tabs on one screen: the senior structure (as it is today) and the junior structure. Same tree layout, so no separate duplicate screen.
+- Every level opens and closes and shows its club count and junior count.
+- On the right is a list of clubs with no association, which you can filter by province.
+- You can drag a club or a whole association onto any association, in either tab. A phone-friendly "Move to..." button does the same.
+- Every move shows a confirmation before it saves: "Move Glenwood from KZN Squash Union to Northern Squash Association?"
+- Moves in the junior tab never change the senior structure, and the other way round.
+- Every move is recorded, so it can be traced and undone.
 
 ## Step 2: Admins
 - Each provincial association and the zone get their own admins.

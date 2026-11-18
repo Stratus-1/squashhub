@@ -5,14 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#080a0d" />
     <title>SquashHub Live Score</title>
-    <script>
-      window.__squashHubCastApiReady = false;
-      window.__onGCastApiAvailable = (available) => {
-        window.__squashHubCastApiReady = available === true;
-        if (available && window.__startSquashHubReceiver) window.__startSquashHubReceiver();
-      };
-    </script>
-    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
     <style>
       :root { color-scheme: dark; font-family: Inter, Roboto, Arial, sans-serif; background: #080a0d; color: #f7f8fa; }
       * { box-sizing: border-box; }
@@ -106,9 +99,8 @@
           receiver.addCustomMessageListener(namespace, (event) => display(event.data));
           receiver.start();
         };
-        window.__startSquashHubReceiver = start;
         window.addEventListener("load", () => {
-          if (window.__squashHubCastApiReady && window.cast && cast.framework) start();
+          if (window.cast && cast.framework) start();
         });
       })();
     </script>

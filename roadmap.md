@@ -132,4 +132,4 @@
 - [ ] Junior province-per-season choice: stored, but not yet enforced on tournament entry (needs a first provincial junior tournament to wire against).
 - [ ] Name provincial/zone admins (waits on Willem).
 
-- [ ] Northern Squash Association affiliated-clubs list holds 22 out-of-area clubs (Western Cape, Joburg, etc.) added 29 Aug; clean up awaiting Willem's OK
+- [x] NSA affiliated-clubs list: 20 out-of-area clubs set inactive (Riverside kept; Correctional Services kept pending confirmation)

@@ -119,3 +119,6 @@
 - [ ] Auto-sort clubs into junior districts by province — awaiting approval
 - [ ] Re-scrape SportyHQ juniors + clubs — awaiting approval (background)
 - [ ] Capture date of birth from SportyHQ (private birth date + first 6 ID digits) — blocked: SportyHQ shows no birth dates publicly and now blocks the automatic reader
+
+## Nelspruit (18 Nov 2026)
+- [ ] Wendy Truter R94 open tab (17 Nov 20:57) still listed after Rachel approved her proof of payment — investigate

@@ -104,3 +104,8 @@
 ## Uitsig Yoco difference (17 Nov 2026)
 - [x] Trace Carel Ras: R221 app payment (21:42) cleared his older account balance; R311 tab closed as "card machine" at 20:45 by Jayden with no Yoco swipe.
 - [x] Carel's R311 tab moved onto his member account (approved 18 Nov); books corrected, card fee reversed, Marizel's cash-up card expected R6,626 → R6,315 with audit.
+- [x] Removed the double-entered R58 Jayden walk-in tab (20:35, 17 Nov; approved 18 Nov): 3 waters + 1 Buddy back in stock, R58 card + R1.53 fee entries removed, cash-up card expected R6,315 → R6,257, audited.
+
+## League-night slowness (18 Nov 2026)
+- [x] Published the scorecard load fix and the "Taking longer than usual / Tap to retry" start screen (live bundle verified).
+- [ ] Decide whether to upgrade the database from Mini — waiting on Willem.

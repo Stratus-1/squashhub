@@ -24,12 +24,14 @@ export type InviteAudienceMode = "all_club" | "leagues" | "individuals" | "clubs
  */
 export function eligibilityScopeLabel(scope: string | null | undefined): string {
   if (scope === "association") return "Regional league";
+  if (scope === "provincial") return "Provincial association";
+  if (scope === "zone") return "Zone";
   if (scope === "open") return "National & international";
   return "Club members";
 }
 
 export function audienceModesForScope(scope: string | null | undefined): InviteAudienceMode[] {
-  if (scope === "association" || scope === "open") return ["all_club", "clubs", "leagues", "individuals"];
+  if (scope === "association" || scope === "provincial" || scope === "zone" || scope === "open") return ["all_club", "clubs", "leagues", "individuals"];
   return ["all_club", "leagues", "individuals"];
 }
 

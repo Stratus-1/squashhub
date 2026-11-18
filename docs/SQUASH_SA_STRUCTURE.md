@@ -1,4 +1,4 @@
-# Squash South Africa structure on SquashHub (as at 2026-11-18)
+# Squash South Africa structure on SquashHub (updated 2026-11-18, junior structure added)
 
 Reference snapshot of how regions, associations, regional leagues and clubs are set up today. Read-only document: generated from the live data; nothing was changed to produce it.
 
@@ -19,6 +19,30 @@ Squash South Africa (national)
  └── Unaffiliated Clubs
 Club-owned internal leagues (Nelspruit, Riverside, Highveld, Lakeside) sit under their own club, not under SSA.
 ```
+
+## Junior structure (new, 18 Nov 2026)
+
+Juniors stay in their own clubs; age (under 19, from the private date of birth or SA ID) makes them junior. Clubs keep their senior association; the junior structure only groups them. A junior can therefore belong to a senior association (e.g. NSA league) and a junior provincial association at the same time.
+
+```text
+Squash South Africa                       (national)
+ └── Northerns Junior Squash              (zone) — 64 clubs
+      ├── Mpumalanga Junior Squash        (provincial) — 20 clubs
+      │    ├── Mpumalanga Highveld Squash Association (incl. Sasol Recreation Club)
+      │    ├── Mpumalanga Lowveld Squash Association (East)
+      │    ├── Mpumalanga West Squash Association
+      │    ├── Mpumalanga West Junior Squash (Highveld Squash Club)
+      │    └── Sasol (single club; senior association still to be decided)
+      ├── Limpopo Junior Squash           — Limpopo Squash Association (24 clubs)
+      ├── North West Junior Squash        — North West Squash (13 clubs)
+      └── Vaal Triangle Junior Squash     — Vaal Triangle Squash Association (7 clubs)
+```
+
+- Northerns Junior Squash is a different body from the Northern Squash Association (NSA, Pretoria only).
+- Vaal Triangle's senior association is unchanged (Gauteng clubs stay Gauteng, Free State stays Free State); the rest of Gauteng is not in the zone for now.
+- Riverside and Lakeside are test clubs and stay under Regional test.
+- Tournaments can now limit entry to "Clubs in the owning provincial association" or "Clubs in the owning zone", together with the existing age limits.
+- Changes are made in Super Admin → National Federation → Junior structure (drag or "Move to…", confirmation, every move audited).
 
 ## Clubs per province
 
@@ -150,8 +174,8 @@ Clubs that would sort automatically into a northern junior district by province.
 
 ## Data issues to fix before sorting
 
-- **Glenwood** (Pretoria club playing in the Northern Squash Association league) is linked under **KZN Squash Union** — looks like a mix-up with Glenwood in Durban.
-- **Highveld Squash Club** (Witbank) is linked under two associations: Mpumalanga Highveld and Mpumalanga West Junior Squash.
+- ~~**Glenwood** linked under KZN Squash Union~~ — fixed 18 Nov 2026: moved to the Northern Squash Association (audited).
+- **Highveld Squash Club** (Witbank) is linked to Mpumalanga Highveld (senior) and Mpumalanga West Junior Squash (junior) — confirmed correct.
 - **Riverside Squash Club** (Nelspruit) and **Lakeside Squash Club** sit under the **Regional test** association, and their addresses name no province; Riverside is placed in Mpumalanga from what we know, Lakeside is unknown.
 - **Delmas Squash Club** is in Mpumalanga by address but sits under Eastern Gauteng.
 - **M L Fick Primary School** (North West) has no parent association; **Potchefstroom Defence Squash Club** sits under the Defence Force.

@@ -10888,6 +10888,58 @@ export type Database = {
         }
         Relationships: []
       }
+      junior_province_choices: {
+        Row: {
+          chosen_by: string | null
+          created_at: string
+          id: string
+          person_id: string
+          provincial_org_id: string
+          season_year: number
+          updated_at: string
+        }
+        Insert: {
+          chosen_by?: string | null
+          created_at?: string
+          id?: string
+          person_id: string
+          provincial_org_id: string
+          season_year: number
+          updated_at?: string
+        }
+        Update: {
+          chosen_by?: string | null
+          created_at?: string
+          id?: string
+          person_id?: string
+          provincial_org_id?: string
+          season_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_province_choices_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_province_choices_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_province_choices_provincial_org_id_fkey"
+            columns: ["provincial_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ladder_adjustment_log: {
         Row: {
           applied_at: string
@@ -15149,6 +15201,48 @@ export type Database = {
           viewer?: string | null
         }
         Relationships: []
+      }
+      org_groupings: {
+        Row: {
+          child_org_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          mode: string
+          parent_org_id: string
+        }
+        Insert: {
+          child_org_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          parent_org_id: string
+        }
+        Update: {
+          child_org_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mode?: string
+          parent_org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_groupings_child_org_id_fkey"
+            columns: ["child_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_groupings_parent_org_id_fkey"
+            columns: ["parent_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organisation_admins: {
         Row: {
@@ -25148,6 +25242,25 @@ export type Database = {
         }[]
       }
       org_federation_root: { Args: { _org_id: string }; Returns: string }
+      org_grouping_club_ids: {
+        Args: { _org_id: string }
+        Returns: {
+          club_id: string
+        }[]
+      }
+      org_grouping_descendants: {
+        Args: { _org_id: string }
+        Returns: {
+          org_id: string
+        }[]
+      }
+      org_junior_counts: {
+        Args: never
+        Returns: {
+          club_id: string
+          juniors: number
+        }[]
+      }
       org_owning_association: { Args: { _org_id: string }; Returns: string }
       people_duplicate_candidates: {
         Args: { _limit?: number }
@@ -26386,7 +26499,7 @@ export type Database = {
         | "tournament_director"
         | "league_admin"
         | "referee"
-      org_kind: "national" | "association" | "club"
+      org_kind: "national" | "association" | "club" | "zone" | "provincial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -26580,7 +26693,7 @@ export const Constants = {
         "league_admin",
         "referee",
       ],
-      org_kind: ["national", "association", "club"],
+      org_kind: ["national", "association", "club", "zone", "provincial"],
     },
   },
 } as const

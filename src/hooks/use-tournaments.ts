@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
  * in their own tables and are edited through the hooks below.
  */
 
-export type OwnerLevel = "club" | "association" | "national";
+export type OwnerLevel = "club" | "association" | "provincial" | "zone" | "national";
 
 export interface TournamentSummary {
   id: string;
@@ -34,7 +34,7 @@ export interface TournamentGovernance {
   eligibility_min_age: number | null;
   eligibility_max_age: number | null;
   eligibility_requires_licence: boolean;
-  eligibility_scope: "club" | "association" | "open";
+  eligibility_scope: "club" | "association" | "provincial" | "zone" | "open";
   eligibility_notes: string | null;
   registration_required: boolean;
   registration_mode: "open" | "invite";
@@ -334,7 +334,7 @@ export function useSanctioningAuthorities() {
     queryFn: async () => {
       const { data, error } = await fromExt("organisations")
         .select("id, name, kind, abbreviation")
-        .in("kind", ["national", "association"])
+        .in("kind", ["national", "zone", "provincial", "association"])
         .eq("active", true)
         .order("kind")
         .order("name");

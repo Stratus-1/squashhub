@@ -4,6 +4,7 @@ import {
   resolveEligibleClubs,
   type OrgRow,
   type RelRow,
+  type GroupingRow,
 } from "@/lib/tournaments/eligibility";
 
 /** Federation hierarchy rows needed to resolve eligibility client-side. */
@@ -12,15 +13,17 @@ export function useOrgHierarchyLite() {
     queryKey: ["org-hierarchy-lite"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const [orgsRes, relsRes, clubsRes] = await Promise.all([
+      const [orgsRes, relsRes, clubsRes, grpRes] = await Promise.all([
         supabase.from("organisations").select("id, kind, name, club_id, is_internal_league, league_association_id"),
         supabase.from("organisation_relationships").select("parent_org_id, child_org_id, effective_to"),
         supabase.from("clubs").select("id, name"),
+        supabase.from("org_groupings").select("parent_org_id, child_org_id, mode"),
       ]);
       const orgs = ((orgsRes.data || []) as any[]).map((o) => ({ ...o, kind: String(o.kind) })) as OrgRow[];
       const rels = (relsRes.data || []) as unknown as RelRow[];
       const clubs = (clubsRes.data || []) as { id: string; name: string }[];
-      return { orgs, rels, clubs, clubNames: new Map(clubs.map((c) => [c.id, c.name])) };
+      const groupings = (grpRes.data || []) as unknown as GroupingRow[];
+      return { orgs, rels, groupings, clubs, clubNames: new Map(clubs.map((c) => [c.id, c.name])) };
     },
   });
 }
@@ -58,6 +61,7 @@ export function useTournamentEligibility(args: {
           rels: hierarchy.rels,
           clubNames: hierarchy.clubNames,
           allClubIds: hierarchy.clubs.map((c) => c.id),
+          groupings: hierarchy.groupings,
         })
       : null;
 
@@ -85,7 +89,7 @@ export function useTournamentEligibility(args: {
   const where =
     scope === "club"
       ? resolved.scopeOrgName || "this club"
-      : scope === "association"
+      : scope === "association" || scope === "provincial" || scope === "zone"
         ? `${clubIds.length} club${clubIds.length === 1 ? "" : "s"} in ${resolved.scopeOrgName || "this association"}`
         : `${clubIds.length} club${clubIds.length === 1 ? "" : "s"} across ${resolved.scopeOrgName || "the federation"}, including unaffiliated clubs`;
 

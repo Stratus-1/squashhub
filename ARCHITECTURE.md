@@ -96,7 +96,7 @@ UI gates improve navigation but do not replace RLS or server-side authorization.
 
 ### Organizations and people
 
-`organisations`, `clubs`, `people`, private people data, affiliations, profiles, club members, association memberships, organization relationships, roles, permissions, and audit events establish identity and organizational structure.
+`organisations`, `clubs`, `people`, private people data, affiliations, profiles, club members, association memberships, organization relationships, roles, permissions, and audit events establish identity and organizational structure. A separate grouping layer (`org_groupings`: zone → provincial association → whole associations or single clubs, with per-club exclusions) builds the junior structure (e.g. Northerns Junior Squash) without touching senior affiliation; zone/provincial admins see clubs inside their grouping through `can_view_org`, never club-private data. Every structure move in either layer writes an `audit_events` row.
 
 ### Bookings and facilities
 

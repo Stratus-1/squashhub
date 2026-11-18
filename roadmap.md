@@ -128,3 +128,6 @@
 - [x] Check Paul Keanly (Gordons Bay) family request: who was notified, approval status
 - [x] Email all office bearers/admins when a family addition needs approval
 - [x] Answer: approve from email link / in-app notification (one-tap approve)
+- [x] Junior structure: Northerns Junior Squash zone + 4 provincial junior associations, Junior structure screen, Provincial/Zone entry choices, Glenwood moved to NSA, structure doc/PDF updated.
+- [ ] Junior province-per-season choice: stored, but not yet enforced on tournament entry (needs a first provincial junior tournament to wire against).
+- [ ] Name provincial/zone admins (waits on Willem).

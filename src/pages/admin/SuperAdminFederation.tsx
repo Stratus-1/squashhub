@@ -14,6 +14,7 @@ import {
 } from "@/hooks/use-federation";
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import { FederationTreeTab } from "@/components/admin/FederationTreeTab";
+import { FederationJuniorTab } from "@/components/admin/FederationJuniorTab";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
 import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
 import { ProvisionalRankingSettingsCard } from "@/components/rankings/ProvisionalRankingSettingsCard";
@@ -164,7 +165,14 @@ export default function SuperAdminFederation() {
   const [filter, setFilter] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [view, setView] = useState<"chart" | "list">("chart");
-  const reparent = useReparentOrg();
+  const reparentMut = useReparentOrg();
+  const reparent = {
+    mutate: ({ childId, parentId }: { childId: string; parentId: string }) => {
+      const child = hierarchy?.byId.get(childId)?.name ?? "this organisation";
+      const parent = hierarchy?.byId.get(parentId)?.name ?? "the new parent";
+      if (window.confirm(`Move ${child} to ${parent}? The change is recorded.`)) reparentMut.mutate({ childId, parentId });
+    },
+  };
   const createAssociation = useCreateAssociation();
 
   const orgName = useMemo(() => {
@@ -227,7 +235,8 @@ export default function SuperAdminFederation() {
 
       <Tabs defaultValue="hierarchy">
         <TabsList className="bg-white/[0.06]">
-          <TabsTrigger value="hierarchy">Hierarchy</TabsTrigger>
+          <TabsTrigger value="hierarchy">Senior structure</TabsTrigger>
+          <TabsTrigger value="junior">Junior structure</TabsTrigger>
           <TabsTrigger value="tree">Federation tree</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="competitions">Competitions</TabsTrigger>
@@ -241,6 +250,10 @@ export default function SuperAdminFederation() {
           ) : (
             <p className="text-xs text-white/50">No national organisation found in the hierarchy yet.</p>
           )}
+        </TabsContent>
+
+        <TabsContent value="junior" className="mt-3">
+          <FederationJuniorTab />
         </TabsContent>
 
         <TabsContent value="tree" className="mt-3">

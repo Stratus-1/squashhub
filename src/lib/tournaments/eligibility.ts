@@ -20,7 +20,7 @@
  * Entry & fees / Players steps.
  */
 
-export type EligibilityScope = "club" | "association" | "open";
+export type EligibilityScope = "club" | "association" | "provincial" | "zone" | "open";
 
 export interface OrgRow {
   id: string;
@@ -115,6 +115,50 @@ export function federationRoot(orgId: string | null, orgs: OrgRow[], rels: RelRo
   return orgs.find((o) => o.kind === "national") || null;
 }
 
+/** Junior/provincial grouping link (separate from the senior affiliation tree). */
+export interface GroupingRow {
+  parent_org_id: string;
+  child_org_id: string;
+  mode: "include" | "exclude" | string;
+}
+
+/**
+ * Organisation ids inside a zone/provincial grouping: grouping levels, the full affiliation tree of each
+ * included association, included clubs, minus clubs excluded at any grouping level.
+ * Mirrors DB `org_grouping_descendants`.
+ */
+export function groupingOrgIds(rootId: string, orgs: Pick<OrgRow, "id" | "kind">[], rels: RelRow[], groupings: GroupingRow[]): Set<string> {
+  const byId = new Map(orgs.map((o) => [o.id, o]));
+  const g = new Set<string>([rootId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const r of groupings) {
+      if (r.mode === "include" && g.has(r.parent_org_id) && !g.has(r.child_org_id)) {
+        g.add(r.child_org_id);
+        added = true;
+      }
+    }
+  }
+  const levels = [...g].filter((id) => ["zone", "provincial"].includes(byId.get(id)?.kind ?? ""));
+  const excluded = new Set(groupings.filter((r) => r.mode === "exclude" && levels.includes(r.parent_org_id)).map((r) => r.child_org_id));
+  const out = new Set<string>(levels);
+  for (const id of g) {
+    const k = byId.get(id)?.kind;
+    if (k !== "association" && k !== "club") continue;
+    orgDescendants(id, rels).forEach((d) => { if (!excluded.has(d)) out.add(d); });
+  }
+  return out;
+}
+
+/** Club ids (tenant clubs) inside a grouping. */
+export function groupingClubIds(rootId: string, orgs: OrgRow[], rels: RelRow[], groupings: GroupingRow[]): string[] {
+  const within = groupingOrgIds(rootId, orgs, rels, groupings);
+  const ids = new Set<string>();
+  orgs.forEach((o) => { if (o.kind === "club" && o.club_id && within.has(o.id)) ids.add(o.club_id); });
+  return [...ids];
+}
+
 export interface ResolvedEligibility {
   clubIds: string[];
   /** Body the scope refers to — the club, the association or the federation. */
@@ -133,8 +177,9 @@ export function resolveEligibleClubs(args: {
   rels: RelRow[];
   clubNames?: Map<string, string>;
   allClubIds?: string[];
+  groupings?: GroupingRow[];
 }): ResolvedEligibility {
-  const { clubId, orgs, rels, clubNames, allClubIds } = args;
+  const { clubId, orgs, rels, clubNames, allClubIds, groupings = [] } = args;
   const scope = (args.scope || "club") as EligibilityScope;
   const byId = new Map(orgs.map((o) => [o.id, o]));
 
@@ -147,6 +192,19 @@ export function resolveEligibleClubs(args: {
     const ownerClub = ownerOrgId ? byId.get(ownerOrgId)?.club_id ?? null : null;
     const ids = Array.from(new Set([clubId, ownerClub].filter(Boolean) as string[]));
     return { clubIds: ids, scopeOrgName: (clubId && clubNames?.get(clubId)) || null };
+  }
+
+  if (scope === "provincial" || scope === "zone") {
+    // Grouping scopes resolve only through an owning zone/provincial body; otherwise fail closed to the host club.
+    const owner = ownerOrgId ? byId.get(ownerOrgId) : undefined;
+    let grp: OrgRow | undefined;
+    if (owner && owner.kind === scope) grp = owner;
+    else if (owner?.kind === "provincial" && scope === "zone") {
+      const parent = groupings.find((r) => r.mode === "include" && r.child_org_id === owner.id && byId.get(r.parent_org_id)?.kind === "zone");
+      grp = parent ? byId.get(parent.parent_org_id) : undefined;
+    }
+    if (!grp) return { clubIds: clubId ? [clubId] : [], scopeOrgName: (clubId && clubNames?.get(clubId)) || null };
+    return { clubIds: groupingClubIds(grp.id, orgs, rels, groupings), scopeOrgName: grp.name };
   }
 
   if (scope === "association") {
@@ -189,5 +247,7 @@ export function resolveEligibleClubs(args: {
 export function eligibilityLabel(scope: string): string {
   if (scope === "club") return "Members of the owning club";
   if (scope === "association") return "Members of the owning association";
+  if (scope === "provincial") return "Clubs in the owning provincial association";
+  if (scope === "zone") return "Clubs in the owning zone";
   return "Open to everyone";
 }

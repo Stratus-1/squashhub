@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type OrgKind = "national" | "association" | "club";
+export type OrgKind = "national" | "association" | "club" | "zone" | "provincial";
 
 export interface Organisation {
   id: string;
@@ -39,7 +39,8 @@ export function useFederationHierarchy() {
       if (orgsRes.error) throw orgsRes.error;
       if (relsRes.error) throw relsRes.error;
 
-      const orgs = (orgsRes.data || []) as unknown as Organisation[];
+      // Zone/provincial grouping bodies live in the junior structure, never in the senior affiliation tree.
+      const orgs = ((orgsRes.data || []) as unknown as Organisation[]).filter((o) => o.kind !== "zone" && o.kind !== "provincial");
       const rels = ((relsRes.data || []) as unknown as OrgRelationship[]).filter(
         (r) => !r.effective_to || new Date(r.effective_to) >= new Date(),
       );

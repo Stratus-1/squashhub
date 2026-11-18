@@ -246,7 +246,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     <SelectItem value="none">Unassigned</SelectItem>
                     {ownableOrgs.map((o) => (
                       <SelectItem key={o.id} value={o.id}>
-                        {o.name} · {o.kind === "national" ? "Federation" : o.kind === "association" ? "Association" : "Club"}
+                        {o.name} · {o.kind === "national" ? "Federation" : o.kind === "association" ? "Association" : o.kind === "provincial" ? "Provincial association" : o.kind === "zone" ? "Zone" : "Club"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -300,7 +300,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                       <SelectItem value="none">None</SelectItem>
                       {authorities.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.name} · {a.kind === "national" ? "National" : "Association"}
+                          {a.name} · {a.kind === "national" ? "National" : a.kind === "zone" ? "Zone" : a.kind === "provincial" ? "Provincial association" : "Association"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -337,6 +337,8 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                     <SelectContent>
                       <SelectItem value="club">Members of the owning club</SelectItem>
                       <SelectItem value="association">Members of the owning association</SelectItem>
+                      <SelectItem value="provincial">Clubs in the owning provincial association</SelectItem>
+                      <SelectItem value="zone">Clubs in the owning zone</SelectItem>
                       <SelectItem value="open">Open to everyone</SelectItem>
                     </SelectContent>
                   </Select>

@@ -40,12 +40,12 @@ Agreed rules:
 ## Step 4: Updated structure document and PDF
 - Add the new levels to the Squash SA structure document and make a new PDF.
 
-## Data points to review (no changes without your yes)
+## Data corrections (approved)
 - **Sasol Recreation Club** stays under Mpumalanga Highveld, so it is in Mpumalanga Junior Squash.
 - **Sasolburg Squash Club** stays under Vaal Triangle (Free State), as you said.
 - **"Sasol"** (5 members, no association yet) gets added to Mpumalanga Junior Squash as a single club. Its regional association is still to be decided.
-- **Highveld Squash Club** is linked to both Mpumalanga Highveld and "Mpumalanga West Junior Squash". I suggest that Mpumalanga West Junior Squash becomes part of Mpumalanga Junior Squash.
-- **Glenwood (Pretoria)** is wrongly linked to KZN Squash Union.
+- **Highveld Squash Club** keeps both links: Mpumalanga Highveld (senior) and Mpumalanga West Junior Squash (junior). Mpumalanga West Junior Squash goes under Mpumalanga Junior Squash.
+- **Glenwood (Pretoria)** moves from KZN Squash Union to the Northern Squash Association. This is the first step, with an audit record and no other changes.
 
 ## Not included
 - No fees or licence billing for juniors.

@@ -132,4 +132,4 @@
 - [ ] Junior province-per-season choice: stored, but not yet enforced on tournament entry (needs a first provincial junior tournament to wire against).
 - [ ] Name provincial/zone admins (waits on Willem).
 
-- [x] NSA affiliated-clubs list: 20 out-of-area clubs set inactive (Riverside kept; Correctional Services kept pending confirmation)
+- [x] NSA affiliated-clubs list: 20 out-of-area clubs removed (Riverside kept; Correctional Services kept pending confirmation)

@@ -17,6 +17,7 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { directBarStatementLines } from "@/lib/finance/direct-bar-lines";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
@@ -306,40 +307,10 @@ export default function MyAccount() {
 
 
 
-    // Directly-paid bar purchases (card / cash / online): each item is a debit,
-    // and each actual payment (one per tab / payment reference) is ONE credit
-    // for the combined total, so they net to zero.
-    const methodName: Record<string, string> = { card: "Card", cash: "Cash", online: "Online", eft: "EFT" };
-    const payments = new Map<string, { method: string; total: number; last: string; count: number }>();
-    for (const p of (directPurchases || []) as any[]) {
-      const total = Number(p.total || 0);
-      // Unpaid open-tab items are not account transactions — they show under bar purchases only.
-      if (total <= 0 || p.method === "unpaid") continue;
-      lines.push({
-        id: `barpaid-${p.id}`,
-        date: p.created_at,
-        description: `Bar purchase: ${p.quantity}× ${p.item_name}`,
-        debit: total,
-        credit: 0,
-        status: "confirmed",
-      });
-      const key = `${p.method}|${p.payment_group ?? p.id}`;
-      const g = payments.get(key) ?? { method: p.method, total: 0, last: p.created_at, count: 0 };
-      g.total += total;
-      g.count += 1;
-      if (new Date(p.created_at) > new Date(g.last)) g.last = p.created_at;
-      payments.set(key, g);
-    }
-    for (const [key, g] of payments) {
-      lines.push({
-        id: `barpay-${key}`,
-        date: new Date(new Date(g.last).getTime() + 1).toISOString(),
-        description: `${methodName[g.method] ?? g.method} payment (${g.count} item${g.count === 1 ? "" : "s"})`,
-        debit: 0,
-        credit: Math.round(g.total * 100) / 100,
-        status: "confirmed",
-        paidLabel: `paid by ${g.method}`,
-      });
+    // Directly-paid bar purchases (card / cash / online) — shared with the admin
+    // Member Statement so both show exactly the same lines.
+    for (const l of directBarStatementLines(directPurchases as any)) {
+      lines.push({ ...l, status: "confirmed" });
     }
 
     // Sort oldest first so the running balance accumulates correctly

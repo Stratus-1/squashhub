@@ -1,5 +1,6 @@
 import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { MemberBarPurchases } from "./MemberBarPurchases";
+import { directBarStatementLines } from "@/lib/finance/direct-bar-lines";
 import { Club, useClubMembers } from "@/hooks/use-club";
 import { SetupSteps, SetupStepNav, type SetupStep } from "@/components/club-admin/setup/SetupSteps";
 
@@ -205,6 +206,20 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
+  // Card / cash / online bar purchases for the selected member — the same lines
+  // the member sees on My Account, so both statements always agree.
+  const { data: statementDirectBar } = useQuery({
+    queryKey: ["statement-direct-bar", clubId, statementMemberId],
+    enabled: statementOpen && !!clubId && !!statementMemberId,
+    queryFn: async () => {
+      const { data, error } = await (sbClient as any).rpc("my_bar_purchases", {
+        _club_id: clubId,
+        _club_member_id: statementMemberId,
+      });
+      if (error) throw error;
+      return directBarStatementLines((data as any[]) ?? []);
+    },
+  });
   const [financeParams, setFinanceParams] = useSearchParams();
   const statementFromLinkRef = useRef(false);
   useEffect(() => {
@@ -1723,11 +1738,24 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       .map(([ref]) => ref)
                   );
 
-                  const memberEntries = controlAccountEntries
-                    // Hide internal wallet↔debtors settlement pairs on the unified statement;
-                    // they move value between buckets but do not change the member's net balance.
-                    .filter((e: any) => !internalSettlementRefs.has(String(e.journal_ref || e.id)))
-                    .slice()
+                  const directBarEntries = (statementDirectBar || []).map((l) => ({
+                    id: l.id,
+                    created_at: l.date,
+                    description: l.description,
+                    debit: l.debit,
+                    credit: l.credit,
+                    paidLabel: l.paidLabel,
+                    directBar: true,
+                  }));
+                  const memberEntries = [
+                    ...controlAccountEntries
+                      // Hide internal wallet↔debtors settlement pairs on the unified statement;
+                      // they move value between buckets but do not change the member's net balance.
+                      .filter((e: any) => !internalSettlementRefs.has(String(e.journal_ref || e.id))),
+                    // Bar items paid on the spot: item debits plus one matching payment credit,
+                    // netting to zero — shown exactly as on the member's My Account statement.
+                    ...directBarEntries,
+                  ]
                     .sort((a: any, b: any) => {
                       const t = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                       if (t !== 0) return t;
@@ -1791,11 +1819,11 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                                   <span className="text-[11px] text-muted-foreground tabular-nums">
                                     {format(new Date(entry.created_at), "dd MMM yy")}
                                   </span>
-                                  <RowActionMenu entry={entry} />
+                                  {!entry.directBar && <RowActionMenu entry={entry} />}
                                 </div>
                                 <p className="font-medium break-words">{entry.description}</p>
-                                <Badge variant="outline" className="text-[10px] max-w-full whitespace-normal text-left">
-                                  {getLabel(entry.account)}
+                                <Badge variant="outline" className={cn("text-[10px] max-w-full whitespace-normal text-left", entry.paidLabel && "text-green-600 border-green-600/40")}>
+                                  {entry.directBar ? (entry.paidLabel || "Bar purchase") : getLabel(entry.account)}
                                 </Badge>
                                 <div className="grid grid-cols-2 gap-2 border-t pt-2">
                                   <div className="min-w-0">
@@ -1827,8 +1855,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                                   {format(new Date(entry.created_at), "dd MMM yy")}
                                 </span>
                                 <p className="truncate font-medium">{entry.description}</p>
-                                <Badge variant="outline" className="text-[10px] w-fit">
-                                  {getLabel(entry.account)}
+                                <Badge variant="outline" className={cn("text-[10px] w-fit", entry.paidLabel && "text-green-600 border-green-600/40")}>
+                                  {entry.directBar ? (entry.paidLabel || "Bar purchase") : getLabel(entry.account)}
                                 </Badge>
                                 <span className={cn("text-right tabular-nums", Number(entry.memberDebit) > 0 && "text-destructive font-medium")}>
                                   {Number(entry.memberDebit) > 0 ? money(Number(entry.memberDebit)) : ""}
@@ -1841,7 +1869,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                                 )}>
                                   {money(entry.running)}
                                 </span>
-                                <RowActionMenu entry={entry} />
+                                {entry.directBar ? <span /> : <RowActionMenu entry={entry} />}
                               </div>
                             ))}
                           </div>

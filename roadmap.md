@@ -109,3 +109,6 @@
 ## League-night slowness (18 Nov 2026)
 - [x] Published the scorecard load fix and the "Taking longer than usual / Tap to retry" start screen (live bundle verified).
 - [ ] Decide whether to upgrade the database from Mini — waiting on Willem.
+
+## Member statement completeness (18 Nov 2026)
+- [x] Admin Member Statement now lists card/cash bar purchases and their payments exactly as My Account does (shared helper); open-tab unpaid items stay in a separate note.

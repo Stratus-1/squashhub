@@ -103,4 +103,4 @@
 
 ## Uitsig Yoco difference (17 Nov 2026)
 - [x] Trace Carel Ras: R221 app payment (21:42) cleared his older account balance; R311 tab closed as "card machine" at 20:45 by Jayden with no Yoco swipe.
-- [ ] Carel's R311 tab: move onto his member account (and correct Marizel's cash-up card figure)? Waiting for Willem's go-ahead.
+- [x] Carel's R311 tab moved onto his member account (approved 18 Nov); books corrected, card fee reversed, Marizel's cash-up card expected R6,626 → R6,315 with audit.

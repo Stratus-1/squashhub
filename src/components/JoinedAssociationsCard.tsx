@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,14 +33,12 @@ export function JoinedAssociationsCard({ clubId, className }: JoinedAssociations
     queryKey: ["affiliated-associations-status", clubId],
     enabled: !!clubId,
     queryFn: async () => {
-      const { data, error } = await fromExt("association_affiliated_clubs")
-        .select("association:association_tenant_id(id, name, subdomain, tenant_type)")
-        .eq("club_id", clubId!)
-        .eq("status", "active");
+      // Associations come from the national structure (single source of truth).
+      const { data, error } = await (supabase as any).rpc("club_structure_associations", { _club_id: clubId! });
       if (error) throw error;
       return ((data || []) as any[])
-        .map((r) => r.association)
-        .filter((a) => a && a.tenant_type === "association");
+        .filter((a) => a.tenant_id)
+        .map((a) => ({ id: a.tenant_id, name: a.name, subdomain: a.subdomain, tenant_type: "association" }));
     },
   });
 

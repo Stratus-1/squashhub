@@ -2478,14 +2478,12 @@ function AssociationDialog({ clubId, open, onOpenChange, defaultMode = "select" 
   const { data: affiliatedAssociations = [] } = useQuery({
     queryKey: ["affiliated-association-options", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("association_affiliated_clubs")
-        .select("association:association_tenant_id(id, name, subdomain, tenant_type)")
-        .eq("club_id", clubId)
-        .eq("status", "active");
+      // Associations come from the national structure (single source of truth).
+      const { data, error } = await (supabase as any).rpc("club_structure_associations", { _club_id: clubId });
       if (error) throw error;
       return ((data || []) as any[])
-        .map((row) => row.association)
-        .filter((association) => association && association.tenant_type === "association");
+        .filter((a) => a.tenant_id && !a.junior)
+        .map((a) => ({ id: a.tenant_id, name: a.name, subdomain: a.subdomain, tenant_type: "association" }));
     },
   });
 

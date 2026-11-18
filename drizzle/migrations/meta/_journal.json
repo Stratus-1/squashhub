@@ -3081,6 +3081,20 @@
       "when": 1795019199082,
       "tag": "0439_org_junior_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 440,
+      "version": "7",
+      "when": 1795021312557,
+      "tag": "0440_federation_one_club_structure",
+      "breakpoints": true
+    },
+    {
+      "idx": 441,
+      "version": "7",
+      "when": 1795021378520,
+      "tag": "0441_federation_move_club_actor_name_fix",
+      "breakpoints": true
     }
   ]
 }

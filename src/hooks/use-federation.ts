@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { moveClubToAssociation } from "@/lib/federation/move-club";
 import { toast } from "sonner";
 
 export type OrgKind = "national" | "association" | "club" | "zone" | "provincial";
@@ -202,11 +203,24 @@ export function useReparentOrg() {
   return useMutation({
     mutationFn: async ({ childId, parentId }: { childId: string; parentId: string }) => {
       if (childId === parentId) throw new Error("An organisation cannot be its own parent.");
-      const { error: delErr } = await supabase
+      const { data: child } = await supabase.from("organisations").select("kind, club_id").eq("id", childId).maybeSingle();
+      if ((child as any)?.kind === "club" && (child as any)?.club_id) {
+        // Clubs move through the single writer: records, notifies, keeps junior links.
+        await moveClubToAssociation((child as any).club_id, parentId);
+        return;
+      }
+      // Associations: replace only senior (non-junior) parents.
+      const { data: rels } = await supabase
         .from("organisation_relationships")
-        .delete()
+        .select("id, parent:parent_org_id(kind, metadata)")
         .eq("child_org_id", childId);
-      if (delErr) throw delErr;
+      const seniorIds = ((rels || []) as any[])
+        .filter((r) => ["national", "association"].includes(r.parent?.kind) && r.parent?.metadata?.junior !== "true")
+        .map((r) => r.id);
+      if (seniorIds.length) {
+        const { error: delErr } = await supabase.from("organisation_relationships").delete().in("id", seniorIds);
+        if (delErr) throw delErr;
+      }
       const { error } = await supabase.from("organisation_relationships").insert({
         parent_org_id: parentId,
         child_org_id: childId,
@@ -218,6 +232,8 @@ export function useReparentOrg() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["federation-hierarchy"] });
       qc.invalidateQueries({ queryKey: ["federation-stats"] });
+      qc.invalidateQueries({ queryKey: ["association-structure-clubs"] });
+      qc.invalidateQueries({ queryKey: ["federation-structure-lite"] });
       toast.success("Hierarchy updated");
     },
     onError: (e: any) => toast.error(e.message || "Could not move organisation"),

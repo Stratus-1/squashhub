@@ -71,15 +71,12 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
   const { data: clubs = [] } = useQuery({
     queryKey: ["assoc-affiliated-clubs", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("association_affiliated_clubs")
-        .select("club_id, clubs:club_id(id, name)")
-        .eq("association_tenant_id", clubId)
-        .eq("status", "active");
+      // Clubs come from the national structure (single source of truth).
+      const { data, error } = await (supabase as any).rpc("association_structure_clubs", { _tenant_id: clubId });
       if (error) throw error;
-      return (data || [])
-        .map((r: any) => r.clubs)
-        .filter(Boolean) as { id: string; name: string }[];
+      return ((data || []) as any[])
+        .map((r: any) => ({ id: r.club_id, name: r.name }))
+        .sort((a, b) => a.name.localeCompare(b.name)) as { id: string; name: string }[];
     },
   });
 

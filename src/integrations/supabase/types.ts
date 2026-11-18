@@ -22201,6 +22201,16 @@ export type Database = {
         }
         Returns: number
       }
+      association_structure_clubs: {
+        Args: { _tenant_id: string }
+        Returns: {
+          club_id: string
+          logo_url: string
+          name: string
+          subdomain: string
+          tenant_type: string
+        }[]
+      }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       award_ranking_points_for_result: {
         Args: {
@@ -23644,6 +23654,16 @@ export type Database = {
         }[]
       }
       club_squashhub_lighting: { Args: { _club_id: string }; Returns: boolean }
+      club_structure_associations: {
+        Args: { _club_id: string }
+        Returns: {
+          junior: boolean
+          name: string
+          org_id: string
+          subdomain: string
+          tenant_id: string
+        }[]
+      }
       club_submit_association_roster: {
         Args: {
           _association_id: string
@@ -23821,6 +23841,20 @@ export type Database = {
         Args: { _approve: boolean; _family_member_id: string }
         Returns: boolean
       }
+      federation_can_manage_org: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      federation_is_senior_parent: {
+        Args: { _org_id: string }
+        Returns: boolean
+      }
+      federation_move_club: {
+        Args: { _club_id: string; _new_parent_org: string }
+        Returns: Json
+      }
+      federation_org_tenant: { Args: { _org_id: string }; Returns: string }
+      federation_tenant_org: { Args: { _tenant_id: string }; Returns: string }
       finance_decide_member_transaction: {
         Args: { _approve: boolean; _reason?: string; _tx_id: string }
         Returns: Json

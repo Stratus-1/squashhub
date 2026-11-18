@@ -298,13 +298,11 @@ export default function ClubAuth() {
     queryKey: ["association-picker-clubs", club?.id],
     enabled: isAssociation && !!club?.id,
     queryFn: async () => {
-      const { data, error } = await fromExt("association_affiliated_clubs")
-        .select("status, clubs:club_id(id, name, subdomain, tenant_type)")
-        .eq("association_tenant_id", club!.id)
-        .eq("status", "active");
+      // Clubs come from the national structure (single source of truth).
+      const { data, error } = await (supabase as any).rpc("association_structure_clubs", { _tenant_id: club!.id });
       if (error) throw error;
       const list = (data || [])
-        .map((r: any) => r.clubs)
+        .map((r: any) => ({ id: r.club_id, name: r.name, subdomain: r.subdomain, tenant_type: r.tenant_type }))
         .filter((c: any) => c && c.tenant_type !== "association")
         .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
       return list as Array<{ id: string; name: string; subdomain: string | null }>;

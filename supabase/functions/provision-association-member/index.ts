@@ -117,6 +117,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (aff) {
         validatedHomeClubId = targetHomeClubId;
+      } else {
+        // Club membership of an association comes from the national structure.
+        const { data: structureClubs } = await supabaseAdmin.rpc("association_structure_clubs", { _tenant_id: assoc.id });
+        if ((structureClubs || []).some((c: any) => c.club_id === targetHomeClubId)) {
+          validatedHomeClubId = targetHomeClubId;
+        }
       }
     }
 

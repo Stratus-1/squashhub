@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { associationOrgForTenant } from "@/lib/tournaments/eligibility";
 
 export interface AssociationTenantContext {
@@ -35,19 +36,16 @@ export function useAssociationTenant(clubId: string | null | undefined): Associa
       if (!club || (club as any).tenant_type !== "association") return EMPTY;
 
       const [affRes, laRes] = await Promise.all([
-        fromExt("association_affiliated_clubs")
-          .select("club_id, status, clubs:club_id(id, name)")
-          .eq("association_tenant_id", clubId as string),
+        (supabase as any).rpc("association_structure_clubs", { _tenant_id: clubId as string }),
         fromExt("league_associations")
           .select("id")
           .eq("tenant_association_id", clubId as string),
       ]);
 
       const clubs = new Map<string, string>();
+      // Clubs come from the national structure (single source of truth).
       ((affRes.data || []) as any[]).forEach((row) => {
-        if (row.status && row.status !== "active") return;
-        const c = row.clubs;
-        if (c?.id) clubs.set(c.id, c.name || "Club");
+        if (row?.club_id && row.tenant_type !== "association") clubs.set(row.club_id, row.name || "Club");
       });
 
       if (laRes.error) throw laRes.error;

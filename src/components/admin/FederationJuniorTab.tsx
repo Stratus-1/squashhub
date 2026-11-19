@@ -91,20 +91,43 @@ export function FederationJuniorTab() {
   const name = (id: string) => m.byId.get(id)?.name ?? "—";
   const parentOf = (childId: string) => data.groupings.find((g) => g.child_org_id === childId && g.mode === "include" && m.byId.get(g.parent_org_id)?.kind === "provincial");
 
-  const moveInto = (childId: string, provincialId: string) => {
+  /**
+   * Move an association or club into a provincial association. `fromId` is set when a single club
+   * is taken out of an association grouped under another provincial: the club is then grouped
+   * directly under the target and left out of the old provincial (its senior association never changes).
+   */
+  const moveInto = (childId: string, provincialId: string, fromId?: string) => {
     const existing = parentOf(childId);
     if (existing?.parent_org_id === provincialId) return;
+    const leftOut = data.groupings.find((g) => g.parent_org_id === provincialId && g.child_org_id === childId && g.mode === "exclude");
+    if (!existing && !leftOut && fromId === provincialId) return;
     const child = m.byId.get(childId);
-    const title = existing
-      ? `Move ${child?.name} from ${name(existing.parent_org_id)} to ${name(provincialId)}?`
+    const from = existing?.parent_org_id ?? fromId;
+    const title = from
+      ? `Move ${child?.name} from ${name(from)} to ${name(provincialId)}?`
       : `Add ${child?.name} to ${name(provincialId)}?`;
     confirm(title, async () => {
+      if (leftOut) {
+        // Back into the provincial its association belongs to: lift the "left out" marker.
+        const { error } = await db.from("org_groupings").delete().eq("id", leftOut.id);
+        if (error) throw error;
+        if (existing) {
+          const { error: e2 } = await db.from("org_groupings").delete().eq("id", existing.id);
+          if (e2) throw e2;
+        }
+        return;
+      }
       if (existing) {
         const { error } = await db.from("org_groupings").update({ parent_org_id: provincialId }).eq("id", existing.id);
         if (error) throw error;
-      } else {
-        const { error } = await db.from("org_groupings").insert({ parent_org_id: provincialId, child_org_id: childId, mode: "include" });
-        if (error) throw error;
+        return;
+      }
+      const { error } = await db.from("org_groupings").insert({ parent_org_id: provincialId, child_org_id: childId, mode: "include" });
+      if (error) throw error;
+      if (fromId && fromId !== provincialId
+        && !data.groupings.some((g) => g.parent_org_id === fromId && g.child_org_id === childId && g.mode === "exclude")) {
+        const { error: e2 } = await db.from("org_groupings").insert({ parent_org_id: fromId, child_org_id: childId, mode: "exclude" });
+        if (e2) throw e2;
       }
     });
   };
@@ -140,18 +163,24 @@ export function FederationJuniorTab() {
     onDragOver: (e: React.DragEvent) => { if (dragId) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } },
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
-      const id = e.dataTransfer.getData("text/plain") || dragId;
+      const raw = e.dataTransfer.getData("text/plain") || dragId;
       setDragId(null);
-      if (id) moveInto(id, provincialId);
+      if (!raw) return;
+      const [id, from] = raw.split("|");
+      moveInto(id, provincialId, from || undefined);
     },
   });
-  const dragProps = (id: string) => ({
+  const dragProps = (id: string, fromId?: string) => ({
     draggable: true,
-    onDragStart: (e: React.DragEvent) => { setDragId(id); e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; },
+    onDragStart: (e: React.DragEvent) => {
+      e.stopPropagation();
+      const payload = fromId ? `${id}|${fromId}` : id;
+      setDragId(payload); e.dataTransfer.setData("text/plain", payload); e.dataTransfer.effectAllowed = "move";
+    },
     onDragEnd: () => setDragId(null),
   });
-  const MoveTo = ({ id, current }: { id: string; current?: string }) => (
-    <Select value="" onValueChange={(v) => moveInto(id, v)}>
+  const MoveTo = ({ id, current, fromId }: { id: string; current?: string; fromId?: string }) => (
+    <Select value="" onValueChange={(v) => moveInto(id, v, fromId)}>
       <SelectTrigger className="h-6 w-[110px] text-[11px] bg-transparent border-white/15 text-white/70"><SelectValue placeholder="Move to…" /></SelectTrigger>
       <SelectContent>
         {m.provincials.filter((p) => p.id !== current).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -179,7 +208,7 @@ export function FederationJuniorTab() {
           <p className="text-[11px] text-white/45">
             Zones and provincial associations group existing associations and clubs for junior competitions. Clubs keep
             their senior association — nothing here changes the senior structure. Drag a club or association onto a
-            provincial association, or use "Move to…".
+            provincial association, or use "Move to…". Open an association to drag one of its clubs on its own.
           </p>
         </CardHeader>
         <CardContent className="space-y-1">
@@ -223,11 +252,13 @@ export function FederationJuniorTab() {
                                   <div {...dragProps(c.id)} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1 px-2 rounded-lg hover:bg-white/[0.05] cursor-grab">
                                     <GripVertical className="w-3 h-3 text-white/25" />
                                     {isAssoc ? (
-                                      <button type="button" onClick={() => toggle(g.id)} aria-label="Show clubs">
-                                        {cOpen ? <ChevronDown className="w-3.5 h-3.5 text-white/50" /> : <ChevronRight className="w-3.5 h-3.5 text-white/50" />}
+                                      <button type="button" onClick={() => toggle(g.id)} aria-expanded={cOpen}
+                                        aria-label={`${cOpen ? "Hide" : "Show"} clubs in ${c.name}`} className="-m-1 rounded p-1 hover:bg-white/10">
+                                        {cOpen ? <ChevronDown className="w-4 h-4 text-white/60" /> : <ChevronRight className="w-4 h-4 text-white/60" />}
                                       </button>
-                                    ) : <span className="w-3.5" />}
-                                    <span className="text-[13px] text-white/85 truncate min-w-[65%] sm:min-w-0 flex-1">{c.name}</span>
+                                    ) : <span className="w-4" />}
+                                    <span className={`text-[13px] text-white/85 truncate min-w-[65%] sm:min-w-0 flex-1 ${isAssoc ? "cursor-pointer" : ""}`}
+                                      onClick={isAssoc ? () => toggle(g.id) : undefined}>{c.name}</span>
                                     <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-white/20 text-white/55">{isAssoc ? "Whole association" : "Single club"}</Badge>
                                     <span className="ml-auto flex items-center gap-1 shrink-0">
                                       {isAssoc && <span className="text-[11px] text-white/45">{clubs.length} club{clubs.length === 1 ? "" : "s"}</span>}
@@ -242,10 +273,14 @@ export function FederationJuniorTab() {
                                       {clubs.map((cl) => {
                                         const ex = excluded.find((e) => e.child_org_id === cl.id);
                                         return (
-                                          <div key={cl.id} className={`flex items-center gap-2 pl-2 py-0.5 text-[12px] ${ex ? "text-white/35 line-through" : "text-white/70"}`}>
-                                            <span className="truncate min-w-0 flex-1">{cl.name}</span>
+                                          <div key={cl.id} {...(ex ? {} : dragProps(cl.id, p.id))}
+                                            className={`flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 pl-2 py-0.5 text-[12px] rounded-lg ${ex ? "text-white/35" : "text-white/70 cursor-grab hover:bg-white/[0.05]"}`}>
+                                            {ex ? <span className="w-3" /> : <GripVertical className="w-3 h-3 shrink-0 text-white/25" aria-label={`Drag ${cl.name}`} />}
+                                            <span className={`truncate min-w-[70%] sm:min-w-0 flex-1 ${ex ? "line-through" : ""}`}>{cl.name}</span>
+                                            {ex && <span className="text-[11px] text-white/40 whitespace-nowrap">{parentOf(cl.id) ? `moved to ${name(parentOf(cl.id)!.parent_org_id)}` : "left out"}</span>}
                                             <span className="text-[11px] text-white/40 whitespace-nowrap">{(cl.club_id && data.juniors.get(cl.club_id)) || 0} juniors</span>
-                                            <Button size="sm" variant="ghost" className="shrink-0 h-6 px-1.5 text-[11px] text-white/55" onClick={() => toggleExclude(p.id, cl.id, ex)}>
+                                            {!ex && <MoveTo id={cl.id} current={p.id} fromId={p.id} />}
+                                            <Button size="sm" variant="ghost" className="shrink-0 h-6 px-1.5 text-[11px] text-white/55" onClick={() => (ex ? moveInto(cl.id, p.id) : toggleExclude(p.id, cl.id))}>
                                               {ex ? <><Eye className="w-3 h-3 mr-1" />Include</> : <><EyeOff className="w-3 h-3 mr-1" />Leave out</>}
                                             </Button>
                                           </div>

@@ -146,7 +146,8 @@ export function groupingOrgIds(rootId: string, orgs: Pick<OrgRow, "id" | "kind">
   for (const id of g) {
     const k = byId.get(id)?.kind;
     if (k !== "association" && k !== "club") continue;
-    orgDescendants(id, rels).forEach((d) => { if (!excluded.has(d)) out.add(d); });
+    // A directly grouped club wins over an exclude (club moved on its own to another provincial).
+    orgDescendants(id, rels).forEach((d) => { if (d === id || !excluded.has(d)) out.add(d); });
   }
   return out;
 }

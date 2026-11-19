@@ -42,6 +42,17 @@ describe("junior provincial groupings", () => {
       .toEqual(["c-highveld", "c-secunda"]);
   });
 
+  it("a club dragged out of its association to another province counts only in the new province, and still in the zone", () => {
+    const g: GroupingRow[] = [...groupings,
+      { parent_org_id: "mjs", child_org_id: "secunda", mode: "exclude" },
+      { parent_org_id: "ljs", child_org_id: "secunda", mode: "include" }];
+    expect(groupingClubIds("mjs", orgs, rels, g)).not.toContain("c-secunda");
+    expect(groupingClubIds("ljs", orgs, rels, g)).toContain("c-secunda");
+    expect(groupingClubIds("njs", orgs, rels, g)).toContain("c-secunda");
+    // senior association still holds the club
+    expect(resolveEligibleClubs({ scope: "association", clubId: null, ownerOrgId: "mhv", orgs, rels, groupings: g }).clubIds).toContain("c-secunda");
+  });
+
   it("a club can be in a senior association and a junior province at the same time", () => {
     expect(resolveEligibleClubs({ scope: "association", clubId: null, ownerOrgId: "mhv", orgs, rels, groupings }).clubIds).toContain("c-highveld");
     expect(resolveEligibleClubs({ scope: "provincial", clubId: null, ownerOrgId: "mjs", orgs, rels, groupings }).clubIds).toContain("c-highveld");

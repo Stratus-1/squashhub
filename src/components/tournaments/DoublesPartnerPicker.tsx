@@ -405,7 +405,7 @@ function DivisionPartner({
       // Tell both players on exactly the channels enabled for this tournament.
       if (res?.id && (job.kind === "propose" || job.kind === "external" || job.kind === "accept")) {
         try {
-          await notifyDoublesPair(String(res.id), clubId ?? null);
+          await notifyDoublesPair(String(res.id), clubId ?? null, auth);
         } catch {
           /* notification failure must never block the pairing itself */
         }

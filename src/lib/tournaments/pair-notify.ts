@@ -31,8 +31,14 @@ export function pairNotifySummary(r: PairNotifyResult): string {
 export async function notifyDoublesPair(
   pairId: string,
   clubId?: string | null,
+  auth: { token?: string | null; verify?: string | null } = {},
 ): Promise<PairNotifyResult> {
-  const { data, error } = await (supabase as any).rpc("notify_doubles_pair", { p_pair_id: pairId });
+  // Invitation-link players (not signed in) prove who they are with their link token + check.
+  const { data, error } = await (supabase as any).rpc("notify_doubles_pair", {
+    p_pair_id: pairId,
+    p_token: auth.token || null,
+    p_verify: auth.verify || null,
+  });
   if (error) throw error;
 
   const channels: string[] = Array.isArray(data?.channels) ? data.channels : [];

@@ -3123,6 +3123,13 @@
       "when": 1795091806622,
       "tag": "0445_manual_journal_and_member_credit_transfers",
       "breakpoints": true
+    },
+    {
+      "idx": 446,
+      "version": "7",
+      "when": 1795092447643,
+      "tag": "0446_doubles_pair_notice_link_players",
+      "breakpoints": true
     }
   ]
 }

@@ -25369,7 +25369,10 @@ export type Database = {
         }
         Returns: Json
       }
-      notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
+      notify_doubles_pair: {
+        Args: { p_pair_id: string; p_token?: string; p_verify?: string }
+        Returns: Json
+      }
       nsc_treasurer_domain_access: {
         Args: { _club_id: string; _permission: string; _user_id: string }
         Returns: boolean

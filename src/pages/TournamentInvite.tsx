@@ -286,10 +286,14 @@ export default function TournamentInvite() {
     if (start) rows.push({ icon: CalendarDays, label: end && end !== start ? `${start} – ${end}` : start });
     const closes = formatDate(data.registration_closes_at);
     if (closes) rows.push({ icon: Clock, label: `Entries close ${closes}` });
-    if (data.division_label) rows.push({ icon: Trophy, label: data.division_label });
+    const enteredLabels = (chosenDivisions.length > 0 ? chosenDivisions : (data?.selected_divisions || []).map(Number))
+      .map((g) => divisions.find((d) => d.group_number === g)?.label)
+      .filter(Boolean) as string[];
+    if (enteredLabels.length > 1) rows.push({ icon: Trophy, label: enteredLabels.join(" + ") });
+    else if (data.division_label) rows.push({ icon: Trophy, label: data.division_label });
     rows.push({ icon: CreditCard, label: feeCents > 0 ? `${money(feeCents)} entry fee` : "No entry fee" });
     return rows;
-  }, [data, feeCents]);
+  }, [data, feeCents, divisions, chosenDivisions]);
 
   // Doubles divisions this player has entered — they may pick a partner there.
   const enteredDivisions = useMemo(() => {
@@ -328,6 +332,10 @@ export default function TournamentInvite() {
     || pairingQ.isError // never let a loading problem hide the way to pay
     || (pairingQ.isSuccess && partnersCompleteForPayment(pairingQ.data, enteredDivisions.map((d) => d.group_number)));
 
+  // Entry fee already paid / waived / on account: the page only needs the partner step.
+  const feeAlreadySettled = ["paid", "waived", "on_account"].includes(String(data?.fee_status || ""))
+    || ["card", "eft", "cash", "account"].includes(String(data?.fee_settled_via || ""));
+
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
       <div className="space-y-2 pt-1">
@@ -336,10 +344,9 @@ export default function TournamentInvite() {
             Doubles partner required
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Add the exact two-person pairings that will play.
-            {feeCents > 0
-              ? " The person using this invitation pays every selected player's entry fee once."
-              : ""}
+            {feeAlreadySettled
+              ? "Your entry fee is sorted. Now choose your partner for each doubles event below — type their name in the search box and tap it."
+              : <>Add the exact two-person pairings that will play.{feeCents > 0 ? " The person using this invitation pays every selected player's entry fee once." : ""}</>}
           </p>
         </div>
         {partnerVerifyNeeded && (
@@ -601,7 +608,7 @@ export default function TournamentInvite() {
               <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
             </Button>
           )
-        ) : (
+        ) : feeAlreadySettled ? null : (
           partnersChosen ? (
             <div className="space-y-2">
               {payChooser}

@@ -135,3 +135,4 @@
 - [x] NSA affiliated-clubs list: 20 out-of-area clubs removed (Riverside kept; Correctional Services kept pending confirmation)
 
 - [ ] One club structure: association Affiliated Clubs lists follow the Super Admin tree; moves from any admin login (Super Admin, zone, provincial/regional) update the tree; old association notified — plan awaiting approval
+- [x] Riaan van Reeuwyk partner step: paid entrants now see a clear partner step, both events listed (pairing still his choice)

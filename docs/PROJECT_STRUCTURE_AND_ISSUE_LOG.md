@@ -4738,3 +4738,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ## 2026-11-18 NSA affiliated clubs cleanup
 - 20 out-of-area clubs (WP, Joburg, Free State, Vaal, Eastern Gauteng) removed from NSA association_affiliated_clubs (links only; clubs untouched). The list Delete button removes only the link row, never the club.
+
+## 2026-11-19 — Paid doubles players with no partner (Uitsig No Frills Doubles)
+- Cause: the tournament's top-level match type is "singles" while every category is doubles; the in-app invitation sheet read only the top-level value, so it skipped the partner step and let Riaan van Reeuwyk and Bernard Pienaar pay first. The invitation link also hid the partner list behind the phone check with payment wording.
+- Fix: `entryHasDoubles` (src/lib/tournaments/doubles.ts) checks category match types; the in-app sheet now shows payment only after every doubles category has a partner (`partnersCompleteForPayment`, fails open). Players who already paid see a partner-only step and may pay just the partner's fee (`partnerPickDueCents`; server `_invite_amount_cents` decides the amount).

@@ -17,7 +17,7 @@ import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
-import { fetchPairingState, partnersCompleteForPayment } from "@/lib/tournaments/doubles";
+import { entryHasDoubles, fetchPairingState, partnersCompleteForPayment } from "@/lib/tournaments/doubles";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { toast } from "sonner";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
@@ -143,7 +143,7 @@ export function TournamentInviteRegisterDialog({
   const acceptsEft = methods.length > 0 ? methods.includes("eft") : true;
   const acceptsAccount = acceptsAccountCharge(methods);
   const gatewayReady = acceptsCard && isSupportedGateway(paymentGateway);
-  const isDoubles = champ?.match_type === "doubles";
+  const isDoubles = entryHasDoubles(champ?.match_type, (divisionOptions as any[]).map((d) => d.match_type));
   const playerPicksPartner = isDoubles && champ?.partner_mode === "players";
   const adminPairs = isDoubles && !playerPicksPartner;
 

@@ -500,3 +500,16 @@ export function pairAmountOwedCents(pair: MyPair | null, feeCents: number, total
   if (pair.covered_by_partner) return 0;
   return Math.max(totalDueCents || 0, coversPartner ? feeCents * 2 : feeCents);
 }
+
+/**
+ * A tournament is a doubles entry when the tournament itself or any of its
+ * categories is doubles. Per-category tournaments can keep a stale top-level
+ * "singles" while every category is doubles (Uitsig No Frills Doubles).
+ */
+export function entryHasDoubles(matchType: string | null | undefined, categoryMatchTypes?: unknown): boolean {
+  if (String(matchType || "").toLowerCase() === "doubles") return true;
+  const vals = Array.isArray(categoryMatchTypes)
+    ? categoryMatchTypes
+    : categoryMatchTypes && typeof categoryMatchTypes === "object" ? Object.values(categoryMatchTypes as Record<string, unknown>) : [];
+  return vals.some((v) => String(v || "").toLowerCase() === "doubles");
+}

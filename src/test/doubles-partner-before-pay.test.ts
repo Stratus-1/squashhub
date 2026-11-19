@@ -46,3 +46,15 @@ describe("player whose own fee is already paid picks a partner", () => {
     expect(pairAmountOwedCents(pair, 21000)).toBe(0);
   });
 });
+
+import { entryHasDoubles } from "@/lib/tournaments/doubles";
+
+describe("doubles detection for per-category tournaments", () => {
+  it("treats a 'singles' tournament whose categories are all doubles as doubles", () => {
+    expect(entryHasDoubles("singles", { "1": "doubles", "2": "doubles" })).toBe(true);
+  });
+  it("keeps a real singles tournament as singles", () => {
+    expect(entryHasDoubles("singles", { "1": "singles" })).toBe(false);
+    expect(entryHasDoubles("singles", null)).toBe(false);
+  });
+});

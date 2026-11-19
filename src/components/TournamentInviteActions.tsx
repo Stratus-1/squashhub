@@ -3,6 +3,7 @@ import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/entry-fee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
+import { entryHasDoubles } from "@/lib/tournaments/doubles";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -71,6 +72,18 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   });
 
   const champ = champProp || fetchedChamp;
+
+  // Category match types live on the tournament; a stale top-level "singles"
+  // must never hide the doubles partner step.
+  const { data: categoryMatchTypes } = useQuery({
+    queryKey: ["tournament-category-match-types", champ?.id],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("league_match_types").eq("id", champ.id).maybeSingle();
+      return (data as any)?.league_match_types ?? null;
+    },
+    enabled: !!champ?.id && champ?.match_type !== "doubles",
+  });
+  const champDoubles = entryHasDoubles(champ?.match_type, categoryMatchTypes);
 
   // Resolve registration: explicit id wins, otherwise look up by champ + linked member
   const linkedMemberIds = useMemo(() => linkedMembers.map((m) => m.id).filter(Boolean), [linkedMembers]);
@@ -401,7 +414,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           </div>
 
           {!isAccepted && !isDeclined && (() => {
-            const doublesPickPartner = !isPartnerInvite && champ?.match_type === "doubles" && champ?.partner_mode === "players";
+            const doublesPickPartner = !isPartnerInvite && champDoubles && champ?.partner_mode === "players";
             return (
             <>
               {doublesPickPartner && (
@@ -455,7 +468,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           })()}
 
           {/* Accepted but still owing / still needs a partner — reopen the sheet */}
-          {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champ?.match_type === "doubles" && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (
+          {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champDoubles && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (
             <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
               <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
                 {status === "pending_payment" || status === "pending_eft"
@@ -463,7 +476,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
               </p>
               <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>
-                {champ?.match_type === "doubles" && champ?.partner_mode === "players" ? (status === "pending_payment" || status === "pending_eft" ? "Select partner & pay" : "Select my doubles partner") : (status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner")}
+                {champDoubles && champ?.partner_mode === "players" ? (status === "pending_payment" || status === "pending_eft" ? "Select partner & pay" : "Select my doubles partner") : (status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner")}
               </Button>
             </div>
           )}

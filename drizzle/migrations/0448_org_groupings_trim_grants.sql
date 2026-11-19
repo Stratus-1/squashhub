@@ -1,0 +1,1 @@
+REVOKE TRUNCATE, REFERENCES, TRIGGER ON public.org_groupings FROM authenticated;

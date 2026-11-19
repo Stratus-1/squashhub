@@ -12,25 +12,33 @@ export interface AdminNavigationItem {
   needsSetup?: boolean;
 }
 
-export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, compact = false, onCompactChange }: {
+export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, compact = false, onCompactChange,
+  operationsTitle = "Club operations", setupTitle = "Setup & configuration", setupDefaultOpen = false, extra }: {
   operations: AdminNavigationItem[];
   setup: AdminNavigationItem[];
   activeTab: string;
   onSelect: (value: string) => void;
   compact?: boolean;
   onCompactChange?: () => void;
+  /** Group labels; defaults keep the Club Admin wording. */
+  operationsTitle?: string;
+  setupTitle?: string;
+  setupDefaultOpen?: boolean;
+  /** Optional trailing group (e.g. personal links). */
+  extra?: { title: string; items: AdminNavigationItem[] };
 }) {
   const [operationsOpen, setOperationsOpen] = useState(true);
-  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(setupDefaultOpen);
+  const [extraOpen, setExtraOpen] = useState(true);
   const attentionCount = setup.filter(item => item.needsSetup).length;
-  const group = (title: string, items: AdminNavigationItem[], open: boolean, toggle: () => void, attention = 0) => {
+  const group = (title: string, items: AdminNavigationItem[], open: boolean, toggle: () => void, attention = 0, primary = false) => {
     if (!items.length) return null;
     return <section aria-label={title} className="space-y-1">
       <Button type="button" variant="ghost" onClick={toggle} aria-expanded={open}
         title={compact ? title : undefined}
         className={cn("h-auto min-h-9 w-full justify-start rounded-md px-2 text-xs", compact && "justify-center px-1")}>
         <ChevronDown className={cn("size-3.5 shrink-0 transition-transform motion-reduce:transition-none", !open && "-rotate-90")} />
-        <span className={cn("flex-1 text-left font-semibold", title === "Club operations" ? "text-foreground" : "text-muted-foreground", compact && "sr-only")}>{title}</span>
+        <span className={cn("flex-1 text-left font-semibold", primary ? "text-foreground" : "text-muted-foreground", compact && "sr-only")}>{title}</span>
         {attention > 0 && <span aria-label={`${attention} setup items need attention`} className="shrink-0 rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning-foreground">{attention}</span>}
       </Button>
       {open && <div className="space-y-0.5">{items.map(item => {
@@ -55,7 +63,8 @@ export function ClubAdminNavigation({ operations, setup, activeTab, onSelect, co
       aria-label={compact ? "Expand admin navigation" : "Collapse admin navigation"} title={compact ? "Expand admin navigation" : "Collapse admin navigation"}>
       {compact ? <PanelLeftOpen /> : <PanelLeftClose />}
     </Button></div>}
-    {group("Setup & configuration", setup, setupOpen, () => setSetupOpen(value => !value), attentionCount)}
-    {group("Club operations", operations, operationsOpen, () => setOperationsOpen(value => !value))}
+    {group(setupTitle, setup, setupOpen, () => setSetupOpen(value => !value), attentionCount)}
+    {group(operationsTitle, operations, operationsOpen, () => setOperationsOpen(value => !value), 0, true)}
+    {extra && group(extra.title, extra.items, extraOpen, () => setExtraOpen(value => !value))}
   </div>;
 }

@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { FederationJuniorTab } from "@/components/admin/FederationJuniorTab";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
@@ -9,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ClubAdminNavigation, type AdminNavigationItem } from "@/components/club-admin/ClubAdminNavigation";
 import {
   Building2, Network, Trophy, Medal, Users, UserCheck, Settings, Banknote, Landmark,
-  ShieldCheck, MessageCircle, BarChart3, Wallet, LifeBuoy, Receipt, Mail, SlidersHorizontal, ChevronsUpDown,
+  ShieldCheck, MessageCircle, BarChart3, Wallet, LifeBuoy, Receipt, Mail, SlidersHorizontal, ChevronsUpDown, MapPinned,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -70,6 +73,9 @@ const ICON_COLORS: Record<string, string> = {
   purple: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
 };
 
+// Zone / provincial junior workspaces manage their club list in the junior structure tree instead of Affiliated Clubs.
+const JUNIOR_TAB: TabDef = { value: "junior", label: "Junior clubs", description: "Clubs in your junior structure — bring in, move or create clubs", icon: MapPinned, color: "emerald", group: "operations", permission: "club" };
+
 // Section ids and permissions are unchanged — only presentation (left menu) changed.
 const ADMIN_TABS: TabDef[] = [
   { value: "affiliated", label: "Affiliated Clubs", description: "Clubs in this association", icon: Network, color: "sky", group: "operations", permission: "club" },
@@ -111,7 +117,19 @@ export default function AssociationDashboard() {
   const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Member";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
-  const visibleAdminTabs = ADMIN_TABS.filter(tab => {
+  const { data: juniorOrg } = useQuery({
+    queryKey: ["junior-workspace-org", association?.id],
+    enabled: !!association?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("organisations").select("id, kind")
+        .eq("club_id", association!.id).in("kind", ["zone", "provincial"]).eq("active", true).maybeSingle();
+      return (data as { id: string; kind: string } | null) ?? null;
+    },
+  });
+  const tabs = juniorOrg ? [JUNIOR_TAB, ...ADMIN_TABS.filter(t => t.value !== "affiliated")] : ADMIN_TABS;
+  const firstTab = juniorOrg ? "junior" : "affiliated";
+
+  const visibleAdminTabs = tabs.filter(tab => {
     if (isPlatformAdmin) return true;
     if (tab.adminOnly) return isClubAdmin || isAssociationAdmin;
     if (!tab.permission) return isClubAdmin || isAssociationAdmin;
@@ -120,6 +138,11 @@ export default function AssociationDashboard() {
 
   // Phones without an explicit ?tab= open on the menu; desktop opens the first section.
   const [adminTab, setAdminTab] = useState<string>(() => new URLSearchParams(location.search).get("tab") || (isPhone() ? "" : "affiliated"));
+  // A junior workspace opens on its club tree once the structure link is known.
+  useEffect(() => {
+    if (juniorOrg && adminTab === "affiliated") setAdminTab("junior");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [juniorOrg]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [compactNav, setCompactNav] = useState(false);
 
@@ -141,6 +164,7 @@ export default function AssociationDashboard() {
       case "association": return <AssociationInfoTab club={association as any} clubId={association.id} />;
       case "setup": return <AssociationSetupTab clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
+      case "junior": return juniorOrg ? <FederationJuniorTab rootOrgId={juniorOrg.id} /> : null;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
       case "champs": return <TournamentPlanner mode="club" clubId={association.id} />;
       case "rankings": return <AssociationRankingsTab clubId={association.id} />;
@@ -188,7 +212,7 @@ export default function AssociationDashboard() {
       />
 
       <main className="w-full space-y-3 px-3 py-3 md:space-y-4 md:px-4 md:py-4 lg:px-5">
-        <AssociationWelcomeBanner onOpenAffiliated={() => select("affiliated")} />
+        <AssociationWelcomeBanner onOpenAffiliated={() => select(firstTab)} />
         <ProfileCompletionMeter
           profile={profile}
           onAction={(action) => {

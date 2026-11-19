@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, ChevronDown, Trophy, Check, ShieldCheck } from "lucide-react";
+import { ChevronDown, Check, ShieldCheck } from "lucide-react";
+import { ORG_LEVEL_STYLES, orgLevel, type OrgLevel } from "@/lib/federation/org-kind-style";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 
 interface TenantOption {
@@ -22,7 +23,10 @@ interface TenantOption {
   name: string;
   subdomain: string | null;
   tenant_type: string;
+  level: OrgLevel;
 }
+
+const LEVEL_ORDER: OrgLevel[] = ["club", "association", "provincial", "zone", "national"];
 
 /**
  * Shows a dropdown when the current user has membership at multiple tenants
@@ -44,7 +48,7 @@ export function TenantSwitcher() {
       const push = (c: any) => {
         if (!c || !c.subdomain || seen.has(c.id)) return;
         seen.add(c.id);
-        list.push({ id: c.id, name: c.name, subdomain: c.subdomain, tenant_type: c.tenant_type || "club" });
+        list.push({ id: c.id, name: c.name, subdomain: c.subdomain, tenant_type: c.tenant_type || "club", level: orgLevel(c.tenant_type || "club") });
       };
 
       // Platform super admin: browse all clubs/associations.
@@ -75,9 +79,20 @@ export function TenantSwitcher() {
         for (const c of (adminTenants || []) as any[]) push(c);
       }
 
+      // Zone / provincial / national workspaces get their own level (colour) from the structure.
+      const assocIds = list.filter((t) => t.tenant_type === "association").map((t) => t.id);
+      if (assocIds.length) {
+        const { data: orgs } = await fromExt("organisations")
+          .select("club_id, kind")
+          .in("kind", ["zone", "provincial", "national"])
+          .not("club_id", "is", null);
+        const kinds = new Map(((orgs || []) as any[]).map((o) => [o.club_id, o.kind]));
+        for (const t of list) if (kinds.has(t.id)) t.level = orgLevel(kinds.get(t.id));
+      }
+
       return list.sort((a, b) => {
-        if (a.tenant_type === b.tenant_type) return a.name.localeCompare(b.name);
-        return a.tenant_type === "club" ? -1 : 1;
+        if (a.level === b.level) return a.name.localeCompare(b.name);
+        return LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level);
       });
     },
   });
@@ -120,16 +135,14 @@ export function TenantSwitcher() {
   };
 
   const activeName = currentClub?.name || "Switch tenant";
+  const activeLevel = tenants.find((t) => t.id === currentClub?.id)?.level ?? orgLevel(currentClub?.tenant_type);
+  const ActiveIcon = ORG_LEVEL_STYLES[activeLevel].icon;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-          {currentClub?.tenant_type === "association" ? (
-            <Trophy className="w-3.5 h-3.5" />
-          ) : (
-            <Building2 className="w-3.5 h-3.5" />
-          )}
+          <ActiveIcon className={`w-3.5 h-3.5 ${ORG_LEVEL_STYLES[activeLevel].iconClass}`} />
           <span className="max-w-[110px] truncate">{activeName}</span>
           <ChevronDown className="w-3 h-3 opacity-60" />
         </Button>
@@ -163,20 +176,18 @@ export function TenantSwitcher() {
         <div className="max-h-72 overflow-y-auto">
           {filtered.map((t) => {
             const isActive = t.subdomain === currentSubdomain;
+            const style = ORG_LEVEL_STYLES[t.level];
+            const Icon = style.icon;
             return (
               <DropdownMenuItem
                 key={t.id}
                 onClick={() => t.subdomain && goToTenant(t.subdomain)}
                 className="cursor-pointer"
               >
-                {t.tenant_type === "association" ? (
-                  <Trophy className="w-3.5 h-3.5 mr-2 text-primary" />
-                ) : (
-                  <Building2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-                )}
+                <Icon className={`w-3.5 h-3.5 mr-2 shrink-0 ${style.iconClass}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{t.name}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">{t.tenant_type}</p>
+                  <p className={`text-[10px] ${style.iconClass}`}>{style.label}</p>
                 </div>
                 {isActive && <Check className="w-3.5 h-3.5 text-primary" />}
               </DropdownMenuItem>

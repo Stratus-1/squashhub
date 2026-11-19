@@ -15,6 +15,7 @@ import {
 import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import { FederationTreeTab } from "@/components/admin/FederationTreeTab";
 import { FederationJuniorTab } from "@/components/admin/FederationJuniorTab";
+import { OrgKindBadge } from "@/components/federation/OrgKindBadge";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
 import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
 import { ProvisionalRankingSettingsCard } from "@/components/rankings/ProvisionalRankingSettingsCard";
@@ -132,12 +133,11 @@ function TreeNode({
         )}
         <span className="text-sm text-white/90 truncate">{node.name}</span>
         {node.abbreviation && <span className="text-[11px] text-white/40">({node.abbreviation})</span>}
-        <Badge
-          variant="outline"
-          className="ml-auto text-[10px] border-white/20 text-white/60 capitalize"
-        >
-          {node.is_internal_league ? "Club league" : node.kind === "national" ? "Federation" : node.kind}
-        </Badge>
+        {node.is_internal_league ? (
+          <Badge variant="outline" className="ml-auto text-[10px] border-white/20 text-white/60">Club league</Badge>
+        ) : (
+          <OrgKindBadge kind={node.kind} className="ml-auto" />
+        )}
         {hasChildren && (
           <span className="text-[11px] text-white/40 w-10 text-right">{node.children.length}</span>
         )}

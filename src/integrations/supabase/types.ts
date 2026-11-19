@@ -23845,6 +23845,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      federation_create_workspace: {
+        Args: { _org_id: string; _subdomain: string }
+        Returns: string
+      }
       federation_is_senior_parent: {
         Args: { _org_id: string }
         Returns: boolean
@@ -24549,6 +24553,18 @@ export type Database = {
         Returns: string
       }
       join_club_request: { Args: { p_club_id: string }; Returns: string }
+      junior_create_club: {
+        Args: { _name: string; _provincial_id: string; _town?: string }
+        Returns: string
+      }
+      junior_move_org: {
+        Args: { _child_org_id: string; _to_provincial_id: string }
+        Returns: undefined
+      }
+      junior_remove_org: {
+        Args: { _child_org_id: string; _provincial_id: string }
+        Returns: undefined
+      }
       ladder_move_apply_now: {
         Args: {
           _club_id: string
@@ -25290,6 +25306,13 @@ export type Database = {
       }
       org_junior_counts: {
         Args: never
+        Returns: {
+          club_id: string
+          juniors: number
+        }[]
+      }
+      org_junior_counts_for: {
+        Args: { _org_id: string }
         Returns: {
           club_id: string
           juniors: number

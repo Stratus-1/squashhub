@@ -139,3 +139,8 @@
 - [x] WhatsApp paid doubles entrants without a partner (Riaan, Bernard) with their link; recurrence prevented
 - [x] Paid entrants who pick a partner may optionally pay only the partner amount
 - [x] In-app entry path requires doubles partner before payment
+
+## Junior workspaces (19 Nov)
+- [x] Workspaces for Northerns Junior Squash + 4 provincial junior associations (admins still to be named by Willem)
+- [x] Junior tree in those workspaces: bring in / move / remove clubs, create a new club
+- [x] Separate icon colours for clubs, regional associations, provincial associations and zones (workspace switcher / left menu)

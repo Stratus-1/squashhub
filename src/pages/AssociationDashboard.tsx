@@ -188,7 +188,7 @@ export default function AssociationDashboard() {
       />
 
       <main className="w-full space-y-3 px-3 py-3 md:space-y-4 md:px-4 md:py-4 lg:px-5">
-        <AssociationWelcomeBanner />
+        <AssociationWelcomeBanner onOpenAffiliated={() => select("affiliated")} />
         <ProfileCompletionMeter
           profile={profile}
           onAction={(action) => {

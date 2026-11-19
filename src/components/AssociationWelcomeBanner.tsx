@@ -11,7 +11,7 @@ import { Network, X, Sparkles } from "lucide-react";
 
 const DISMISSED_KEY = "gb-squash-association-welcome-dismissed";
 
-export function AssociationWelcomeBanner() {
+export function AssociationWelcomeBanner({ onOpenAffiliated }: { onOpenAffiliated?: () => void } = {}) {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: clubData } = useMyClub();
@@ -69,7 +69,7 @@ export function AssociationWelcomeBanner() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => navigate("/club-admin")}>
+              <Button size="sm" variant="outline" onClick={() => (onOpenAffiliated ? onOpenAffiliated() : navigate("/club-admin"))}>
                 <Network className="w-4 h-4 mr-1.5" />
                 Affiliated Clubs
               </Button>

@@ -17,6 +17,7 @@ import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
+import { fetchPairingState, partnersCompleteForPayment } from "@/lib/tournaments/doubles";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { toast } from "sonner";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
@@ -170,6 +171,21 @@ export function TournamentInviteRegisterDialog({
         .map((d) => ({ group_number: d.group_number, label: d.label, match_type: "doubles" as const })),
     [divisionOptions, chosenDivisions, isDoubles],
   );
+  // Partner first, then pay: a player who picks their own doubles partner sees
+  // the payment options only once every doubles category they entered has a
+  // pairing (same rule and cache as the invitation link; fails open on errors).
+  const partnerGate = canPickPartner && doublesPickerDivisions.length > 0;
+  const pairingQ = useQuery({
+    queryKey: ["champ-pairing-state", String(champ?.id || ""), "auth", "unverified"],
+    queryFn: () => fetchPairingState(String(champ?.id), { token: null, verify: null }),
+    enabled: open && !!champ?.id && partnerGate,
+    retry: false,
+  });
+  const partnersReadyForPayment = !partnerGate
+    || !!registration?.partner_member_id && doublesPickerDivisions.length <= 1
+    || pairingQ.isError
+    || (pairingQ.isSuccess && partnersCompleteForPayment(pairingQ.data, doublesPickerDivisions.map((d) => d.group_number)));
+
   /** One saved partner only completes a single-doubles entry; with several doubles categories each one gets its own partner choice. */
   const partnerDone = !!registration?.partner_member_id && doublesPickerDivisions.length <= 1;
 
@@ -475,8 +491,13 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* Step 2 — payment */}
-          {accepted && feeOutstanding && (
+          {/* Payment — only after every doubles partner is chosen */}
+          {accepted && feeOutstanding && !partnersReadyForPayment && (
+            <p className="text-[11px] text-muted-foreground text-center rounded-md border border-dashed p-2.5">
+              Step 1: choose your doubles partner below. Step 2: the payment options appear here.
+            </p>
+          )}
+          {accepted && feeOutstanding && partnersReadyForPayment && (
             <div className="space-y-2">
               {gatewayReady && (
                 <>
@@ -553,7 +574,13 @@ export function TournamentInviteRegisterDialog({
                     onPay={() => {
                       // Straight from naming a partner to paying — card if the
                       // club has a gateway, otherwise open the EFT details.
-                      if (!feeOutstanding) return;
+                      if (!feeOutstanding) {
+                        // Own fee already paid and they chose to cover the
+                        // partner: the invitation link settles partner fees.
+                        const tok = (registration as any)?.invite_token;
+                        if (tok) window.location.assign(`/i/${tok}`);
+                        return;
+                      }
                       if (gatewayReady) payByCard.mutate();
                       else if (acceptsEft && status !== "pending_eft") { setShowEft(true); markEft.mutate(); }
                     }}

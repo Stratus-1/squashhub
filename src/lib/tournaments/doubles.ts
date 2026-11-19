@@ -204,6 +204,8 @@ export function pairPaymentLabel(pair: MyPair | null, feeCents: number, money: (
   if (!pair.my_fee_paid && pair.payer_is_me && pair.pays_for_partner)
     return `You chose to pay for both entries in this event — ${money((feeCents * 2) / 100)}.`;
   if (!pair.my_fee_paid) return `Your ${fee} entry fee is still to pay.`;
+  if (!pair.partner_fee_paid && pair.payer_is_me && pair.pays_for_partner)
+    return `Your fee is paid. You chose to pay ${who}'s ${fee} entry fee.`;
   if (!pair.partner_fee_paid) return `Waiting for ${who} to pay their ${fee} entry fee.`;
   return null;
 }
@@ -477,4 +479,24 @@ export async function proposeExternalPartner(
   });
   if (error) throw error;
   return data as { id: string; status: PairStatus };
+}
+
+/**
+ * Amount to pay straight after picking a partner. A player whose own fee is
+ * already settled pays only the partner's fee (and nothing if the partner pays
+ * their own). The server (`_invite_amount_cents`) re-computes the real amount.
+ */
+export function partnerPickDueCents(feeCents: number, payForPartner: boolean, myFeePaid: boolean): number {
+  if (feeCents <= 0) return 0;
+  if (myFeePaid) return payForPartner ? feeCents : 0;
+  return payForPartner ? feeCents * 2 : feeCents;
+}
+
+/** What this player still owes for one pair (own fee and/or a partner fee they chose to cover). */
+export function pairAmountOwedCents(pair: MyPair | null, feeCents: number, totalDueCents = 0): number {
+  if (!pair || feeCents <= 0) return 0;
+  const coversPartner = !!pair.payer_is_me && !!pair.pays_for_partner && !pair.partner_fee_paid;
+  if (pair.my_fee_paid) return coversPartner ? Math.max(totalDueCents || 0, feeCents) : 0;
+  if (pair.covered_by_partner) return 0;
+  return Math.max(totalDueCents || 0, coversPartner ? feeCents * 2 : feeCents);
 }

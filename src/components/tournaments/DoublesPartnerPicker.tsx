@@ -128,6 +128,7 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
           locked={!!state?.locked}
           feeCents={Number(pairForDivision(state?.pairs || [], d.group_number)?.fee_cents ?? state?.entry_fee_cents ?? 0)}
           totalDueCents={Number(state?.amount_due_cents || 0)}
+          myFeePaid={!!state?.my_fee_paid}
           pair={pairForDivision(state?.pairs || [], d.group_number)}
           auth={auth}
           onChanged={refresh}
@@ -341,12 +342,15 @@ function DivisionPartner({
   locked,
   feeCents,
   totalDueCents = 0,
+  myFeePaid = false,
   pair,
   auth,
   onChanged,
   onPay,
 }: {
   totalDueCents?: number;
+  /** This player's own entry fee is already settled — only a partner's fee can still be paid. */
+  myFeePaid?: boolean;
   champId: string;
   clubId?: string | null;
   division: InviteDivision;
@@ -405,7 +409,10 @@ function DivisionPartner({
         }
       }
       // Picking a partner is the moment the entry becomes payable.
-      if (job.kind === "propose" && hasFee && onPay) onPay(job.payForPartner ? feeCents * 2 : feeCents);
+      if (job.kind === "propose" && hasFee && onPay) {
+        const due = partnerPickDueCents(feeCents, job.payForPartner, myFeePaid);
+        if (due > 0) onPay(due);
+      }
       if (job.kind === "external" && hasFee && onPay) onPay(feeCents * 2);
     },
     onError: (e: any) => toast.error(e?.message || "Could not update your doubles pair"),
@@ -415,10 +422,7 @@ function DivisionPartner({
   const paymentLine = pairPaymentLabel(pair, feeCents, (r) => `R${r.toFixed(2)}`);
   // Pay button settles everything this player owes (all their events plus any
   // partner fees they cover), as the server calculates it.
-  const iOwe =
-    !!pair && hasFee && !pair.my_fee_paid && !pair.covered_by_partner
-      ? Math.max(totalDueCents || 0, pair.payer_is_me && pair.pays_for_partner ? feeCents * 2 : feeCents)
-      : 0;
+  const iOwe = pairAmountOwedCents(pair, feeCents, totalDueCents);
 
   const choose = (o: PartnerOption) => {
     // Picking a partner books the pair — the partner never has to accept, and
@@ -547,9 +551,14 @@ function DivisionPartner({
           <AlertDialogHeader>
             <AlertDialogTitle>Enter with {feeAsk?.display_name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The entry fee is {money(feeCents)} per player. You can pay for both of you ({money(feeCents * 2)}),
-              or pay only your own ({money(feeCents)}) and {feeAsk?.display_name || "your partner"} is asked to pay
-              theirs. The pair is confirmed once both fees are paid.
+              {myFeePaid ? (
+                <>Your own entry fee is already paid. You can also pay {feeAsk?.display_name || "your partner"}'s
+                {" "}{money(feeCents)}, or let them pay their own. The pair is confirmed once both fees are paid.</>
+              ) : (
+                <>The entry fee is {money(feeCents)} per player. You can pay for both of you ({money(feeCents * 2)}),
+                or pay only your own ({money(feeCents)}) and {feeAsk?.display_name || "your partner"} is asked to pay
+                theirs. The pair is confirmed once both fees are paid.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
@@ -563,7 +572,7 @@ function DivisionPartner({
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: false });
               }}
             >
-              Pay only mine
+              {myFeePaid ? "They pay their own" : "Pay only mine"}
             </Button>
             <AlertDialogAction
               onClick={() => {
@@ -573,7 +582,7 @@ function DivisionPartner({
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
               }}
             >
-              Pay both · {money(feeCents * 2)}
+              {myFeePaid ? `Pay their fee · ${money(feeCents)}` : `Pay both · ${money(feeCents * 2)}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

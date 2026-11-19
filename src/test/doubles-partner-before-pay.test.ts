@@ -23,3 +23,26 @@ describe("doubles invitation: partner first, then pay", () => {
     expect(partnersCompleteForPayment(null, [1])).toBe(false);
   });
 });
+
+import { partnerPickDueCents, pairAmountOwedCents } from "@/lib/tournaments/doubles";
+
+describe("player whose own fee is already paid picks a partner", () => {
+  it("pays only the partner's R210 when they choose to cover the partner", () => {
+    expect(partnerPickDueCents(21000, true, true)).toBe(21000);
+  });
+  it("pays nothing when the partner pays their own", () => {
+    expect(partnerPickDueCents(21000, false, true)).toBe(0);
+  });
+  it("unpaid player still pays own fee, or both when covering the partner", () => {
+    expect(partnerPickDueCents(21000, false, false)).toBe(21000);
+    expect(partnerPickDueCents(21000, true, false)).toBe(42000);
+  });
+  it("paid payer covering an unpaid partner still owes the partner fee", () => {
+    const pair = { my_fee_paid: true, payer_is_me: true, pays_for_partner: true, partner_fee_paid: false } as any;
+    expect(pairAmountOwedCents(pair, 21000)).toBe(21000);
+  });
+  it("paid player whose partner pays their own owes nothing", () => {
+    const pair = { my_fee_paid: true, payer_is_me: false, pays_for_partner: false, partner_fee_paid: false } as any;
+    expect(pairAmountOwedCents(pair, 21000)).toBe(0);
+  });
+});

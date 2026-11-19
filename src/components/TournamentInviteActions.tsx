@@ -463,7 +463,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
               </p>
               <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>
-                {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner"}
+                {champ?.match_type === "doubles" && champ?.partner_mode === "players" ? (status === "pending_payment" || status === "pending_eft" ? "Select partner & pay" : "Select my doubles partner") : (status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner")}
               </Button>
             </div>
           )}

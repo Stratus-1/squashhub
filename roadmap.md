@@ -144,3 +144,8 @@
 - [x] Workspaces for Northerns Junior Squash + 4 provincial junior associations (admins still to be named by Willem)
 - [x] Junior tree in those workspaces: bring in / move / remove clubs, create a new club
 - [x] Separate icon colours for clubs, regional associations, provincial associations and zones (workspace switcher / left menu)
+
+## Finance journals & credit transfers (19 Nov, plan approved)
+- [x] General journal entry (balanced Dr/Cr, any account, member on AR/member-credit lines, "Member did work" template)
+- [x] Member-to-member credit transfer (member or admin starts, receiver accepts/declines, 14-day expiry, admin list)
+- [ ] post_journal can be called by anyone without a finance permission check (pre-existing; awaiting Willem's go-ahead to tighten)

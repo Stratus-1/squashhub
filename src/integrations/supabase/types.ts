@@ -14230,6 +14230,79 @@ export type Database = {
           },
         ]
       }
+      member_credit_transfers: {
+        Row: {
+          amount: number
+          club_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          expires_at: string
+          from_member_id: string
+          id: string
+          journal_ref: string | null
+          note: string | null
+          requested_as: string
+          requested_by: string
+          status: string
+          to_member_id: string
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at?: string
+          from_member_id: string
+          id?: string
+          journal_ref?: string | null
+          note?: string | null
+          requested_as?: string
+          requested_by: string
+          status?: string
+          to_member_id: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at?: string
+          from_member_id?: string
+          id?: string
+          journal_ref?: string | null
+          note?: string | null
+          requested_as?: string
+          requested_by?: string
+          status?: string
+          to_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_credit_transfers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_credit_transfers_from_member_id_fkey"
+            columns: ["from_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_credit_transfers_to_member_id_fkey"
+            columns: ["to_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_fee_categories: {
         Row: {
           active: boolean
@@ -21701,6 +21774,10 @@ export type Database = {
           sets_for: number
         }[]
       }
+      _member_net_credit: {
+        Args: { _club_id: string; _member_id: string }
+        Returns: number
+      }
       _post_booking_penalty: {
         Args: {
           _amount: number
@@ -21853,6 +21930,17 @@ export type Database = {
           p_group_number: number
           p_member_a: string
           p_member_b: string
+        }
+        Returns: Json
+      }
+      admin_post_journal: {
+        Args: {
+          _club_id: string
+          _date: string
+          _lines: Json
+          _reason: string
+          _reference: string
+          _request_id: string
         }
         Returns: Json
       }
@@ -23164,6 +23252,10 @@ export type Database = {
       cancel_doubles_pair: {
         Args: { p_pair_id: string; p_token?: string; p_verify?: string }
         Returns: Json
+      }
+      cancel_member_credit_transfer: {
+        Args: { _transfer_id: string }
+        Returns: undefined
       }
       cancel_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       captain_list_unclaimed_teammates: {
@@ -24644,6 +24736,23 @@ export type Database = {
         }
         Returns: Json
       }
+      list_member_credit_transfers: {
+        Args: { _club_id: string; _scope?: string }
+        Returns: {
+          amount: number
+          created_at: string
+          decided_at: string
+          expires_at: string
+          from_member_id: string
+          from_name: string
+          id: string
+          note: string
+          requested_as: string
+          status: string
+          to_member_id: string
+          to_name: string
+        }[]
+      }
       list_public_clubs: {
         Args: never
         Returns: {
@@ -24938,6 +25047,10 @@ export type Database = {
       member_outstanding_breakdown: {
         Args: { p_club_member_id: string }
         Returns: Json
+      }
+      member_transferable_credit: {
+        Args: { _club_id: string; _member_id: string }
+        Returns: number
       }
       merge_people: {
         Args: { _dup_id: string; _keep_id: string }
@@ -25641,6 +25754,16 @@ export type Database = {
         }
         Returns: string
       }
+      request_member_credit_transfer: {
+        Args: {
+          _amount: number
+          _club_id: string
+          _from_member_id: string
+          _note?: string
+          _to_member_id: string
+        }
+        Returns: string
+      }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reserve_nomination_email: {
         Args: { _campaign_id: string; _member_id: string }
@@ -25671,6 +25794,10 @@ export type Database = {
           _week_start_date: string
         }
         Returns: undefined
+      }
+      respond_member_credit_transfer: {
+        Args: { _accept: boolean; _transfer_id: string }
+        Returns: Json
       }
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { MemberCreditTransfersCard } from "@/components/finance/MemberCreditTransfersCard";
 import { GoBookBalance } from "@/components/GoBookBalance";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
@@ -953,6 +954,10 @@ export default function MyAccount() {
       </motion.div>
 
       {!isPayingForOther && <FamilyInviteCard clubMemberId={selfMemberId} />}
+
+      {!isPayingForOther && !isViewingAs && clubId && clubMemberId && (club as any)?.tenant_type !== "association" && (
+        <MemberCreditTransfersCard clubId={clubId} memberId={clubMemberId} memberName={accountName} money={money} />
+      )}
 
       {!isPayingForOther && (
         <MyFamilyCard clubMemberId={selfMemberId} clubId={club?.id || null} />

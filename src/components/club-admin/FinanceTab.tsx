@@ -48,6 +48,8 @@ import { SearchableAccountPicker } from "./finance/SearchableAccountPicker";
 import { compareLabel } from "@/lib/finance/sort-label";
 import { trialBalanceReport } from "@/lib/finance/report-export";
 import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
+import { JournalEntryDialog } from "./finance/JournalEntryDialog";
+import { CreditTransfersPanel } from "./finance/CreditTransfersPanel";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -173,6 +175,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const gatewayPctLabel = `${gatewayPct}%`;
   const [journalSearch, setJournalSearch] = useState("");
   const [txOpen, setTxOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
 
   // Manual transaction form state
   const [txDate, setTxDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -902,6 +905,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
         onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
         onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+        onJournal={() => setJournalOpen(true)}
         onImportBank={() => setBankImportOpen(true)}
         onOpeningBalances={() => setOpeningBalancesOpen(true)}
         moneyAccounts={["bank_current", "bank", "cash"]
@@ -942,6 +946,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 <Button disabled={!canChange} size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
                   <Receipt className="w-3.5 h-3.5" /> Bill {Party} / Post correction
                 </Button>
+                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Journal entry
+                </Button>
                 <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
@@ -976,6 +983,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         <TabsContent value="debit-orders">
           {canChange && <DebitOrdersPanel clubId={clubId} />}
         </TabsContent>
+
+        {party === "member" && <TabsContent value="credit-transfers">
+          <CreditTransfersPanel clubId={clubId} readOnly={!canChange} money={money} />
+        </TabsContent>}
 
         {party === "member" && <TabsContent value="billing-settings">
           <h2 className="text-base font-semibold">Member Billing · Settings</h2>
@@ -1026,6 +1037,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 </Button>
                 )}
 
+                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Journal entry
+                </Button>
                 <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
@@ -1345,6 +1359,9 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         )}
       </FinanceHub>
 
+
+      <JournalEntryDialog clubId={clubId} open={journalOpen} onOpenChange={setJournalOpen}
+        accounts={CHART_OF_ACCOUNTS} customAccounts={customAccounts as any} money={money} />
 
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>
@@ -2308,7 +2325,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "balance" | "coa" | "debit-orders" | "banking" | "billing-settings";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "balance" | "coa" | "debit-orders" | "banking" | "billing-settings" | "credit-transfers";
 
 interface FinanceHubProps {
   readOnly?: boolean;
@@ -2317,6 +2334,7 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
+  onJournal: () => void;
   onImportBank: () => void;
   onOpeningBalances: () => void;
   moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
@@ -2325,7 +2343,7 @@ interface FinanceHubProps {
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
+function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, onBill, onEnterTx, onJournal, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   // Approval emails link to ?tab=finance&view=pending&tx=<id>.
@@ -2387,6 +2405,7 @@ function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, o
         { key: "" as FinanceView, label: `${Party} Balances`, desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
         { key: "renewals", label: "Annual Renewals", desc: `Generate & email yearly invoices to every ${partyLower}`, icon: CalendarDays },
         { key: "" as FinanceView, label: `Bill ${Party}`, desc: `Add an ad-hoc charge to a ${partyLower}`, icon: Receipt, onClick: onBill },
+        ...(party === "member" ? [{ key: "credit-transfers" as FinanceView, label: "Credit transfers", desc: "Member-to-member credit transfers", icon: Wallet }] : []),
         ...(party === "member" ? [{ key: "billing-settings" as FinanceView, label: "Settings", desc: "Member Credit", icon: Wallet }] : []),
       ],
     },
@@ -2416,6 +2435,9 @@ function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, o
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => setView("coa")} className="gap-1.5">
           <ListTree className="w-4 h-4" /> Chart of Accounts
+        </Button>
+        <Button variant="outline" disabled={readOnly} onClick={onJournal} className="gap-1.5">
+          <BookOpen className="w-4 h-4" /> Journal entry
         </Button>
         <Button disabled={readOnly} onClick={onEnterTx} className="gap-1.5">
           <Plus className="w-4 h-4" /> Enter Transaction

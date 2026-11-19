@@ -3116,6 +3116,13 @@
       "when": 1795078630961,
       "tag": "0444_junior_body_workspaces_and_moves",
       "breakpoints": true
+    },
+    {
+      "idx": 445,
+      "version": "7",
+      "when": 1795091806622,
+      "tag": "0445_manual_journal_and_member_credit_transfers",
+      "breakpoints": true
     }
   ]
 }

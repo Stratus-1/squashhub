@@ -91,7 +91,7 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
     enabled: pickerOpen,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await fromExt("clubs").select("id, name, subdomain").eq("tenant_type", "club").order("name");
+      const { data, error } = await fromExt("clubs").select("id, name, subdomain").neq("tenant_type", "association").order("name");
       if (error) throw error;
       return (data || []) as { id: string; name: string; subdomain: string | null }[];
     },

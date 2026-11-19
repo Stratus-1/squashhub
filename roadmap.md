@@ -136,6 +136,6 @@
 
 - [ ] One club structure: association Affiliated Clubs lists follow the Super Admin tree; moves from any admin login (Super Admin, zone, provincial/regional) update the tree; old association notified — plan awaiting approval
 - [x] Riaan van Reeuwyk partner step: paid entrants now see a clear partner step, both events listed (pairing still his choice)
-- [ ] WhatsApp paid doubles entrants without a partner (Riaan van Reeuwyk, Bernard Pienaar) with their link to select a partner; prevent recurrence
+- [x] WhatsApp paid doubles entrants without a partner (Riaan, Bernard) with their link; recurrence prevented
 - [x] Paid entrants who pick a partner may optionally pay only the partner amount
 - [x] In-app entry path requires doubles partner before payment

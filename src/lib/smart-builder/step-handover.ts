@@ -526,7 +526,64 @@ export function recipientPreset(kind: "all" | "none" | "not_informed", status: R
 /* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
 
 export type RegPartner = { name: string; category: string | null; confirmed: boolean };
-export type RegRow = { memberId: string; name: string; partnerName: string | null; partners?: RegPartner[]; status: string; owesCents: number; feeStatus?: string | null };
+export type RegRow = {
+  memberId: string; name: string; partnerName: string | null; partners?: RegPartner[]; status: string; owesCents: number; feeStatus?: string | null;
+  /** Events another player paid for ("Mens paid by Ebert Goosen"). */
+  coveredBy?: { category: string | null; name: string }[];
+  /** Partner fees this player paid for someone else. */
+  coversFor?: { category: string | null; name: string }[];
+  /** Entered events still unpaid by this player (excludes partner-covered events). */
+  unpaidEvents?: string[];
+  /** Entered events with no partner chosen yet. */
+  noPartnerEvents?: string[];
+};
+
+export type EntryFeeRow = { id: string; amount: number | string | null; paid: boolean | null; champ_registration_id?: string | null; champ_charge_key?: string | null };
+export type EntryRegLite = {
+  id: string; club_member_id: string; fee_payment_id?: string | null; status?: string | null;
+  covered_events?: Record<string, { by?: string | null; paid?: boolean | null }> | null; division_choices?: number[] | null;
+};
+
+/**
+ * Per-entrant money picture read from the real fee rows, never from a flat fee.
+ * Why: a tiered R310 entry showed R210, and a player whose Mens fee a partner paid looked wholly unpaid.
+ */
+export function entryMoney(
+  reg: EntryRegLite,
+  allRegs: EntryRegLite[],
+  feeRows: EntryFeeRow[] | null,
+  names: Map<string, string>,
+  categoryOf: (group: number | null) => string | null,
+  flatFeeCents: number,
+  outstanding: boolean,
+): Pick<RegRow, "owesCents" | "coveredBy" | "coversFor" | "unpaidEvents"> {
+  const cents = (v: number | string | null | undefined) => Math.round(Number(v ?? 0) * 100);
+  const isCover = (f: EntryFeeRow) => String(f.champ_charge_key ?? "").startsWith("cover:");
+  const own = (feeRows ?? []).filter((f) => !isCover(f) && (f.id === reg.fee_payment_id || f.champ_registration_id === reg.id));
+  const ownUnpaid = own.filter((f) => !f.paid).reduce((s, f) => s + cents(f.amount), 0);
+  const owesCents = feeRows && own.length ? ownUnpaid : outstanding ? flatFeeCents : 0;
+  const cov = reg.covered_events ?? {};
+  const coveredGroups = Object.keys(cov).filter((g) => cov[g]?.paid).map(Number);
+  const coveredBy = coveredGroups.map((g) => ({ category: categoryOf(g), name: names.get(String(cov[String(g)]?.by ?? "")) ?? "their partner" }));
+  const coversFor = allRegs.flatMap((o) => o.id === reg.id ? [] : Object.entries(o.covered_events ?? {})
+    .filter(([, c]) => c?.paid && c?.by === reg.club_member_id)
+    .map(([g]) => ({ category: categoryOf(Number(g)), name: names.get(o.club_member_id) ?? "Unknown member" })));
+  const unpaidEvents = owesCents > 0
+    ? (reg.division_choices ?? []).filter((g) => !coveredGroups.includes(g)).map((g) => categoryOf(g)).filter((c): c is string => !!c)
+    : [];
+  return { owesCents, coveredBy, coversFor, unpaidEvents };
+}
+
+/** Entered events that have no live partner yet. */
+export function eventsWithoutPartner(
+  memberId: string, choices: number[] | null | undefined,
+  pairs: { member_a: string; member_b: string; group_number?: number | null; status?: string | null }[],
+  categoryOf: (group: number | null) => string | null,
+): string[] {
+  const dead = ["cancelled", "declined", "rejected", "withdrawn"];
+  const paired = new Set(pairs.filter((p) => (p.member_a === memberId || p.member_b === memberId) && !dead.includes(String(p.status ?? "").toLowerCase())).map((p) => p.group_number));
+  return (choices ?? []).filter((g) => !paired.has(g)).map((g) => categoryOf(g)).filter((c): c is string => !!c);
+}
 
 /** "Mixed 2 · Doubles" + organiser rename {"Mixed 2":"Mixed"} → "Mixed". */
 export function entryCategoryName(groupLabel: string | null | undefined, renames: Record<string, string> = {}): string | null {
@@ -589,7 +646,7 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
   const [{ data: t }, { data: regs }, { data: pairRows }, { data: tn }] = await Promise.all([
     fromExt("club_champs").select("entry_fee_cents, group_labels").eq("id", tournamentId).maybeSingle(),
-    fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status, registration_status, registration_source, confirmed_at").eq("champ_id", tournamentId),
+    fromExt("club_champs_registrations").select("id, club_member_id, partner_member_id, status, fee_status, registration_status, registration_source, confirmed_at, fee_payment_id, covered_events, division_choices").eq("champ_id", tournamentId),
     fromExt("champ_doubles_pairs").select("member_a, member_b, group_number, status").eq("champ_id", tournamentId),
     fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle(),
   ]);
@@ -601,6 +658,22 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   const pairs = ((pairRows ?? []) as any[]).filter((p) => liveIds.has(p.member_a) || liveIds.has(p.member_b));
   const ids = [...new Set([...live.flatMap((r) => [r.club_member_id, r.partner_member_id]), ...pairs.flatMap((p) => [p.member_a, p.member_b])].filter(Boolean))];
   const { data: ms } = ids.length ? await supabase.from("club_members").select("id, name").in("id", ids) : { data: [] as any[] };
+  // Real fee rows (own fee + partner-cover rows) for entered players only; null = not readable → flat-fee fallback.
+  const liveRegIds = live.map((r) => r.id).filter(Boolean);
+  const feeIds = live.map((r) => r.fee_payment_id).filter(Boolean);
+  let feeRows: EntryFeeRow[] | null = null;
+  if (liveRegIds.length) {
+    const sel = "id, amount, paid, champ_registration_id, champ_charge_key";
+    const [a, b] = await Promise.all([
+      feeIds.length ? supabase.from("club_member_fee_payments").select(sel).in("id", feeIds) : Promise.resolve({ data: [], error: null } as any),
+      supabase.from("club_member_fee_payments").select(sel).in("champ_registration_id", liveRegIds),
+    ]);
+    if (!a.error && !b.error) {
+      const byId = new Map<string, EntryFeeRow>();
+      for (const f of [...((a.data ?? []) as any[]), ...((b.data ?? []) as any[])]) byId.set(f.id, f);
+      feeRows = [...byId.values()];
+    }
+  }
   const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
   const labels = ((t as any)?.group_labels ?? {}) as Record<string, string>;
   const renames = ((tn as any)?.beta_lifecycle?.answers?.categoryLabels ?? {}) as Record<string, string>;
@@ -610,12 +683,15 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
     invitedCount,
     rows: live.map((r) => {
       const partners = entryPartners(r.club_member_id, pairs, r.partner_member_id, nm, categoryOf);
+      const status = effStatus({ status: String(r.status), feeStatus: r.fee_status });
+      const money = entryMoney(r, live, feeRows, nm, categoryOf, feeCents, isOutstanding(status, feeCents > 0));
       return {
         memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Unknown member",
         partnerName: partners.length ? partners.map((p) => p.name).join(", ") : null,
         partners,
-        status: effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeStatus: r.fee_status ?? null,
-        owesCents: isOutstanding(effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeCents > 0) ? feeCents : 0,
+        status, feeStatus: r.fee_status ?? null,
+        ...money,
+        noPartnerEvents: r.partner_member_id ? [] : eventsWithoutPartner(r.club_member_id, r.division_choices, pairs, categoryOf),
       };
     }),
   };

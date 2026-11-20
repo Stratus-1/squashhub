@@ -268,8 +268,15 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           {rows.length > 0 && <button type="button" className="mt-1 text-primary underline" onClick={() => setShowRegs((v) => !v)}>{showRegs ? "Hide players" : "Show players"}</button>}
           {showRegs && <ul className="mt-1 divide-y divide-border rounded border border-border">{rows.map((r) => (
             <li key={r.memberId} className="flex flex-wrap justify-between gap-2 px-2 py-1">
-              <span>{r.name}{r.partners?.length ? <span className="text-muted-foreground"> + {r.partners.map((p) => `${p.name}${p.category ? ` (${p.category}${p.confirmed ? "" : ", awaiting payment"})` : p.confirmed ? "" : " (awaiting payment)"}`).join(" · ")}</span> : r.partnerName ? <span className="text-muted-foreground"> + {r.partnerName}</span> : null}</span>
-              <span className={isOutstanding(r.status, h.feeDue) ? "text-destructive" : "text-primary"}>{regLabel(r.status, h.feeDue, needPay)}{r.owesCents ? ` · ${money(r.owesCents)}` : ""}</span>
+              <span>{r.name}{r.partners?.length ? <span className="text-muted-foreground"> + {r.partners.map((p) => `${p.name}${p.category ? ` (${p.category}${p.confirmed ? "" : ", awaiting payment"})` : p.confirmed ? "" : " (awaiting payment)"}`).join(" · ")}</span> : r.partnerName ? <span className="text-muted-foreground"> + {r.partnerName}</span> : null}
+                {r.noPartnerEvents?.length ? <span className="text-muted-foreground"> · {r.noPartnerEvents.join(", ")}: no partner yet</span> : null}</span>
+              <span className="flex flex-col items-start text-left sm:items-end sm:text-right">
+                {r.coveredBy?.map((c, i) => <span key={`c${i}`} className="text-primary">{c.category ? `${c.category} paid by ${c.name}` : `Paid by ${c.name}`}</span>)}
+                {h.feeDue && r.owesCents > 0
+                  ? <span className="text-destructive">{r.coveredBy?.length && r.unpaidEvents?.length ? `${r.unpaidEvents.join(", ")}: ` : ""}{regLabel(r.status, h.feeDue, needPay)} · {money(r.owesCents)}</span>
+                  : <span className={isOutstanding(r.status, h.feeDue) && !r.coveredBy?.length ? "text-destructive" : "text-primary"}>{r.coveredBy?.length && isOutstanding(r.status, h.feeDue) ? "Entered" : regLabel(r.status, h.feeDue, needPay)}</span>}
+                {r.coversFor?.length ? <span className="text-muted-foreground">also paid for {r.coversFor.map((c) => `${c.name}${c.category ? ` (${c.category})` : ""}`).join(", ")}</span> : null}
+              </span>
             </li>
           ))}</ul>}
         </div>

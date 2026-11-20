@@ -4747,3 +4747,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: No Frills Doubles list showed Riaan van Reeuwyk, Lisa van Reeuwyk, AJ Barnard, Ebert Goosen etc. without partners although pairs existed.
 - Cause: `loadRegistrations` read only `club_champs_registrations.partner_member_id`; pairs chosen in the partner picker live in `champ_doubles_pairs` (one per category), so multi-event players had none shown.
 - Fix: read the pairing board too and list each partner with its category (organiser names, e.g. "Mixed"), marking pairs still awaiting payment. Display only; no data changed. Test: `src/lib/smart-builder/__tests__/entry-partners.test.ts`.
+
+### 2026-11-20 — Manage "Entries & payment status" showed wrong amounts / payer
+- Symptom: Reinhardt Falk showed "Not confirmed · Payment outstanding · R210" beside his Mens pair with Ebert, although Ebert paid his Mens fee; Linden (Mens + Mixed, tiered R310) showed R210; total said R1260.
+- Cause: the list used one flat fee per outstanding row and ignored partner-cover payments (`covered_events`, `cover:` fee rows).
+- Fix (display only): `entryMoney` / `eventsWithoutPartner` in `step-handover.ts` read the real fee rows; rows now show "Mens paid by Ebert Goosen", "Mixed: … R210", "also paid for …" and "Mixed: no partner yet". Total now R1360. No entries, pairs or fees changed. Tests: `src/lib/smart-builder/__tests__/entry-partners.test.ts`.

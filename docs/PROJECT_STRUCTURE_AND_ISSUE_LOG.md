@@ -4758,3 +4758,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Cause: `list_doubles_partner_options` cut the list at 50 rows *before* sorting and had no gender filter, so a man's Mixed list showed 50 men and none of the 73 invited ladies.
 - Fix: migration 0450 filters by category gender and sorts before the limit; client asks for up to 400. Mens list for a man: 268 options, 0 ladies; Mixed: ladies (plus players with no gender on record).
 - Fee rule (Willem): tiered package counts every category entered, minus the partner's 1-category cover (migration 0451, `champ_reg_own_due_cents` + `entryDueCents`). Reinhardt (Mens+Mixed R310, Ebert covered Mens R210) now owes R100; his unpaid fee was adjusted 210 → 100 with ledger audit. Partner step amounts now use the server due.
+
+### 2026-11-20 — Classic multi-league champs: self-registered players blocked from card payment
+- Symptom: "Please choose your category on your invitation before paying the entry fee" for players who signed up from the tournament page in a multi-league tournament without typed categories; the page offers no category picker.
+- Cause: `champ_registration_payable` (0431) refused any empty `division_choices` when `num_groups > 1`, broader than `beta_tournament_category_guard`, which only applies to typed-category tournaments.
+- Fix: migration 0452 limits the refusal to typed-category tournaments only. No entries, fees or payments changed.

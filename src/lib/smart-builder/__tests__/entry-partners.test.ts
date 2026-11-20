@@ -114,3 +114,29 @@ describe("doubles entries are listed once per pair", () => {
     expect(groupDoublesEntries({ live: [live[0]], open: [live[0]], pairs: [], rows, names: nm, categoryOf: cat, isDoublesGroup: () => false, feeDue: true })).toBeNull();
   });
 });
+
+import { entryPaidByOthers } from "../step-handover";
+
+describe("paid by another person", () => {
+  const nm = new Map([["ebert", "Ebert Goosen"], ["jan", "Jan Goosen"], ["reinhardt", "Reinhardt Falk"]]);
+  // The R420 was Jan's money on the shared Goosen login: covered_events still says Ebert, the cover fee row says Jan.
+  const reinhardt = { id: "r-r", club_member_id: "reinhardt", fee_payment_id: "f-r", division_choices: [1, 3], covered_events: { "1": { by: "ebert", paid: true } } };
+  const jan = { id: "r-j", club_member_id: "jan", fee_payment_id: "f-j", division_choices: [1, 3], covered_events: { "1": { by: "ebert", paid: true } } };
+  const fees = [
+    { id: "f-rc", amount: "210", paid: true, champ_registration_id: "r-r", champ_charge_key: "cover:r-r:1", paid_by_member_id: "jan" },
+    { id: "f-jc", amount: "210", paid: true, champ_registration_id: "r-j", champ_charge_key: "cover:r-j:1", paid_by_member_id: "jan" },
+  ];
+  it("names the corrected payer from the fee row, not the old shared-login profile", () => {
+    expect(entryPaidByOthers(reinhardt, fees)).toEqual([{ group: 1, payerId: "jan" }]);
+    expect(entryMoney(reinhardt, [reinhardt, jan], fees, nm, cat, 21000, false).coveredBy).toEqual([{ category: "Mens", name: "Jan Goosen" }]);
+  });
+  it("never says 'paid by' when the player paid their own entry", () => {
+    expect(entryPaidByOthers(jan, fees)).toEqual([]);
+  });
+  it("the payer lists who they paid for", () => {
+    expect(entryMoney(jan, [reinhardt, jan], fees, nm, cat, 21000, false).coversFor).toEqual([{ category: "Mens", name: "Reinhardt Falk" }]);
+  });
+  it("falls back to the registration's payer when no cover fee row exists", () => {
+    expect(entryPaidByOthers(reinhardt, [])).toEqual([{ group: 1, payerId: "ebert" }]);
+  });
+});

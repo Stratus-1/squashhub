@@ -82,7 +82,13 @@ export function entrantFeeText(
   const feeStatus = String(r.fee_status ?? "").toLowerCase();
   if (status === "cancelled" || status === "withdrawn") return null;
   if (feeStatus === "waived" || status === "waived") return { text: "Fee waived", paid: true };
-  const covered = Array.isArray(r.covered_events) ? (r.covered_events as Array<number | string>) : [];
+  // covered_events is stored as { "<group>": { by, paid, … } }; older rows may be a plain list of groups.
+  const ce = r.covered_events as unknown;
+  const covered = Array.isArray(ce)
+    ? (ce as Array<number | string>)
+    : ce && typeof ce === "object"
+      ? Object.entries(ce as Record<string, { paid?: boolean | null } | null>).filter(([, c]) => c?.paid).map(([g]) => g)
+      : [];
   const due = entryDueCents(opts.entryFeeCents, r.division_choices, covered, opts.tiers);
   const money = (c: number) => `R${(c / 100).toFixed(2)}`;
   if (feeStatus === "paid" || status === "paid") {

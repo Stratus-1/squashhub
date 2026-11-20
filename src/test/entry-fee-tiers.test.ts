@@ -58,3 +58,11 @@ describe("entrantFeeText (registrations list amount)", () => {
     expect(entrantFeeText({ status: "registered" }, { ...opts, feeRequired: false })).toBeNull();
   });
 });
+
+describe("organiser list amount with a partner-paid category", () => {
+  it("Reinhardt (Mens + Mixed, Mens paid by Jan) shows R100 due, not R310", () => {
+    const tiers = { "1": 21000, "2": 31000 };
+    const r = { status: "pending_payment", fee_status: "due", division_choices: [1, 3], covered_events: { "1": { by: "jan", paid: true } } };
+    expect(entrantFeeText(r, { entryFeeCents: 21000, feeRequired: true, tiers })).toEqual({ text: "R100.00 due", paid: false });
+  });
+});

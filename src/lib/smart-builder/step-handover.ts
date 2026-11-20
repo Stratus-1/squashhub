@@ -538,11 +538,34 @@ export type RegRow = {
   noPartnerEvents?: string[];
 };
 
-export type EntryFeeRow = { id: string; amount: number | string | null; paid: boolean | null; champ_registration_id?: string | null; champ_charge_key?: string | null };
+export type EntryFeeRow = { id: string; amount: number | string | null; paid: boolean | null; champ_registration_id?: string | null; champ_charge_key?: string | null; paid_by_member_id?: string | null };
 export type EntryRegLite = {
   id: string; club_member_id: string; fee_payment_id?: string | null; status?: string | null;
   covered_events?: Record<string, { by?: string | null; paid?: boolean | null }> | null; division_choices?: number[] | null;
 };
+
+/**
+ * Who paid for a partner-covered event. The cover fee row's payer wins (it is corrected when a payment
+ * is re-attributed, e.g. Ebert → Jan on a shared family login); the registration's covered_events.by is
+ * only the fallback. Why: covered_events still named the shared-login profile after the correction.
+ */
+export function coverPayerId(reg: Pick<EntryRegLite, "id" | "covered_events">, group: number, feeRows: EntryFeeRow[] | null | undefined): string | null {
+  const rows = feeRows ?? [];
+  const key = `cover:${reg.id}:${group}`;
+  const row = rows.find((f) => f.champ_charge_key === key && f.paid_by_member_id)
+    ?? rows.find((f) => f.champ_charge_key === `moved:${key}` && f.paid_by_member_id);
+  return row?.paid_by_member_id ?? reg.covered_events?.[String(group)]?.by ?? null;
+}
+
+/** Events another person paid for this entrant (never the entrant themselves): [{ group, payerId }]. */
+export function entryPaidByOthers(reg: Pick<EntryRegLite, "id" | "club_member_id" | "covered_events">, feeRows: EntryFeeRow[] | null | undefined): { group: number; payerId: string }[] {
+  const cov = reg.covered_events ?? {};
+  return Object.keys(cov)
+    .filter((g) => cov[g]?.paid)
+    .map((g) => ({ group: Number(g), payerId: coverPayerId(reg, Number(g), feeRows) }))
+    .filter((x): x is { group: number; payerId: string } => !!x.payerId && x.payerId !== reg.club_member_id)
+    .sort((a, b) => a.group - b.group);
+}
 
 /**
  * Per-entrant money picture read from the real fee rows, never from a flat fee.
@@ -564,10 +587,10 @@ export function entryMoney(
   const owesCents = feeRows && own.length ? ownUnpaid : outstanding ? flatFeeCents : 0;
   const cov = reg.covered_events ?? {};
   const coveredGroups = Object.keys(cov).filter((g) => cov[g]?.paid).map(Number);
-  const coveredBy = coveredGroups.map((g) => ({ category: categoryOf(g), name: names.get(String(cov[String(g)]?.by ?? "")) ?? "their partner" }));
-  const coversFor = allRegs.flatMap((o) => o.id === reg.id ? [] : Object.entries(o.covered_events ?? {})
-    .filter(([, c]) => c?.paid && c?.by === reg.club_member_id)
-    .map(([g]) => ({ category: categoryOf(Number(g)), name: names.get(o.club_member_id) ?? "Unknown member" })));
+  const coveredBy = entryPaidByOthers(reg, feeRows).map(({ group, payerId }) => ({ category: categoryOf(group), name: names.get(payerId) ?? "their partner" }));
+  const coversFor = allRegs.flatMap((o) => o.id === reg.id ? [] : entryPaidByOthers(o, feeRows)
+    .filter((x) => x.payerId === reg.club_member_id)
+    .map(({ group }) => ({ category: categoryOf(group), name: names.get(o.club_member_id) ?? "Unknown member" })));
   const unpaidEvents = owesCents > 0
     ? (reg.division_choices ?? []).filter((g) => !coveredGroups.includes(g)).map((g) => categoryOf(g)).filter((c): c is string => !!c)
     : [];
@@ -636,6 +659,7 @@ const DEAD_PAIR = ["cancelled", "declined", "rejected", "withdrawn"];
 export function groupDoublesEntries(i: {
   live: RegFull[]; open: RegFull[]; pairs: PairLite[]; rows: RegRow[]; names: Map<string, string>;
   categoryOf: (group: number | null) => string | null; isDoublesGroup: (group: number) => boolean; feeDue: boolean;
+  feeRows?: EntryFeeRow[] | null;
 }): EntryGroup[] | null {
   const pairs = i.pairs.filter((p) => !DEAD_PAIR.includes(String(p.status ?? "").toLowerCase()));
   const anyRegPartner = i.live.some((r) => r.partner_member_id);
@@ -651,7 +675,10 @@ export function groupDoublesEntries(i: {
     const base = { memberId, name: nm(memberId) };
     const reg = liveBy.get(memberId) ?? openBy.get(memberId);
     const cover = group != null ? reg?.covered_events?.[String(group)] : undefined;
-    if (cover?.paid) return { ...base, text: `Paid by ${nm(cover.by)}`, tone: "ok" };
+    if (cover?.paid && reg && group != null) {
+      const payer = coverPayerId(reg, group, i.feeRows);
+      return { ...base, text: payer && payer !== memberId ? `Paid by ${nm(payer)}` : "Paid", tone: "ok" };
+    }
     const row = rowBy.get(memberId);
     if (!liveBy.has(memberId) || !row) return { ...base, text: i.feeDue ? "Not entered yet · not paid" : "Not entered yet", tone: "due" };
     if (!i.feeDue) return { ...base, text: "Entered", tone: "ok" };
@@ -762,7 +789,7 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   const feeIds = live.map((r) => r.fee_payment_id).filter(Boolean);
   let feeRows: EntryFeeRow[] | null = null;
   if (liveRegIds.length) {
-    const sel = "id, amount, paid, champ_registration_id, champ_charge_key";
+    const sel = "id, amount, paid, champ_registration_id, champ_charge_key, paid_by_member_id";
     const [a, b] = await Promise.all([
       feeIds.length ? supabase.from("club_member_fee_payments").select(sel).in("id", feeIds) : Promise.resolve({ data: [], error: null } as any),
       supabase.from("club_member_fee_payments").select(sel).in("champ_registration_id", liveRegIds),
@@ -773,7 +800,11 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
       feeRows = [...byId.values()];
     }
   }
-  const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
+  // Partner-cover payers may not be entrants themselves (e.g. a parent paying); fetch their names too.
+  const known = new Set(ids);
+  const payerIds = [...new Set((feeRows ?? []).map((f) => f.paid_by_member_id).filter((x): x is string => !!x && !known.has(x)))];
+  const { data: payers } = payerIds.length ? await supabase.from("club_members").select("id, name").in("id", payerIds) : { data: [] as any[] };
+  const nm = new Map([...((ms ?? []) as any[]), ...((payers ?? []) as any[])].map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
   const labels = ((t as any)?.group_labels ?? {}) as Record<string, string>;
   const renames = ((tn as any)?.beta_lifecycle?.answers?.categoryLabels ?? {}) as Record<string, string>;
   const categoryOf = (g: number | null) => (g == null ? null : entryCategoryName(labels[String(g)], renames));
@@ -793,7 +824,7 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   const isDoublesGroup = (g: number) => /· Doubles$/.test(String(labels[String(g)] ?? "")) || pairs.some((p) => p.group_number === g);
   let entries: EntryGroup[] | null = null;
   try {
-    entries = groupDoublesEntries({ live, open, pairs, rows, names: nm, categoryOf, isDoublesGroup, feeDue: feeCents > 0 || !!feeRows?.length });
+    entries = groupDoublesEntries({ live, open, pairs, rows, names: nm, categoryOf, isDoublesGroup, feeDue: feeCents > 0 || !!feeRows?.length, feeRows });
   } catch { entries = null; }
   return { feeCents, invitedCount, rows, entries };
 }

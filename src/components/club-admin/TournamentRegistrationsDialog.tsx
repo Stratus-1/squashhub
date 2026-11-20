@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { isPlayerEligibleForCategory, validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 import { openWhatsApp, normalisePhoneForWhatsApp, buildWhatsAppLink } from "@/lib/whatsapp";
 import { tournamentLink } from "@/lib/tournaments/tournament-link";
-import { entryPayLinks } from "@/lib/smart-builder/step-handover";
+import { entryPayLinks, entryPaidByOthers, type EntryFeeRow } from "@/lib/smart-builder/step-handover";
 import {
   classifyEntrant,
   ENTRANT_CATEGORY_VARIANT,
@@ -121,6 +121,20 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
       return (data || []) as PairRow[];
     },
     enabled: !!champId && open,
+  });
+  // Partner-cover fee rows: who actually paid a player's event ("Mens paid by Jan Goosen"). Read-only.
+  const regIds = registrations.map((r: any) => r.id).filter(Boolean);
+  const { data: coverRows = [] } = useQuery({
+    queryKey: ["champ-registration-cover-payers", champId, regIds.length],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("id, amount, paid, champ_registration_id, champ_charge_key, paid_by_member_id")
+        .in("champ_registration_id", regIds)
+        .like("champ_charge_key", "%cover:%");
+      if (error) return [] as EntryFeeRow[];
+      return (data || []) as EntryFeeRow[];
+    },
+    enabled: !!champId && open && regIds.length > 0,
   });
   // Organiser's category names live on the tournament (the club_champs view
   // only carries the internal keys, e.g. "Mixed 2"). Read-only.
@@ -486,6 +500,18 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         {(() => {
                           const fee = entrantFeeText(r, { entryFeeCents: Math.round(entryFee * 100), feeRequired, tiers: feeTiers });
                           return fee ? <span className={`ml-2 text-xs font-semibold ${fee.paid ? "text-emerald-600" : "text-muted-foreground"}`}>{fee.text}</span> : null;
+                        })()}
+                        {(() => {
+                          const others = entryPaidByOthers(r, coverRows);
+                          const hasCovers = Object.keys(r.covered_events ?? {}).length > 0;
+                          const whole = !hasCovers && r.paid_by_member_id && r.paid_by_member_id !== r.club_member_id && isPaidRow(r) ? r.paid_by_member_id : null;
+                          const label = (id: string) => nameById.get(id) || "another member";
+                          if (others.length) return others.map((o) => (
+                            <span key={`pb-${o.group}`} className="ml-2 text-xs font-semibold text-emerald-600">
+                              {champ?.group_labels?.[String(o.group)] ? `${categoryName(o.group)} paid by ` : "Paid by "}{label(o.payerId)}
+                            </span>
+                          ));
+                          return whole ? <span className="ml-2 text-xs font-semibold text-emerald-600">Paid by {label(whole)}</span> : null;
                         })()}
                       </p>
                       {hasPairs && (() => {

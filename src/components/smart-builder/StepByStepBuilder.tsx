@@ -2061,6 +2061,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                           {saved && <Button size="sm" variant="ghost" onClick={resetPools}>Reset to calculated pools</Button>}
                         </div>
                         <p className="text-xs text-muted-foreground">Drag players between pools or use the arrows. The pools are used exactly as shown when you generate the draw.</p>
+                        {preview.waiting.length > 0 && <p className="text-xs text-destructive" data-testid={`pool-waiting-${u.key}`}>Waiting for a partner (not in a pool yet): {preview.waiting.map(memberName).join(", ")}. They are placed once their pair is complete; the draw can't be generated until then.</p>}
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {shown.map((pool, pi) => <div key={pi} className="min-w-0 rounded-md border border-border" data-testid={`planned-pool-${pi + 1}`} onDragOver={(e) => e.preventDefault()} onDrop={(e) => dropOn(e, pi)}>
                             <h4 className="border-b border-border bg-muted/60 px-2 py-1.5 text-xs font-semibold">{stage?.poolNames?.[pi] || `Pool ${pi + 1}`} · {pool.length} {pool.some((id) => id.includes("+")) ? "pairs" : "entries"}</h4>

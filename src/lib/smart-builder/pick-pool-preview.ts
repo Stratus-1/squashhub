@@ -1,7 +1,11 @@
-import { defaultPools, orderUnits, rankingIssue, unitsFor, type RegLite } from "./step-draw";
+import { defaultPools, NO_PARTNER_ERROR, orderUnits, rankingIssue, unitsFor, type RegLite } from "./step-draw";
 import type { PoolAllocationMode } from "../tournaments/pools";
 
-/** Read-only pool projection from selected entrants; never invent doubles partners. */
+/**
+ * Read-only pool projection from selected entrants; never invent doubles partners.
+ * Complete pairs are placed; players still without a partner are listed in `waiting` (not placed),
+ * and the draw itself stays blocked by the generator until every pair is complete.
+ */
 export function pickPoolPreview(input: {
   ids: string[]; pairs: Array<[string, string]>; registrations: RegLite[];
   group: number; groups: number; doubles: boolean; pools: number;
@@ -17,8 +21,9 @@ export function pickPoolPreview(input: {
   });
   const field = unitsFor(regs, input.group, input.groups, input.doubles);
   const seeding = input.seeding === "ranking" || input.seeding === "ladder" || input.seeding === "random" ? input.seeding : "entry_order";
-  const issue = field.errors[0] ?? (seeding === "ranking" ? rankingIssue(field.units, input.scope, input.points) : null);
-  if (issue) return { pools: Array.from({ length: input.pools }, () => [] as typeof field.units), issue };
+  const waiting = field.unpaired;
+  const issue = field.errors.find((e) => e !== NO_PARTNER_ERROR) ?? (seeding === "ranking" ? rankingIssue(field.units, input.scope, input.points) : null);
+  if (issue) return { pools: Array.from({ length: input.pools }, () => [] as typeof field.units), issue, waiting };
   let units = orderUnits(field.units, seeding, { seed: 1 + input.group, points: input.points, ladder: input.ladder });
   if (input.order?.length) {
     const order = input.order;
@@ -29,7 +34,7 @@ export function pickPoolPreview(input: {
   const byId = new Map(units.map((u) => [u.partner ? `${u.member}+${u.partner}` : u.member, u]));
   return { pools: defaultPools(units, input.pools, input.mode).map((pool) => pool.flatMap((id) => {
     const unit = byId.get(id); return unit ? [unit] : [];
-  })), issue: null };
+  })), issue: null as string | null, waiting };
 }
 /** Apply a saved manual pool arrangement to the current entries: keep saved spots, drop withdrawn entries, add new ones to the smallest pool. */
 export function applyManualPools(calculated: string[][], saved: string[][] | undefined | null): string[][] {

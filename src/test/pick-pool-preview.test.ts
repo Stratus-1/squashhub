@@ -18,10 +18,17 @@ describe("picked doubles pool preview", () => {
     expect(units.map((u) => [u.member, u.partner]).sort()).toEqual([...pairs].sort());
     expect(new Set(units.flatMap((u) => [u.member, u.partner])).size).toBe(48);
   });
-  it("shows six empty pools rather than inventing partners", () => {
+  it("never invents partners: players without a pair wait outside the pools", () => {
     const result = pickPoolPreview({ ...input, pairs: [] });
-    expect(result.issue).toMatch(/no doubles partner/);
     expect(result.pools.map((p) => p.length)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(result.waiting).toHaveLength(48);
+  });
+  it("places complete pairs and lists only the unpaired players as waiting (No Frills Ladies/Mixed)", () => {
+    const ids = ["zelda", "lisa", "michelle"];
+    const result = pickPoolPreview({ ...input, ids, pairs: [["lisa", "zelda"]], pools: 2, seeding: "entry_order", points: new Map(), ladder: new Map() });
+    expect(result.issue).toBeNull();
+    expect(result.pools.flat().map((u) => [u.member, u.partner].sort())).toEqual([["lisa", "zelda"]]);
+    expect(result.waiting).toEqual(["michelle"]);
   });
   it("does not substitute ladder when club rankings are missing", () => {
     expect(pickPoolPreview({ ...input, points: new Map() }).issue).toMatch(/ranking points/);

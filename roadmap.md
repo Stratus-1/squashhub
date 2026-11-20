@@ -184,3 +184,7 @@
 - [x] Reinhardt Falk's paid Mens Doubles R210 moved onto Jan Goosen's account: fee raised R210 and payment R210 both show under Jan, zero "covered by Jan" marker left on Reinhardt (Willem approved 20 Nov). Amounts and balances unchanged; audited.
 - [x] Same payer-account rule applied to Neill Barnard's paid Mixed Doubles R210 — moved onto Bernice Barnard's account with fee raised and payment shown there, zero marker left on Neill; audited.
 - [x] Ebert Goosen's statement cleared of the 8 self-cancelling No Frills Doubles lines (Willem approved 20 Nov); balances unchanged, removed lines kept in the finance audit log.
+
+## No Frills pools (20 Nov)
+- [x] Explain why Ladies/Mixed doubles pairs aren't placed in pools (Willem 20 Nov).
+- [x] Complete pairs now placed in pools; unpaired players listed as "Waiting for a partner".

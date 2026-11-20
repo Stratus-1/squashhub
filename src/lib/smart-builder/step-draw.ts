@@ -98,19 +98,21 @@ const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
 
 /** Active registrations → units per division. Doubles units need a reciprocal pair in the same division. */
-export function unitsFor(regs: RegLite[], group: number, nGroups: number, doubles: boolean): { units: DrawUnit[]; errors: string[] } {
+export const NO_PARTNER_ERROR = "an entry has no doubles partner";
+export function unitsFor(regs: RegLite[], group: number, nGroups: number, doubles: boolean): { units: DrawUnit[]; errors: string[]; unpaired: string[] } {
   const inDiv = (r: RegLite) => nGroups <= 1 || !r.division_choices?.length || r.division_choices.includes(group);
   const live = regs.filter((r) => !INACTIVE.has(String(r.status)));
   const mine = live.filter(inDiv);
   const errors: string[] = [];
-  if (!doubles) return { units: mine.map((r) => ({ member: r.club_member_id, partner: null })), errors };
+  const unpaired: string[] = [];
+  if (!doubles) return { units: mine.map((r) => ({ member: r.club_member_id, partner: null })), errors, unpaired };
   const byMember = new Map(live.map((r) => [r.club_member_id, r]));
   const used = new Set<string>();
   const units: DrawUnit[] = [];
   for (const r of mine) {
     if (used.has(r.club_member_id)) continue;
     const pid = partnerIn(r, group);
-    if (!pid) { errors.push("an entry has no doubles partner"); continue; }
+    if (!pid) { errors.push(NO_PARTNER_ERROR); unpaired.push(r.club_member_id); continue; }
     const p = byMember.get(pid);
     if (!p || partnerIn(p, group) !== r.club_member_id) { errors.push("a partner's entry does not point back to the same pair"); continue; }
     if (!inDiv(p)) { errors.push("a pair's partners are in different categories"); continue; }
@@ -118,7 +120,7 @@ export function unitsFor(regs: RegLite[], group: number, nGroups: number, double
     used.add(r.club_member_id); used.add(p.club_member_id);
     units.push({ member: r.club_member_id, partner: p.club_member_id });
   }
-  return { units, errors: [...new Set(errors)] };
+  return { units, errors: [...new Set(errors)], unpaired };
 }
 
 /** Deterministic shuffle (seeded) so the preview and the saved draw match. */

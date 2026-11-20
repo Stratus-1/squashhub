@@ -74,8 +74,8 @@ describe("multi-event Pick players", () => {
       { club_member_id: "dan", partner_member_id: null, status: "invited", division_choices: [1], division_partners: {} },
     ];
     expect(unitsFor(regs, 1, 4, false).units.map((u) => u.member).sort()).toEqual(["albert", "dan"]);
-    expect(unitsFor(regs, 2, 4, true)).toEqual({ units: [{ member: "albert", partner: "ben" }], errors: [] });
-    expect(unitsFor(regs, 3, 4, true)).toEqual({ units: [{ member: "albert", partner: "cara" }], errors: [] });
+    expect(unitsFor(regs, 2, 4, true)).toEqual({ units: [{ member: "albert", partner: "ben" }], errors: [], unpaired: [] });
+    expect(unitsFor(regs, 3, 4, true)).toEqual({ units: [{ member: "albert", partner: "cara" }], errors: [], unpaired: [] });
     expect(partnerIn(regs[0], 1)).toBeNull();
   });
 

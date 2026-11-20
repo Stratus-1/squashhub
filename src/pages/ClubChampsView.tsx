@@ -93,7 +93,6 @@ import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEngi
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
@@ -2644,7 +2643,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <div className="text-center">
           <h1 className="text-2xl md:text-3xl font-bold font-heading">{champ.name}</h1>
           <p className="text-muted-foreground">
-            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Tournament · {champ.start_date} to {champ.end_date}
+            {champ.start_date} to {champ.end_date}
           </p>
           <p className="text-sm text-muted-foreground">
             {String((champ as any).scheduling_mode || "") === "self"

@@ -4773,3 +4773,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Cause: standings looked up a player's pair by player only (last pair won) and folded a team only when the first row lacked a partner; `getGroupLabel` received the `club_champs` view row, which has no `beta_lifecycle` (where the "Mixed" rename lives). Data (pairs, fees) was correct.
 - Fix: `foldDoublesEntries` (per category + player, one row per team per category) + `labelChamp` in ClubChampsView; migration 0453 makes `notify_doubles_pair` say whose payment the pair waits for. Test: `src/test/doubles-display-entries.test.ts`.
 - Follow-up: Ladies showed "Zelda Goosen" alone because a category counted as doubles only when a saved entry row had a partner (tournament-level match type is "singles"); `isDoublesLeague` now also counts a category with a live pairing.
+
+### 2026-11-20 — Champs page header showed "Open Singles Tournament"
+- Symptom: the tournament detail page header read "Open Singles Tournament · <dates>" under the tournament name.
+- Fix: ClubChampsView header now shows the tournament name with dates only (same rule as the tournament cards fix); unused GENDER_LABELS map removed. Display only.

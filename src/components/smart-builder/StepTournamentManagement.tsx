@@ -270,7 +270,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             <li key={r.memberId} className="flex flex-wrap justify-between gap-2 px-2 py-1">
               <span>{r.name}{r.partners?.length ? <span className="text-muted-foreground"> + {r.partners.map((p) => `${p.name}${p.category ? ` (${p.category}${p.confirmed ? "" : ", awaiting payment"})` : p.confirmed ? "" : " (awaiting payment)"}`).join(" · ")}</span> : r.partnerName ? <span className="text-muted-foreground"> + {r.partnerName}</span> : null}
                 {r.noPartnerEvents?.length ? <span className="text-muted-foreground"> · {r.noPartnerEvents.join(", ")}: no partner yet</span> : null}</span>
-              <span className="flex flex-col items-start text-left sm:items-end sm:text-right">
+              <span className="flex flex-col items-start text-left">
                 {r.coveredBy?.map((c, i) => <span key={`c${i}`} className="text-primary">{c.category ? `${c.category} paid by ${c.name}` : `Paid by ${c.name}`}</span>)}
                 {h.feeDue && r.owesCents > 0
                   ? <span className="text-destructive">{r.coveredBy?.length && r.unpaidEvents?.length ? `${r.unpaidEvents.join(", ")}: ` : ""}{regLabel(r.status, h.feeDue, needPay)} · {money(r.owesCents)}</span>

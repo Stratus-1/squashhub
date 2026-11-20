@@ -167,3 +167,4 @@
 - [x] Dashboard on a shared login: when a profile (e.g. Ebert) is selected, show only that member's own tournament invitations/entries.
 
 - [x] Invitation page: fee line shows the price list (R210 one category, R310 two categories); amount still owed on its own separate line
+- [x] Make the player name prominent at the top of tournament invitation links (Willem 20 Nov).

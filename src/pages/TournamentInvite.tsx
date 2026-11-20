@@ -589,7 +589,10 @@ export default function TournamentInvite() {
       </p>
       <h1 className="text-lg font-bold leading-tight">{data?.tournament_name}</h1>
       {data?.invitee_name && (
-        <p className="text-xs text-muted-foreground">{adminEntered ? "Entry for" : "Invitation for"} {data.invitee_name}</p>
+        <div className="mt-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2" data-testid="invite-for-name">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{adminEntered ? "Entry for" : "Invitation for"}</p>
+          <p className="text-base font-bold leading-tight text-foreground">{data.invitee_name}</p>
+        </div>
       )}
       {adminEntered && (data as any)?.entry_category && (
         <p className="text-xs">Category: <span className="font-medium">{(data as any).entry_category}</span></p>

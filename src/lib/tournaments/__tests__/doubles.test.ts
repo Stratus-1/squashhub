@@ -9,6 +9,7 @@ import {
   partnerOptionSubtitle,
   sanitizePartnerOption,
   sanitizePartnerOptions,
+  partnerEntryNote,
   type MyPair,
 } from "../doubles";
 import { inviteState, type InvitePayload } from "../invite-link";
@@ -55,6 +56,14 @@ describe("privacy-safe partner options", () => {
   it("renders a club and ranking subtitle only", () => {
     expect(partnerOptionSubtitle(sanitizePartnerOption({ member_id: "m", display_name: "N", club_name: "Riverside", ladder_position: 7 })!))
       .toBe("Riverside · Ladder #7");
+  });
+  it("keeps the not-entered-yet flag so a Ladies-only player can be chosen for Mixed", () => {
+    const zelda = sanitizePartnerOption({ member_id: "z", display_name: "Zelda", needs_entry: true })!;
+    expect(zelda.needs_entry).toBe(true);
+    expect(partnerEntryNote(zelda, "Mixed")).toContain("enters them in Mixed");
+    const entered = sanitizePartnerOption({ member_id: "y", display_name: "Yolande" })!;
+    expect(entered.needs_entry).toBe(false);
+    expect(partnerEntryNote(entered, "Mixed")).toBeNull();
   });
 });
 

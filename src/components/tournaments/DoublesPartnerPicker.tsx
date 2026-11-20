@@ -27,6 +27,7 @@ import {
   partnerOptionSubtitle,
   partnerReadinessBadge,
   partnerReadinessNote,
+  partnerEntryNote,
   proposePartner,
   proposeExternalPartner,
   fetchExternalPartnerContext,
@@ -541,12 +542,20 @@ function DivisionPartner({
                           {badge}
                         </Badge>
                       )}
+                      {o.needs_entry && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          Not in {division.label} yet
+                        </Badge>
+                      )}
                     </div>
                     {partnerOptionSubtitle(o) && (
                       <p className="text-[11px] text-muted-foreground">{partnerOptionSubtitle(o)}</p>
                     )}
                     {partnerReadinessNote(o) && (
                       <p className="text-[11px] text-muted-foreground mt-0.5">{partnerReadinessNote(o)}</p>
+                    )}
+                    {partnerEntryNote(o, division.label) && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{partnerEntryNote(o, division.label)}</p>
                     )}
                   </button>
                 );

@@ -23,6 +23,8 @@ export type PartnerOption = {
   is_user?: boolean;
   /** Has an email on file, so a register/complete-entry link can reach them. */
   has_email?: boolean;
+  /** Invited but not entered in this category yet; choosing them enters them. */
+  needs_entry?: boolean;
 };
 
 export const PARTNER_OPTION_FIELDS = [
@@ -34,6 +36,7 @@ export const PARTNER_OPTION_FIELDS = [
   "ladder_position",
   "is_user",
   "has_email",
+  "needs_entry",
 ] as const;
 
 
@@ -117,6 +120,7 @@ export function sanitizePartnerOption(raw: any): PartnerOption | null {
         : Number(raw.ladder_position),
     is_user: raw?.is_user === true,
     has_email: raw?.has_email === true,
+    needs_entry: raw?.needs_entry === true,
   };
 }
 
@@ -246,6 +250,12 @@ export function partnerReadinessNote(option: PartnerOption): string | null {
     : `${who} is not registered on SquashHub and has no email on file. Ask the organiser to add their email before pairing.`;
 }
 
+/** Explains that choosing this player also enters them in the category. */
+export function partnerEntryNote(option: PartnerOption, categoryLabel: string): string | null {
+  if (!option.needs_entry) return null;
+  const who = option.display_name || "This player";
+  return `${who} has not entered ${categoryLabel} yet — choosing them enters them in ${categoryLabel} too. Their fee follows the usual price for more than one event.`;
+}
 
 // ── API wrappers ────────────────────────────────────────────────────────────
 

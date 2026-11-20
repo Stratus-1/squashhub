@@ -4813,3 +4813,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Fix: "Change partner" on an agreed/locked pair now asks for confirmation first (`DoublesPartnerPicker.tsx`).
 - Fix: notifications that stored full SquashHub links (https://uit.squashhub.co.za/i/…) opened "Page not found"; `resolveNotificationUrl` now reduces SquashHub links to in-app paths.
 - Data follow-up: Jan confirmed (via Willem) he still partners Reinhardt; pair e5b7ba44 restored to confirmed/locked and Jan's Mens entry partner reset, audited (`doubles_pair_restored`). Fees unchanged: Jan and Reinhardt each owe R100 for Mixed. Verified on Jan's link: "Paired with Reinhardt Falk — pair locked"; Change partner now shows the confirmation box.
+
+### 2026-11-20 — Doubles partner not entered in that category (Jan Goosen → Zelda, Mixed)
+- Symptom: Jan could not find Zelda in the Mixed partner list because she had entered Ladies only.
+- Fix (migration 0461): `list_doubles_partner_options` also lists invited, gender-eligible players who entered other categories (`needs_entry`); `propose_doubles_partner` adds the category to the partner's entry, reprices via `refresh_tournament_entry_fee` after the pair exists (chooser's "Pay both" cover counted; otherwise package difference as an 'additional events' charge, paid fees untouched) and logs `doubles_partner_entered_category` in `audit_events`. Picker shows "Not in Mixed yet" with an explanation.

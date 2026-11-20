@@ -21701,6 +21701,14 @@ export type Database = {
         Args: { p_kind: string; p_match_ids: string[] }
         Returns: Json
       }
+      _champ_partner_can_join_division: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_member_id: string
+        }
+        Returns: boolean
+      }
       _champ_payment_methods: {
         Args: { p_champ_id: string }
         Returns: string[]

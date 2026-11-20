@@ -4797,3 +4797,9 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Cause: `club_journal_entries` SELECT policies called 5–7 permission functions per row; Uitsig's 7,323 lines took ~8.1 s for finance-permission users (not full admins) and hit the authenticated statement timeout (57014), so totals/income statement failed.
 - Fix: migration 0458 replaces the per-row SELECT policies with one set-based policy (`journal_read_club_ids()` + `my_club_member_ids()`), splits the finance-writer ALL policy into INSERT/UPDATE/DELETE (same rule), wraps super-admin check as an init-plan, adds `(club_id, created_at DESC, id)` index. Access fingerprints (row-id hashes) identical before/after for 9 users incl. Deon, admin, chairmen, NSC treasurer, plain members; Deon's query 8.1 s → 0.02 s. Live Finance + Income Statement verified as Deon.
 - Noted, not changed: `bar_made_to_order_sold` requires full club admin, so bar-permission staff (Deon) get a 400 on Bar admin.
+
+### 2026-11-20 — Income Statement slow cost-of-sales step (Uitsig)
+- Timed each Income Statement read for Uitsig's full 2026 year: journal pages 7,323 rows / 8 pages / ~1.8 MB in ~1.8 s; stock purchases 54 rows in 0.14 s; `income_statement_sale_costs` 2.4–3.6 s.
+- Cause: the sale-cost RPC looks up stock movements per sale (~2,083 sales) and `bar_stock_movements` had no index on `(club_id, source_table, source_id)`, so every lookup rescanned the club's movements (~264k buffer hits).
+- Fix (migration 0459): added `bar_stock_movements_source_idx` and `bar_tab_entries_club_created_idx`. RPC now 0.18 s with identical results (bar COGS R31,961.70, 197 uncosted lines; shop R3,799.16). No data, policies or figures changed.
+- Remaining scaling note: journal rows are still paginated to the browser; fine at current volume, consider a server-side aggregate RPC if a club passes ~50k lines per year.

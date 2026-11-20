@@ -3270,6 +3270,13 @@
       "when": 1795206445067,
       "tag": "0466_tournament_fee_recording_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 467,
+      "version": "7",
+      "when": 1795209664348,
+      "tag": "0467_junior_player_tick",
+      "breakpoints": true
     }
   ]
 }

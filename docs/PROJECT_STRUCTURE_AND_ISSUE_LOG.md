@@ -4838,3 +4838,9 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Unpaid fee label renames now rename their "Fee raised" journal lines.
 - `champ_admin_confirm_paid` now records partner covers on the payer's account via `champ_apply_paid_registration` (previously only card gateways did).
 - Verified by rolled-back rehearsals (Bernard Welters add-category; admin Paid for Linden covering Clayton). No live data changed.
+
+### 2026-11-20 — Junior squash player tick (migration 0467)
+- New per-person tick, separate from age (DOB/ID): auto-set from SportyHQ junior sections in the last 12 months (owner chose automatic), admin tick/untick in the junior tree (audited), untick sticks until a newer SportyHQ junior event; age 19+ never ticked; age more than one group older than the section goes to review (Jozelle Meyer).
+- Junior tree lists juniors by age plus ticked players, with filters, estimated group (no DOB) and green highlight for SportyHQ junior league players; club junior counts include ticked players without a birth date.
+- `sportyhq-history-import` now records junior evidence via `_shared/sportyhq-junior.ts`; 70 earlier-reviewed players backfilled (72 memberships ticked, 1 review).
+- SportyHQ profile and ranking-group pages now return a Cloudflare challenge (403); results pages and player search still work.

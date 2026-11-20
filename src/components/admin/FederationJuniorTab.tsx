@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -22,14 +23,27 @@ type Pending = { title: string; run: () => Promise<void> };
 
 const db = supabase as any;
 
-type JuniorRow = { member_id: string; name: string | null; gender: string | null; age: number | null; age_group: string | null };
+type JuniorRow = {
+  member_id: string; name: string | null; gender: string | null; age: number | null; age_group: string | null;
+  junior_player: boolean; junior_source: string | null; estimated_group: string | null; sportyhq_section: string | null;
+  last_junior_event_on: string | null; review_note: string | null; has_person: boolean;
+};
+type JuniorFilter = "all" | "playing" | "age_not_playing" | "playing_no_birth" | "review";
 
-/** Read-only list of a club's juniors (name, gender, age group — never date of birth or contact details). */
+const sourceLabel = (j: JuniorRow) =>
+  j.junior_source === "admin" ? "Ticked by an admin"
+    : j.junior_source === "admin_removed" ? "Unticked by an admin"
+    : j.junior_source === "sportyhq" ? `SportyHQ: ${j.sportyhq_section ?? "junior event"}${j.last_junior_event_on ? ` (latest ${j.last_junior_event_on})` : ""}`
+    : "No junior events in the last 12 months";
+
+/** A club's juniors (name, gender, age group, junior squash player tick — never date of birth or contact details). */
 function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string }) {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<JuniorFilter>("all");
   const { data, isLoading, error } = useQuery({
     queryKey: ["junior-structure", "members", rootOrgId ?? "all", clubId],
     queryFn: async () => {
-      const { data, error } = await db.rpc("org_junior_members_for", { _org_id: rootOrgId ?? null, _club_id: clubId });
+      const { data, error } = await db.rpc("org_junior_players_for", { _org_id: rootOrgId ?? null, _club_id: clubId });
       if (error) throw error;
       return (data || []) as JuniorRow[];
     },
@@ -42,6 +56,17 @@ function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string
       return Number(data) || 0;
     },
   });
+  const tick = useMutation({
+    mutationFn: async ({ id, on }: { id: string; on: boolean }) => {
+      const { error } = await db.rpc("set_junior_player", { _member_id: id, _on: on, _org_id: rootOrgId ?? null });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["junior-structure"] });
+      toast.success(v.on ? "Marked as a junior squash player" : "Junior squash player tick removed");
+    },
+    onError: (e: any) => toast.error(e.message || "Could not change the junior squash player tick"),
+  });
   const missingNote = missing ? (
     <p className="ml-6 sm:ml-8 py-1 text-[11px] text-amber-700 dark:text-amber-400" data-testid="club-missing-birth">
       {missing} member{missing === 1 ? " has" : "s have"} no ID number or birth date yet, so they can't be placed in an age group.
@@ -51,18 +76,70 @@ function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string
   if (isLoading) return <div className="pl-8 py-1"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>;
   if (error) return <p className="pl-8 py-1 text-[11px] text-destructive">Could not load the juniors for this club.</p>;
   if (!data || data.length === 0) return <><p className="pl-8 py-1 text-[11px] text-muted-foreground">No juniors at this club.</p>{missingNote}</>;
+  const counts = {
+    all: data.length,
+    playing: data.filter((j) => j.junior_player).length,
+    age_not_playing: data.filter((j) => j.age != null && j.age < 19 && !j.junior_player).length,
+    playing_no_birth: data.filter((j) => j.junior_player && j.age == null).length,
+    review: data.filter((j) => j.review_note).length,
+  };
+  const shown = data.filter((j) =>
+    filter === "all" ? true
+      : filter === "playing" ? j.junior_player
+      : filter === "age_not_playing" ? j.age != null && j.age < 19 && !j.junior_player
+      : filter === "playing_no_birth" ? j.junior_player && j.age == null
+      : !!j.review_note);
+  const filters: Array<[JuniorFilter, string]> = [
+    ["all", "All"], ["playing", "Junior squash players"], ["age_not_playing", "Junior by age, not playing"],
+    ["playing_no_birth", "Playing, no birth date"], ["review", "Needs review"],
+  ];
   return (
     <>
+    <div className="ml-6 sm:ml-8 mt-1 flex flex-wrap gap-1" data-testid="club-junior-filters">
+      {filters.filter(([k]) => k === "all" || counts[k] > 0).map(([k, label]) => (
+        <Button key={k} type="button" size="sm" variant={filter === k ? "default" : "outline"}
+          className="h-6 px-2 text-[11px]" onClick={() => setFilter(k)}>
+          {label} ({counts[k]})
+        </Button>
+      ))}
+    </div>
     <div className="ml-6 sm:ml-8 my-1 rounded-md border border-border/60 divide-y divide-border/40" data-testid="club-juniors">
-      {data.map((j) => (
-        <div key={j.member_id} className="flex items-center gap-2 px-2 py-1 text-[12px]">
-          <span className="truncate flex-1">{j.name || "Unnamed member"}</span>
+      {shown.map((j) => (
+        <div key={j.member_id} data-source={j.junior_source ?? "none"}
+          className={`flex flex-wrap items-center gap-2 px-2 py-1 text-[12px] ${j.junior_player && j.junior_source === "sportyhq" ? "bg-success/10" : ""}`}>
+          <label className="flex items-center gap-2 flex-1 min-w-0" title={sourceLabel(j)}>
+            <Checkbox
+              checked={j.junior_player}
+              disabled={!j.has_person || tick.isPending}
+              onCheckedChange={(v) => tick.mutate({ id: j.member_id, on: v === true })}
+              aria-label={`Junior squash player: ${j.name || "member"}`}
+            />
+            <span className={`truncate ${j.junior_player && j.junior_source === "sportyhq" ? "font-semibold text-success-foreground" : ""}`}>
+              {j.name || "Unnamed member"}
+            </span>
+          </label>
+          {j.junior_player && j.junior_source === "sportyhq" && (
+            <Badge className="text-[10px] px-1.5 py-0 bg-success text-primary-foreground hover:bg-success">SportyHQ junior league</Badge>
+          )}
+          {j.junior_player && j.junior_source === "admin" && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Ticked by admin</Badge>
+          )}
           {j.gender && <span className="text-[11px] text-muted-foreground capitalize">{j.gender}</span>}
           {j.age_group && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{j.age_group}</Badge>}
-          {j.age != null && <span className="text-[11px] text-muted-foreground w-12 text-right">{j.age} yrs</span>}
+          {!j.age_group && j.estimated_group && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-dashed" title="Estimated from SportyHQ junior events until a birth date is entered">
+              est. {j.estimated_group}
+            </Badge>
+          )}
+          <span className="text-[11px] text-muted-foreground w-12 text-right">{j.age != null ? `${j.age} yrs` : "—"}</span>
+          {j.review_note && <p className="basis-full pl-6 text-[11px] text-amber-700 dark:text-amber-400">{j.review_note}</p>}
         </div>
       ))}
     </div>
+    <p className="ml-6 sm:ml-8 text-[11px] text-muted-foreground">
+      <span className="font-semibold text-success-foreground">Green</span> = junior league player found on SportyHQ (junior events in the last 12 months).
+      Other ticks were set by an admin; unticked = junior by age only. Hover a name to see why.
+    </p>
     {missingNote}
     </>
   );

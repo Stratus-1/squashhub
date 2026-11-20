@@ -9,6 +9,7 @@
 // Returns progress so the caller can page through the club roster.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { juniorEvidenceFromHtml } from "../_shared/sportyhq-junior.ts";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
@@ -204,6 +205,7 @@ Deno.serve(async (req) => {
   let skipped = 0;
   let scanned = 0;
   let lastCursor: string | null = null;
+  let juniorEvidence = 0;
   const errors: string[] = [];
 
   for (const prof of profiles) {
@@ -219,6 +221,20 @@ Deno.serve(async (req) => {
     }
     const rows = parseResults(html);
     scanned += rows.length;
+
+    // Junior squash player evidence: youngest junior section played in the last 12 months.
+    const junior = juniorEvidenceFromHtml(html);
+    if (junior && !dryRun) {
+      const { error: jErr } = await supabase.rpc("record_sportyhq_junior_evidence", {
+        _member_id: memberId,
+        _section: junior.section,
+        _event: junior.event,
+        _age_group: junior.age_group,
+        _last_junior_event_on: junior.last_junior_event_on,
+      });
+      if (jErr) errors.push(`junior evidence ${shqId}: ${jErr.message}`);
+      else juniorEvidence++;
+    }
     if (rows.length === 0) {
       errors.push(`no rows for ${shqId} (html ${html.length}, markers ${(html.match(/result-row/g) ?? []).length})`);
     }
@@ -308,6 +324,7 @@ Deno.serve(async (req) => {
     results_scanned: scanned,
     imported,
     skipped,
+    junior_evidence: juniorEvidence,
     next_cursor: done ? null : lastCursor,
     errors: errors.slice(0, 10),
   });

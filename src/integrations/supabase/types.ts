@@ -10888,6 +10888,60 @@ export type Database = {
         }
         Relationships: []
       }
+      junior_player_status: {
+        Row: {
+          admin_set_at: string | null
+          admin_set_by: string | null
+          admin_state: string | null
+          evidence_checked_at: string | null
+          last_junior_event_on: string | null
+          person_id: string
+          sportyhq_age_group: string | null
+          sportyhq_event: string | null
+          sportyhq_section: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_set_at?: string | null
+          admin_set_by?: string | null
+          admin_state?: string | null
+          evidence_checked_at?: string | null
+          last_junior_event_on?: string | null
+          person_id: string
+          sportyhq_age_group?: string | null
+          sportyhq_event?: string | null
+          sportyhq_section?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_set_at?: string | null
+          admin_set_by?: string | null
+          admin_state?: string | null
+          evidence_checked_at?: string | null
+          last_junior_event_on?: string | null
+          person_id?: string
+          sportyhq_age_group?: string | null
+          sportyhq_event?: string | null
+          sportyhq_section?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_player_status_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_player_status_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junior_province_choices: {
         Row: {
           chosen_by: string | null
@@ -21748,6 +21802,17 @@ export type Database = {
       }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
+      _junior_band_n: { Args: { _g: string }; Returns: number }
+      _junior_player_eval: {
+        Args: {
+          _admin_set_at: string
+          _admin_state: string
+          _group: string
+          _known_age: number
+          _last_on: string
+        }
+        Returns: Record<string, unknown>
+      }
       _league_fee_next_due: {
         Args: { _day: number; _month: number }
         Returns: string
@@ -25472,6 +25537,23 @@ export type Database = {
           name: string
         }[]
       }
+      org_junior_players_for: {
+        Args: { _club_id: string; _org_id: string }
+        Returns: {
+          age: number
+          age_group: string
+          estimated_group: string
+          gender: string
+          has_person: boolean
+          junior_player: boolean
+          junior_source: string
+          last_junior_event_on: string
+          member_id: string
+          name: string
+          review_note: string
+          sportyhq_section: string
+        }[]
+      }
       org_owning_association: { Args: { _org_id: string }; Returns: string }
       people_duplicate_candidates: {
         Args: { _limit?: number }
@@ -25705,6 +25787,16 @@ export type Database = {
       record_mandate_initial_payment: {
         Args: { _mandate_id: string }
         Returns: Json
+      }
+      record_sportyhq_junior_evidence: {
+        Args: {
+          _age_group: string
+          _event: string
+          _last_junior_event_on: string
+          _member_id: string
+          _section: string
+        }
+        Returns: boolean
       }
       recurring_next_due: { Args: { _d: string; _f: string }; Returns: string }
       refresh_member_stats_cache: {
@@ -26109,6 +26201,10 @@ export type Database = {
       }
       set_journal_entry_date: {
         Args: { _club_id: string; _date: string; _ref: string }
+        Returns: undefined
+      }
+      set_junior_player: {
+        Args: { _member_id: string; _on: boolean; _org_id?: string }
         Returns: undefined
       }
       set_member_credit_allowed: {

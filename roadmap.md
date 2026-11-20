@@ -188,3 +188,6 @@
 ## No Frills pools (20 Nov)
 - [x] Explain why Ladies/Mixed doubles pairs aren't placed in pools (Willem 20 Nov).
 - [x] Complete pairs now placed in pools; unpaired players listed as "Waiting for a partner".
+- [ ] Junior squash player tick: separate auto-tick from SportyHQ junior sections (12 months), admin tick/untick in junior tree
+- [ ] Count/report how many more juniors SportyHQ shows for Northern Junior Squash clubs (adding new members needs approval)
+- [ ] Junior clubs list: show all juniors; SportyHQ-ticked junior league players in a distinct colour

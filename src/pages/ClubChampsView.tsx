@@ -573,7 +573,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     if (cfg === "doubles") return true;
     return (entries as any[]).some(
       (e: any) => e.group_number === gn && !!e.partner_member_id,
-    );
+    ) || (doublesPairs as any[]).some((p: any) => Number(p.group_number) === Number(gn));
   };
 
 

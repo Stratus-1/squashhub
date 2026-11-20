@@ -156,3 +156,5 @@
 - [x] Find why new entrants did not choose partners: Mixed list showed only men (fixed)
 - [x] Reinhardt Mixed fee now R100 (package less partner cover)
 - [x] Mixed/Mens/Ladies partner lists filtered by gender
+- [x] Check a lady's Mixed and Ladies partner lists (Mixed: men only; Ladies: ladies only; 22 with no gender show in both)
+- [ ] Partner-list reminders to players: on hold until Willem has checked himself

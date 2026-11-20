@@ -29,3 +29,26 @@ export function getGroupLabel(
   return v;
 }
 
+
+/**
+ * Raw stored category label with the organiser's rename applied to its unit-key
+ * prefix, keeping any suffix ("Mixed 2 · Doubles" → "Mixed · Doubles").
+ * Mirrors SQL `tournament_group_display_label` so app, emails and notices agree.
+ */
+export function displayRawGroupLabel(beta: any, raw: string | null | undefined, groupNumber: number | null | undefined): string | null {
+  if (raw == null || groupNumber == null || !beta) return raw ?? null;
+  const key: string | undefined = beta?.answers?.originalStructure?._unit_keys?.[groupNumber - 1];
+  const labels = beta?.answers?.categoryLabels;
+  if (!key || !labels || typeof labels !== "object") return raw;
+  let disp: string;
+  if (key.includes("::")) {
+    const [parent, child] = key.split("::");
+    const own = String(labels[key] ?? "").trim();
+    disp = own || `${String(labels[parent] ?? "").trim() || parent} › ${child}`;
+  } else {
+    disp = String(labels[key] ?? "").trim() || key;
+  }
+  const keyDisp = key.split("::").join(" › ");
+  if (disp === keyDisp) return raw;
+  return raw.startsWith(keyDisp) ? disp + raw.slice(keyDisp.length) : raw;
+}

@@ -4,6 +4,7 @@ import { entryDueCents, ownEvents, feeBreakdownLabel } from "@/lib/tournaments/e
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TournamentInviteRegisterDialog } from "@/components/tournaments/TournamentInviteRegisterDialog";
 import { entryHasDoubles } from "@/lib/tournaments/doubles";
+import { inviteePath } from "@/lib/tournaments/invite-link";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -86,7 +87,13 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const champDoubles = entryHasDoubles(champ?.match_type, categoryMatchTypes);
 
   // Resolve registration: explicit id wins, otherwise look up by champ + linked member
-  const linkedMemberIds = useMemo(() => linkedMembers.map((m) => m.id).filter(Boolean), [linkedMembers]);
+  const { activeMember } = useMemberContext();
+  const allLinkedIds = useMemo(() => linkedMembers.map((m) => m.id).filter(Boolean), [linkedMembers]);
+  // Look up the selected profile's own invitation first (shared family logins).
+  const linkedMemberIds = useMemo(
+    () => (activeMember?.id && allLinkedIds.includes(activeMember.id) ? [activeMember.id] : allLinkedIds),
+    [activeMember?.id, allLinkedIds],
+  );
   const { data: registrationByLookup } = useQuery({
     queryKey: ["tournament-invite-reg-lookup", resolvedChampId, linkedMemberIds.join(",")],
     queryFn: async () => {
@@ -328,6 +335,20 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   });
 
   const entrySummary = useChampEntrySummary(champ, registration, formatMoney);
+  // Family members sharing one login each get their own card: say whose it is.
+  const sharedLogin = allLinkedIds.length > 1;
+  const playerName = String(registration?.player?.name || registration?.player?.profiles?.name || "").trim();
+  // Doubles partner choice and payment use the player's personal invitation link,
+  // the same page the email/WhatsApp link opens (its own partner list and checks).
+  const doublesViaLink = !isPartnerInvite && champDoubles && champ?.partner_mode === "players" && !!registration?.invite_token;
+  const openEntry = () => {
+    if (doublesViaLink) {
+      onResolved?.();
+      navigate(inviteePath(String(registration.invite_token)));
+      return;
+    }
+    setRegisterOpen(true);
+  };
   const detailRows = useMemo(() => {
     if (!champ) return [];
     const selfScheduled = String(champ.scheduling_mode || "") === "self";
@@ -398,6 +419,9 @@ export function TournamentInviteActions({ notification, champId, registrationId,
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate">{champ.name}</p>
               <p className="text-[11px] text-muted-foreground">{isPartnerInvite ? "Doubles partner invite" : "Tournament invitation"}</p>
+              {sharedLogin && playerName && (
+                <p className="text-xs font-semibold text-foreground mt-0.5">For {playerName}</p>
+              )}
             </div>
             <Badge variant={isAccepted ? "default" : isDeclined ? "secondary" : "outline"} className="text-[10px] shrink-0">
               {isDeclined ? "Declined" : isAccepted ? (status === "pending_eft" ? "EFT pending" : "Accepted") : paymentRequired ? "Payment due" : "Awaiting reply"}
@@ -453,7 +477,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                     size="sm"
                     className="h-8 text-xs flex-1"
                     disabled={respond.isPending}
-                    onClick={() => (isPartnerInvite ? respond.mutate(true) : setRegisterOpen(true))}
+                    onClick={() => (isPartnerInvite ? respond.mutate(true) : openEntry())}
                   >
                     {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
                     {isPartnerInvite ? "Accept Partner" : doublesPickPartner ? (paymentRequired ? `Confirm & select partner · ${formatMoney(entryFeeCents)}` : "Confirm attendance & select partner") : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
@@ -475,7 +499,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   ? "Accepted — not entered yet. Pay your entry fee to confirm your place."
                   : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
               </p>
-              <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>
+              <Button size="sm" className="h-8 text-xs w-full" onClick={openEntry}>
                 {champDoubles && champ?.partner_mode === "players" ? (status === "pending_payment" || status === "pending_eft" ? "Select partner & pay" : "Select my doubles partner") : (status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner")}
               </Button>
             </div>

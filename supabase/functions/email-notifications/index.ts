@@ -835,7 +835,8 @@ Deno.serve(async (req) => {
       profile = profileData;
     }
 
-    const email = String(profile?.email || payloadEmail || "").trim();
+    // The caller resolves the exact member (shared family logins): its address/name win over the login profile.
+    const email = String(payloadEmail || profile?.email || "").trim();
     if (!email) {
       return new Response(JSON.stringify({ ok: true, skipped: true, reason: "No email on profile" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -907,7 +908,7 @@ Deno.serve(async (req) => {
 
     const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
-      name: String((profile as any)?.name || payloadName || ""),
+      name: String(payloadName || (profile as any)?.name || ""),
       email,
       site_url: siteUrl,
       link_url: link,
@@ -943,7 +944,7 @@ Deno.serve(async (req) => {
       }
     } else {
       const safeTitle = escapeHtml(title);
-      const recipientName = String((profile as any)?.name || payloadName || "").trim();
+      const recipientName = String(payloadName || (profile as any)?.name || "").trim();
       const greetingName = recipientName.split(/\s+/).length > 0 ? recipientName : "";
       const greetingHtml = greetingName
         ? `<p style="margin:0 0 12px 0; color:#334155">Dear ${escapeHtml(greetingName)},</p>`
@@ -1016,7 +1017,7 @@ Deno.serve(async (req) => {
       ctaLabel: drawCta ? DRAW_CTA_LABEL : type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : eventTarget ? "Accept / Decline" : "Open in SquashHub",
       secondaryUrl: entryTournamentCta || undefined,
       secondaryLabel: "View tournament & score match",
-      recipientName: String((profile as any)?.name || payloadName || "").trim(),
+      recipientName: String(payloadName || (profile as any)?.name || "").trim(),
       clubName: clubMail?.clubName || clubBrand.name || "",
       clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",
     };

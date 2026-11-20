@@ -10,8 +10,9 @@ import { TournamentInviteActions } from "@/components/TournamentInviteActions";
  * or cancelled yet.
  */
 export function DashboardTournamentInvitesCard() {
-  const { linkedMembers } = useMemberContext();
-  const memberIds = linkedMembers.map((m) => m.id).filter(Boolean);
+  const { linkedMembers, activeMember } = useMemberContext();
+  // Shared family login: only the selected profile's own invitations show.
+  const memberIds = activeMember?.id ? [activeMember.id] : linkedMembers.map((m) => m.id).filter(Boolean);
 
   const { data: pending = [] } = useQuery({
     queryKey: ["dashboard-tournament-invites", memberIds.join(",")],

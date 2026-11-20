@@ -378,6 +378,7 @@ export function TournamentInviteRegisterDialog({
         <DialogHeader>
           <DialogTitle className="text-base">{champ.name}</DialogTitle>
           <DialogDescription className="text-xs">
+            {(registration as any)?.player?.name ? <span className="block font-semibold text-foreground">For {(registration as any).player.name}</span> : null}
             {paymentRequired ? "Register and pay to accept this invitation." : "Accept this invitation to play."}
           </DialogDescription>
         </DialogHeader>

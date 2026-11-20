@@ -4779,3 +4779,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Fix: ClubChampsView header now shows the tournament name with dates only (same rule as the tournament cards fix); unused GENDER_LABELS map removed. Display only.
 
 - 2026-11-20: Uitsig Club Champs 2026 finals day postponed from 21 Nov to 5 Dec (migration 0454): tournament note, saved setup/stage schedule dates and the 8 finals-day placeholder games moved; times, courts, results and bookings unchanged; audited in champ_round_date_audit.
+
+### 2026-11-20 — Uitsig No Frills Doubles: shared Goosen family login
+- Data: Reinhardt Falk's Mens partner corrected to Jan Goosen; Ebert's entry withdrawn and his paid R210 moved to Jan (ledger reversed/reposted, audited); Jan owes R100 for Mixed.
+- Notification emails used the shared login profile's name/email (all Goosen notices said "Dear Tiaan"). Fixed in migration 0455 + email-notifications: member name, member email on shared logins, "For <name>:" subject prefix.
+- Dashboard invitations now show only the selected profile's own invitations, label "For <name>" on shared logins, clean category names ("Mixed · Doubles"), and doubles "Select partner & pay" opens the personal invitation link page.

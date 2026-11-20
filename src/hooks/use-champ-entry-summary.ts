@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
+import { displayRawGroupLabel } from "@/lib/tournament-formats/group-labels";
 
 /**
  * The player's actual events (with per-event prices) and the authoritative total
@@ -10,15 +11,19 @@ import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
 export function useChampEntrySummary(champ: any, registration: any, money: (cents: number) => string) {
   const champId = champ?.id as string | undefined;
   const memberId = registration?.club_member_id as string | undefined;
-  const { data: divisionFees } = useQuery({
-    queryKey: ["champ-division-fees", champId],
+  const { data: champMeta } = useQuery({
+    queryKey: ["champ-division-fees-labels", champId],
     queryFn: async () => {
-      const { data, error } = await fromExt("tournaments").select("division_fees").eq("id", champId!).maybeSingle();
+      const { data, error } = await fromExt("tournaments").select("division_fees,beta_lifecycle").eq("id", champId!).maybeSingle();
       if (error) throw error;
-      return ((data as any)?.division_fees ?? null) as Record<string, number> | null;
+      return {
+        divisionFees: ((data as any)?.division_fees ?? null) as Record<string, number> | null,
+        beta: (data as any)?.beta_lifecycle ?? null,
+      };
     },
     enabled: !!champId,
   });
+  const divisionFees = champMeta?.divisionFees ?? null;
   const tiers = useChampFeeTiers(champId);
   const { data: totalDueCents } = useQuery({
     queryKey: ["my-champ-reg-due", registration?.id, registration?.division_choices, registration?.partner_member_id, registration?.status],
@@ -37,7 +42,10 @@ export function useChampEntrySummary(champ: any, registration: any, money: (cent
   const eventLabels = groups.map((g) => {
     // Package prices are per number of categories, so no single category has its own price.
     const cents = tiers ? 0 : divisionFees?.[String(g)] ?? flat;
-    return `${labels[String(g)] || `Event ${g}`}${cents > 0 ? ` (${money(cents)})` : ""}`;
+    // Organiser renames (e.g. "Mixed 2" → "Mixed") live in beta_lifecycle, not group_labels.
+    const raw = labels[String(g)];
+    const name = raw ? displayRawGroupLabel(champMeta?.beta ?? champ?.beta_lifecycle, raw, g) || raw : `Event ${g}`;
+    return `${name}${cents > 0 ? ` (${money(cents)})` : ""}`;
   });
   return { eventLabels, totalDueCents: totalDueCents ?? null, hasDivisionFees: !!divisionFees };
 }

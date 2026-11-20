@@ -158,3 +158,10 @@
 - [x] Mixed/Mens/Ladies partner lists filtered by gender
 - [x] Check a lady's Mixed and Ladies partner lists (Mixed: men only; Ladies: ladies only; 22 with no gender show in both)
 - [ ] Partner-list reminders to players: on hold until Willem has checked himself
+
+## Uitsig No Frills Doubles – shared family logins (20 Nov)
+- [x] Jan Goosen now Reinhardt's Mens partner; Ebert withdrawn, his paid R210 moved to Jan; Jan owes R100 for Mixed.
+- [x] Dashboard invitation cards on a shared login must say whose invitation each is (and use clean category names, not "Mixed 2").
+- [x] Dashboard "Select partner & pay" must act for the right family member, matching the personal invitation link.
+- [x] Emails/notices to a shared email address must name the family member they are for.
+- [x] Dashboard on a shared login: when a profile (e.g. Ebert) is selected, show only that member's own tournament invitations/entries.

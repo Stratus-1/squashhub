@@ -4767,3 +4767,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-20 — Manage entries list showed each doubles pair twice
 - Symptom: "Entries & payment status" listed every entrant with their partner, so each pair appeared once per player.
 - Fix: `groupDoublesEntries` (step-handover.ts) groups by category (Mens/Ladies/Mixed), one line per pair with each player's own payment status, solo lines for "No partner yet"; singles tournaments keep the per-player list. Display only; no entries, pairs or fees changed. Tests in `entry-partners.test.ts`.
+
+### 2026-11-20 — No Frills Doubles standings: wrong partner per category, duplicate pairs, "Mixed 2" heading
+- Symptom: Deon Groenewald showed with Lazelle (his Mixed partner) in the Mens table, Siyanda missing; Clayton/Linden listed twice; standings heading read "Mixed 2 · Doubles". Deon's "Doubles partner" email said only "the pair is only locked once all entry fees are paid".
+- Cause: standings looked up a player's pair by player only (last pair won) and folded a team only when the first row lacked a partner; `getGroupLabel` received the `club_champs` view row, which has no `beta_lifecycle` (where the "Mixed" rename lives). Data (pairs, fees) was correct.
+- Fix: `foldDoublesEntries` (per category + player, one row per team per category) + `labelChamp` in ClubChampsView; migration 0453 makes `notify_doubles_pair` say whose payment the pair waits for. Test: `src/test/doubles-display-entries.test.ts`.

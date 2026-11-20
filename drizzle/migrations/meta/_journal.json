@@ -3172,6 +3172,13 @@
       "when": 1795137184329,
       "tag": "0452_payable_check_typed_categories_only",
       "breakpoints": true
+    },
+    {
+      "idx": 453,
+      "version": "7",
+      "when": 1795155730298,
+      "tag": "0453_doubles_pair_notice_clear_wording",
+      "breakpoints": true
     }
   ]
 }

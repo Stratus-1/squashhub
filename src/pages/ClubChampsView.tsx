@@ -1,3 +1,4 @@
+import { foldDoublesEntries } from "@/lib/tournaments/doubles-display-entries";
 import { stageSchedules, stageSchedulesForUnit } from "@/lib/tournaments/round-scheduling";
 import { isTournamentViewPilotClub } from "@/lib/tournaments/pilot-clubs";
 import { supabase } from "@/integrations/supabase/client";
@@ -209,6 +210,11 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   const arch = inlineStandings?.arch ?? fetchedArch;
   const isStructured = arch?.builder_architecture === "structured";
   // Organiser contact shown under the tournament name — display only.
+  // The club_champs view has no beta_lifecycle; category renames (e.g. "Mixed 2" → "Mixed") live there.
+  const labelChamp = useMemo(
+    () => (champ ? { ...(champ as any), beta_lifecycle: (champ as any).beta_lifecycle ?? arch?.beta_lifecycle } : champ),
+    [champ, arch],
+  );
   const organiserMeta = (arch?.beta_lifecycle as any)?.answers?.organiser as { memberId?: string; name?: string } | null | undefined;
   const { data: organiserMember } = useQuery({
     queryKey: ["champ-organiser-contact", champId, organiserMeta?.memberId],
@@ -400,59 +406,22 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
    * display-only: they are never fed to the draw, pool assignment or seeding
    * logic, which keeps using `entries`.
    */
-  /** member id -> the pair they belong to, for attaching partners to entry rows. */
-  const pairByMember = useMemo(() => {
-    const map = new Map<string, any>();
-    for (const p of doublesPairs as any[]) {
-      const a = String(p.member_a || "");
-      const b = String(p.member_b || "");
-      if (!a || !b) continue;
-      map.set(a, p);
-      map.set(b, p);
-    }
-    return map;
-  }, [doublesPairs]);
-
   /**
-   * Real entry rows, with the doubles partner filled in from the pairing when the
-   * entry itself was created before the players paired up. The second member of a
-   * pair is folded into their partner's row instead of appearing on their own.
+   * Real entry rows, with the doubles partner filled in from THIS category's pairing
+   * (a player may have a different partner per category). One row per team per category.
    */
-  const displayEntries = useMemo(() => {
-    const entryMemberIds = new Set(
-      (entries as any[]).map((e: any) => String(e.club_member_id || "")).filter(Boolean),
-    );
-    const folded = new Set<string>();
-    const out: any[] = [];
-    for (const e of entries as any[]) {
-      const mid = String(e.club_member_id || "");
-      if (mid && folded.has(mid)) continue;
-      if (e.partner_member_id) {
-        out.push(e);
-        continue;
-      }
-      const pair = mid ? pairByMember.get(mid) : null;
-      if (!pair) {
-        out.push(e);
-        continue;
-      }
-      const otherId = String(pair.member_a) === mid ? String(pair.member_b) : String(pair.member_a);
-      const otherName = String(pair.member_a) === mid ? pair.member_b_name : pair.member_a_name;
-      if (entryMemberIds.has(otherId)) folded.add(otherId);
-      out.push({
-        ...e,
-        partner_member_id: otherId,
-        partner: { id: otherId, name: otherName },
-      });
-    }
-    return out;
-  }, [entries, pairByMember]);
+  const displayEntries = useMemo(
+    () => foldDoublesEntries(entries as any[], doublesPairs as any[]),
+    [entries, doublesPairs],
+  );
 
   const provisionalEntries = useMemo(() => {
-    const known = new Set<string>();
+    // Known per category: a player entered in Mens may still be a provisional pair in Mixed.
+    const knownKeys = new Set<string>();
     (displayEntries as any[]).forEach((e: any) => {
-      if (e.club_member_id) known.add(e.club_member_id);
-      if (e.partner_member_id) known.add(e.partner_member_id);
+      const g = Number(e.group_number) || 0;
+      if (e.club_member_id) knownKeys.add(`${g}:${e.club_member_id}`);
+      if (e.partner_member_id) knownKeys.add(`${g}:${e.partner_member_id}`);
     });
     const fallbackGroup = (entries as any[])[0]?.group_number ?? 1;
     const accepted = new Map<string, any>();
@@ -470,10 +439,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       const a = String(p.member_a || "");
       const b = String(p.member_b || "");
       if (!a || !b) continue;
-      if (known.has(a) || known.has(b) || seen.has(a) || seen.has(b)) continue;
+      const pg = Number(p.group_number) || Number(fallbackGroup) || 0;
+      const known = { has: (id: string) => knownKeys.has(`${pg}:${id}`) };
+      if (known.has(a) || known.has(b) || seen.has(`${pg}:${a}`) || seen.has(`${pg}:${b}`)) continue;
       if (!accepted.has(a) && !accepted.has(b)) continue;
-      seen.add(a);
-      seen.add(b);
+      seen.add(`${pg}:${a}`);
+      seen.add(`${pg}:${b}`);
       out.push({
         id: `pair-${p.id}`,
         champ_id: champId,
@@ -491,19 +462,21 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       if (!r.confirmed_at) continue;
       if (r.status === "cancelled" || r.status === "withdrawn") continue;
       const mid = r.club_member_id as string | null;
-      if (!mid || known.has(mid) || seen.has(mid)) continue;
+      const rg = Number(Array.isArray(r.division_choices) ? r.division_choices[0] : null) || fallbackGroup;
+      const k = (id: string) => `${Number(rg) || 0}:${id}`;
+      if (!mid || knownKeys.has(k(mid)) || seen.has(k(mid))) continue;
       const pid: string | null =
-        r.partner_member_id && !known.has(r.partner_member_id) && !seen.has(r.partner_member_id)
+        r.partner_member_id && !knownKeys.has(k(r.partner_member_id)) && !seen.has(k(r.partner_member_id))
           ? r.partner_member_id
           : null;
-      seen.add(mid);
-      if (pid) seen.add(pid);
+      seen.add(k(mid));
+      if (pid) seen.add(k(pid));
       out.push({
         id: `reg-${r.id}`,
         champ_id: champId,
         club_member_id: mid,
         partner_member_id: pid,
-        group_number: Number(Array.isArray(r.division_choices) ? r.division_choices[0] : null) || fallbackGroup,
+        group_number: rg,
         order_index: 9500,
         club_members: r.member,
         partner: pid ? r.partner : null,
@@ -1332,9 +1305,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             }).filter((p): p is { pn: number; view: RRPoolView } => !!p);
             // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
             if (poolViews.length > 1) {
-              return <RoundRobinCombinedPilotView title={getGroupLabel(champ, gn)} pools={poolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: poolName(gn, p.pn) }))} calendar={renderCategoryCalendar(gn)} />;
+              return <RoundRobinCombinedPilotView title={getGroupLabel(labelChamp, gn)} pools={poolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: poolName(gn, p.pn) }))} calendar={renderCategoryCalendar(gn)} />;
             }
-            return poolViews.map((p) => <RoundRobinPilotView key={p.pn} title={getGroupLabel(champ, gn)} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={p.pn} groupLabel={getGroupLabel(champ, gn)} />);
+            return poolViews.map((p) => <RoundRobinPilotView key={p.pn} title={getGroupLabel(labelChamp, gn)} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} group={p.pn} groupLabel={getGroupLabel(labelChamp, gn)} />);
           })()}
           {(() => {
             // Play-offs after the pools (quarterfinals → final) as a knockout draw below the pool logs.
@@ -1358,12 +1331,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               const fallbackQ = Math.ceil((firstStage.length * 2) / Math.max(1, pc));
               const poolCards = live.map((names, i) => {
                 const L = String.fromCharCode(65 + i);
-                return { pool: L, title: pc > 1 ? poolName(gn, i + 1) : getGroupLabel(champ, gn), names, qualifiers: pairingSet ? perPoolMax(L) : fallbackQ };
+                return { pool: L, title: pc > 1 ? poolName(gn, i + 1) : getGroupLabel(labelChamp, gn), names, qualifiers: pairingSet ? perPoolMax(L) : fallbackQ };
               });
               return (
                 <div className={cn("space-y-2 rounded-lg border p-3", rrDone && "order-first", rrDone ? "border-primary" : "border-border")} data-testid={`planned-playoffs-${gn}`}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm font-semibold">{getGroupLabel(champ, gn)} · Play-offs</div>
+                    <div className="text-sm font-semibold">{getGroupLabel(labelChamp, gn)} · Play-offs</div>
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", done ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>{done ? "Pool games complete" : "Pools in progress"}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -1387,8 +1360,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             return (
               <div className={cn("space-y-2", rrDone && "order-first")} data-testid={`pool-playoffs-${gn}`}>
                 <div className="text-xs text-muted-foreground">Play-offs — from the final pool standings. Winners move on until the final.</div>
-                <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
-                  <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · Play-offs`} names={koNames} seedOf={() => null}
+                <TournamentInteractiveViewer title={`${getGroupLabel(labelChamp, gn)} · Play-offs — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
+                  <KnockoutBracketView title={`${getGroupLabel(labelChamp, gn)} · Play-offs`} names={koNames} seedOf={() => null}
                     matches={ko.map((m: any) => ({ id: m.id, round: m.stage_label ? order.indexOf(m.stage_label) + 1 : (m.round_number ?? 1), slot: m.bracket_position ?? null, bracket: null, a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
                 </TournamentInteractiveViewer>
                 {(() => {
@@ -1397,7 +1370,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                   const seedOrder: string[] = [];
                   for (let k = 0; k < Math.max(0, ...per.map((x) => x.length)); k++) for (const p of per) if (p[k]) seedOrder.push(p[k]);
                   const os = overallStandings(seedOrder, ko.filter((m: any) => m.stage_label !== "3rd place").map((m: any) => ({ bracket: 1, round: m.stage_label ? order.indexOf(m.stage_label) + 1 : (m.round_number ?? 1), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null })));
-                  return <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={os.rows} complete={os.complete} names={koNames} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} />;
+                  return <OverallStandingsPanel title={getGroupLabel(labelChamp, gn)} rows={os.rows} complete={os.complete} names={koNames} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} />;
                 })()}
               </div>
             );
@@ -1508,10 +1481,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         matches: swissMatches.map((m: any) => ({ a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id, round: Number(m.round_number), status: m.status, score: m.score, game_scores: m.game_scores })) })
         .map((g) => ({ ...g, rows: g.rows.map((r) => ({ ...r, name: names[r.id] ?? "Unknown player" })) })) : [];
       const rrStandings = rrGroups.length ? <SwissRrFinishStandings compact groups={rrGroups} fromRound={RR_FINISH_FROM_ROUND} /> : null;
-      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} clubId={champ.club_id} infoTournamentId={champId} title={getGroupLabel(champ, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart || exactLadiesAChart || exactSixteenChart} exactMensCChart={exactMensCChart} exactSixteenChart={exactSixteenChart} exactLadiesAChart={exactLadiesAChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart || exactLadiesAChart ? classic : undefined} rrStandings={rrStandings} />{laterIsRR ? (
+      return <SwissPilotBoundary fallback={classic}>{!riversidePreview && classic}<div className="mt-4"><SwissProgressionPilotView key={gn} clubId={champ.club_id} infoTournamentId={champId} title={getGroupLabel(labelChamp, gn)} model={model} positionalPreview={riversidePreview || exactMensCChart || exactLadiesAChart || exactSixteenChart} exactMensCChart={exactMensCChart} exactSixteenChart={exactSixteenChart} exactLadiesAChart={exactLadiesAChart} stageSchedule={swissSt.schedule ?? null} appliedPlayBy={appliedPlayByFor(gn)} slots={riversidePreview ? pilotSlotsFor(gn) : undefined} calendar={renderCategoryCalendar(gn)} classicStandings={riversidePreview || exactMensCChart || exactLadiesAChart ? classic : undefined} rrStandings={rrStandings} />{laterIsRR ? (
           <div className="mt-6 space-y-4" data-testid={`stage2-progression-${gn}`}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-semibold">{getGroupLabel(champ, gn)} · {laterLabel}</span>
+              <span className="font-semibold">{getGroupLabel(labelChamp, gn)} · {laterLabel}</span>
               <span className="text-muted-foreground">Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings.</span>
             </div>
             {(() => {
@@ -1528,25 +1501,25 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               }).filter((p) => p.view.players.length > 0);
               // Several pools share one set of colour-banded round tables; a single pool keeps its own view.
               if (laterPoolViews.length > 1) {
-                return <RoundRobinCombinedPilotView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} pools={laterPoolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
+                return <RoundRobinCombinedPilotView title={`${getGroupLabel(labelChamp, gn)} · ${laterLabel}`} pools={laterPoolViews.map((p) => ({ view: p.view, group: p.pn, groupLabel: `Pool ${poolLabel(p.pn)}` }))} calendar={renderCategoryCalendar(gn)} />;
               }
-              return laterPoolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
+              return laterPoolViews.map((p) => <RoundRobinPilotView key={p.pn} title={`${getGroupLabel(labelChamp, gn)} · ${laterLabel}`} view={p.view} showSlots withCalendar calendar={renderCategoryCalendar(gn)} />);
             })()}
           </div>
         ) : laterIsKO ? (
           <div className="mt-6 space-y-2" data-testid={`stage2-progression-${gn}`}>
             <div className="text-xs text-muted-foreground">Knockout — seeded from the final Swiss standings{laterLabel.toLowerCase().startsWith("quarter") ? " (1 v 8, 4 v 5, 2 v 7, 3 v 6)" : ""}. Numbers are final Swiss positions. Winners move on until the final.</div>
-            <TournamentInteractiveViewer title={`${getGroupLabel(champ, gn)} · ${laterLabel} — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
-              <KnockoutBracketView title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} names={names}
+            <TournamentInteractiveViewer title={`${getGroupLabel(labelChamp, gn)} · ${laterLabel} — knockout draw`} inlineHeight={460} defaultFit="none" wheelZoom="direct">
+              <KnockoutBracketView title={`${getGroupLabel(labelChamp, gn)} · ${laterLabel}`} names={names}
                 seedOf={(id) => { const i = model.rows.findIndex((r: any) => r.id === id); return i < 0 ? null : i + 1; }}
                 matches={laterMatches.map((m: any) => ({ id: m.id, round: koRound(m), ...koHalf(m), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null, score: m.score, date: m.scheduled_date, time: m.scheduled_time, court: m.court?.name ?? null, thirdPlace: m.stage_label === "3rd place" }))} />
             </TournamentInteractiveViewer>
             {(() => {
               const os = overallStandings(model.rows.map((r: any) => r.id), laterMatches.filter((m: any) => m.stage_label !== "3rd place").map((m: any) => ({ bracket: koHalf(m).bracket ?? 1, round: koRound(m), a: m.player_a_member_id ?? null, b: m.is_bye ? null : m.player_b_member_id ?? null, winner: m.winner_member_id ?? null })));
-              return <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={os.rows} complete={os.complete} names={names} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} />;
+              return <OverallStandingsPanel title={getGroupLabel(labelChamp, gn)} rows={os.rows} complete={os.complete} names={names} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} />;
             })()}
           </div>
-        ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(champ, gn)} · ${laterLabel}`} model={laterModel} calendar={renderCategoryCalendar(gn)} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
+        ) : laterModel ? <div className="mt-6" data-testid={`stage2-progression-${gn}`}><SwissProgressionPilotView key={`${gn}-stage2`} title={`${getGroupLabel(labelChamp, gn)} · ${laterLabel}`} model={laterModel} calendar={renderCategoryCalendar(gn)} stageNoun="Round robin" formatNote="Round robin — everyone plays everyone in their pool. Seeded from the final Swiss standings." classicStandings={riversidePreview ? classic : undefined} /></div> : null}</div></SwissPilotBoundary>;
     }
 
     // Lifecycle: once every placement play-off is decided, the primary view
@@ -1711,7 +1684,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
   const calendarFixtures: CategoryCalendarFixture[] = (matches as any[])
     .filter((m) => m.status !== "cancelled" && !isProvisionalSwissSlot(m, champ))
     .map((m) => {
-      const category = getGroupLabel(champ, m.group_number);
+      const category = getGroupLabel(labelChamp, m.group_number);
       return {
         id: m.id, group: m.group_number == null ? null : Number(m.group_number), category,
         date: m.scheduled_date ?? m.play_by ?? null,
@@ -1724,7 +1697,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         durationMin: Number(m.match_duration_minutes ?? (arch as any)?.match_duration_minutes) || undefined,
       };
     });
-  const renderCategoryCalendar = (gn: number) => <CategoryFixtureCalendar fixtures={calendarFixtures} group={gn} category={getGroupLabel(champ, gn)} />;
+  const renderCategoryCalendar = (gn: number) => <CategoryFixtureCalendar fixtures={calendarFixtures} group={gn} category={getGroupLabel(labelChamp, gn)} />;
 
   // Saved games, not pool rank/colour, determine the late-stage overview.
   const structuredSummary = isStructured && !diamondEvent && arch?.builder_spec?.divisions?.length ? (() => {
@@ -1739,7 +1712,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         (entries as any[]).filter((e: any) => Number(e.group_number) === group).map((e: any) => ({ id: e.club_member_id, partnerId: e.partner_member_id })),
         (matches as any[]).filter((m: any) => Number(m.group_number) === group && (m.stage === "ko" || /knockout/i.test(m.stage || ""))),
       );
-      return { group, label: d.label || getGroupLabel(champ, group), firstStage,
+      return { group, label: d.label || getGroupLabel(labelChamp, group), firstStage,
         fieldReady: !!first && field.active.length > 0 && field.active.length <= (fieldSizeForStage(first.label) ?? 0) && !field.roundOpen };
     });
     return tournamentSummary(categories, matches as SummaryFixture[]);
@@ -1778,7 +1751,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
       });
       if (rrFinishOn(st.rrFinish)) model.rrFinish = st.rrFinish;
       const ranking = rrFinalRanking(model);
-      return ranking?.length ? [{ group: gn, label: getGroupLabel(champ, gn), rows: ranking }] : [];
+      return ranking?.length ? [{ group: gn, label: getGroupLabel(labelChamp, gn), rows: ranking }] : [];
     });
   })();
 
@@ -1821,7 +1794,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <CardHeader className="py-3 px-4"><CardTitle className="flex items-center gap-2 text-base"><Trophy className="h-4 w-4 text-primary" />Tournament Summary</CardTitle></CardHeader>
         <CardContent className="px-4 pb-3 pt-0 space-y-4">
           {matchups.map((mu) => {
-            const groups = mu.entryGroups.map((g, i) => ({ group: g, label: (mu.labels[i] || "").trim() || getGroupLabel(champ, g) }));
+            const groups = mu.entryGroups.map((g, i) => ({ group: g, label: (mu.labels[i] || "").trim() || getGroupLabel(labelChamp, g) }));
             const rows = groups.flatMap((g) => getGroupStandings(g.group).map(toOutcomeRow(g.group)));
             const scoped = (matches as any[]).filter((m: any) => m.group_number === mu.groupNumber && (m.stage || "group") === "group");
             const complete = fixturesComplete(scoped);
@@ -1936,7 +1909,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     const gA = entryGroup(sample.player_a_member_id) ?? entryGroup(sample.partner_a_member_id);
     const gB = entryGroup(sample.player_b_member_id) ?? entryGroup(sample.partner_b_member_id);
     if (gA == null || gB == null) return null;
-    return { a: getGroupLabel(champ, gA), b: getGroupLabel(champ, gB) };
+    return { a: getGroupLabel(labelChamp, gA), b: getGroupLabel(labelChamp, gB) };
   };
 
   const exportCSV = () => {
@@ -3168,7 +3141,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               {myGroupNumbers.map((gn: number) => {
                 return (
                   <Card key={gn}>
-                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle>{(() => { const mu = matchupForGroup(matchups, gn); return mu ? <p className="text-xs text-muted-foreground">Matchup: {matchupHeading(mu, (g) => getGroupLabel(champ, g))}</p> : null; })()}</CardHeader>
+                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(labelChamp, gn)}</CardTitle>{(() => { const mu = matchupForGroup(matchups, gn); return mu ? <p className="text-xs text-muted-foreground">Matchup: {matchupHeading(mu, (g) => getGroupLabel(labelChamp, g))}</p> : null; })()}</CardHeader>
                     <CardContent>
                       {renderGroupStandings(gn)}
                     </CardContent>
@@ -3392,7 +3365,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             {!anyPlayed ? (
               <Badge variant="secondary" className="ml-auto">Awaiting results</Badge>
             ) : winners.length === 1 ? (
-              <Badge className="ml-auto">{getGroupLabel(champ, winners[0])} leading</Badge>
+              <Badge className="ml-auto">{getGroupLabel(labelChamp, winners[0])} leading</Badge>
             ) : (
               <Badge variant="secondary" className="ml-auto">Tied</Badge>
             )}
@@ -3421,7 +3394,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                     const rowStyle = getRankRowStyle(i, sorted.length);
                     return (
                       <tr key={r.gn} style={rowStyle} className={cn("border-b border-border/30", isWinner && "font-semibold")}>
-                        <td className="py-2">{getGroupLabel(champ, r.gn)}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Leading</Badge>}</td>
+                        <td className="py-2">{getGroupLabel(labelChamp, r.gn)}{isWinner && <Badge variant="default" className="text-[9px] ml-2">Leading</Badge>}</td>
                         <td className="py-2 text-center tabular-nums">{r.gp}</td>
                         <td className="py-2 text-center tabular-nums">{r.won}</td>
                         <td className="py-2 text-center tabular-nums">{r.lost}</td>
@@ -3862,7 +3835,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <div className="space-y-2 text-sm">
           {survivorsByLeague.map(({ gn, winners }) => (
             <div key={gn} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="font-medium text-foreground whitespace-nowrap">{getGroupLabel(champ, gn)}</span>
+              <span className="font-medium text-foreground whitespace-nowrap">{getGroupLabel(labelChamp, gn)}</span>
               <span className="text-muted-foreground">—</span>
               <span className="text-foreground">
                 {winners
@@ -3885,8 +3858,8 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     });
     const sliceLabel = (s: Slice) =>
       s.poolNumber == null
-        ? getGroupLabel(champ, s.gn)
-        : `${getGroupLabel(champ, s.gn)} · ${poolName(s.gn, s.poolNumber)}`;
+        ? getGroupLabel(labelChamp, s.gn)
+        : `${getGroupLabel(labelChamp, s.gn)} · ${poolName(s.gn, s.poolNumber)}`;
 
     // Winners table — top of each league/pool plus the overall tournament winner.
     const leagueWinners = slices
@@ -4002,7 +3975,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                     <td className="py-2">
                       {overallWinner.name}
                       <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        ({getGroupLabel(champ, overallWinner._groupNumber)})
+                        ({getGroupLabel(labelChamp, overallWinner._groupNumber)})
                       </span>
                     </td>
                     {isBells ? (
@@ -4102,7 +4075,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
                     <td className="py-2">
                       {overallLoser.name}
                       <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        ({getGroupLabel(champ, overallLoser._groupNumber)})
+                        ({getGroupLabel(labelChamp, overallLoser._groupNumber)})
                       </span>
                     </td>
                     {isBells ? (
@@ -4161,7 +4134,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         // One card per matchup (e.g. Men's A vs Men's B): each subcategory's
         // table, then the shared games once. Rendered at its first group only.
         if (gn !== mu.entryGroups.find((g) => orderedGroups.includes(g))) return;
-        const heading = matchupHeading(mu, (g) => getGroupLabel(champ, g));
+        const heading = matchupHeading(mu, (g) => getGroupLabel(labelChamp, g));
         const muMatches = sortMatchesChrono(matches.filter((m: any) =>
           (m.stage || "group") === "group" && m.group_number === mu.groupNumber));
         standingsCards.push(
@@ -4171,7 +4144,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
             <p className="text-xs text-muted-foreground">Between subcategories — these groups play each other only.</p>
             {mu.entryGroups.map((g, i) => (
               <div key={g} className="space-y-1.5">
-                <h4 className="font-medium text-sm">{(mu.labels[i] || "").trim() || getGroupLabel(champ, g)}</h4>
+                <h4 className="font-medium text-sm">{(mu.labels[i] || "").trim() || getGroupLabel(labelChamp, g)}</h4>
                 {renderGroupStandings(g)}
               </div>
             ))}
@@ -4226,12 +4199,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         : knockout.length ? koOrder.rows : categoryRows.map((r, i) => ({ id: r.club_member_id, place: i + 1, how: "Rounds finish" }));
       const finalComplete = fixturesComplete(categoryGames) && (!swissStageFor(gn) || swissStatusByGroup.get(gn)?.state === "final") && (!knockout.length || koOrder.complete);
       const ladderPanel = canManage && !isDoublesLeague(gn) && !isCrossLeague && !mu && (!rrFinishOn(swissStageFor(gn)?.rrFinish) || hybridFinal) && (poolCountFor(gn) <= 1 || placements)
-        ? <OverallStandingsPanel title={getGroupLabel(champ, gn)} rows={finalRows} complete={finalComplete} names={Object.fromEntries(categoryRows.map((r) => [r.club_member_id, r.name]))} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} /> : null;
+        ? <OverallStandingsPanel title={getGroupLabel(labelChamp, gn)} rows={finalRows} complete={finalComplete} names={Object.fromEntries(categoryRows.map((r) => [r.club_member_id, r.name]))} clubId={champ.club_id} canManage={canManage} tournamentId={champ.id} groupNumber={gn} /> : null;
 
 
       const titleNode = (
         <span className="flex items-center gap-2 flex-wrap">
-          <span>{getGroupLabel(champ, gn)}</span>
+          <span>{getGroupLabel(labelChamp, gn)}</span>
           <Badge variant="outline" className="text-[10px] font-normal">{formatLabelFor(gn)}{scoringLabelForGroup(champForScoring, gn) ? ` (${scoringLabelForGroup(champForScoring, gn)})` : ""}</Badge>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
@@ -4303,7 +4276,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         const split = splitFixtures(groupMatches.filter((m: any) => !isProvisionalSwissSlot(m, champ)));
         categoryViews.push({
           gn,
-          label: getGroupLabel(champ, gn),
+          label: getGroupLabel(labelChamp, gn),
           title: titleNode,
           leading: isLeading,
           count: groupMatches.length,
@@ -4401,7 +4374,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           if (groupMatches.length > 0) {
             fixtureCards.push(
               <CollapsibleCard key={`f-${gn}`} defaultOpen={singleCurrentTournament} headerClassName="pb-3"
-                title={`${getGroupLabel(champ, gn)} — Upcoming Fixtures & Results`}
+                title={`${getGroupLabel(labelChamp, gn)} — Upcoming Fixtures & Results`}
               >
                 {splitSections(groupMatches)}
               </CollapsibleCard>
@@ -4477,7 +4450,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           const childMatches = lanes.children.get(g) ?? [];
           const split = splitFixtures(childMatches);
           const division = arch.builder_spec.divisions.find((d: any) => divisionGroup(arch.builder_spec, d) === g);
-          return { group: g, label: getGroupLabel(champ, g), format: formatLabelFor(g), standings: renderStandingsTable(rows),
+          return { group: g, label: getGroupLabel(labelChamp, g), format: formatLabelFor(g), standings: renderStandingsTable(rows),
             matrix: division?.stages?.[0]?.kind === "round_robin" ? buildRoundRobinView({
               players: rows.map((r: any) => ({ id: r.club_member_id, name: r.name })), rankOrder: rows.map((r: any) => r.club_member_id),
               matches: childMatches.map((m: any) => {
@@ -4607,10 +4580,10 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Category">
           {orderedGroups.map((group) => <Button key={group} size="sm" variant={group === gn ? "default" : "outline"}
             className="shrink-0 rounded-none" aria-pressed={group === gn} onClick={() => setCatGroup(group)}>
-            {getGroupLabel(champ, group)} · {formatLabelFor(group)}
+            {getGroupLabel(labelChamp, group)} · {formatLabelFor(group)}
           </Button>)}
         </div>
-        <h3 className="text-lg font-semibold">{getGroupLabel(champ, gn)} <Badge variant="outline" className="text-[10px] font-normal align-middle">{formatLabelFor(gn)}</Badge></h3>
+        <h3 className="text-lg font-semibold">{getGroupLabel(labelChamp, gn)} <Badge variant="outline" className="text-[10px] font-normal align-middle">{formatLabelFor(gn)}</Badge></h3>
         {renderGroupStandings(gn)}
       </div>;
     }
@@ -4654,9 +4627,9 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
               // A lone placement final decides two final positions — name it so.
               const isPlacement = rows.length === 1 && rows[0].stage === "playoff_final" && lg != null;
               const heading = isPlacement
-                ? `${getGroupLabel(champ, lg!)} · ${placementSlotLabel(p).replace("play-off", "place play-off")}`
+                ? `${getGroupLabel(labelChamp, lg!)} · ${placementSlotLabel(p).replace("play-off", "place play-off")}`
                 : lg
-                  ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
+                  ? `${getGroupLabel(labelChamp, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
                   : `Position ${p} bracket`;
               return (
               <div key={pos} className="space-y-1.5">
@@ -4736,7 +4709,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           status={(champ as any)?.status}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           championScope={(champ as any)?.champion_scope || undefined}
-          groupLabel={(gn) => getGroupLabel(champ, gn)}
+          groupLabel={(gn) => getGroupLabel(labelChamp, gn)}
           playByForRound={(round, stage) =>
             isPlayoffGame({ stage, stage_label: stage })
               ? playoffDeadline(parseMilestonesForDates((champ as any)?.milestone_play_by) as any, stage, stage)
@@ -4759,7 +4732,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           canManage={canManage}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           championScope={(champ as any)?.champion_scope || undefined}
-          groupLabel={(gn) => getGroupLabel(champ, gn)}
+          groupLabel={(gn) => getGroupLabel(labelChamp, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />}
         {!diamondEvent && !isStructured && survivorsCard}
@@ -4787,7 +4760,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           canManage={canManage}
           rounds={champRounds}
           renderMatchRow={renderMatchRow}
-          groupLabel={(gn) => getGroupLabel(champ, gn)}
+          groupLabel={(gn) => getGroupLabel(labelChamp, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           playByForRound={(round, stage) =>
             isPlayoffGame({ stage, stage_label: stage })

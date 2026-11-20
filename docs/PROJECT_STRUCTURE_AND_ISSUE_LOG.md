@@ -4784,3 +4784,5 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Data: Reinhardt Falk's Mens partner corrected to Jan Goosen; Ebert's entry withdrawn and his paid R210 moved to Jan (ledger reversed/reposted, audited); Jan owes R100 for Mixed.
 - Notification emails used the shared login profile's name/email (all Goosen notices said "Dear Tiaan"). Fixed in migration 0455 + email-notifications: member name, member email on shared logins, "For <name>:" subject prefix.
 - Dashboard invitations now show only the selected profile's own invitations, label "For <name>" on shared logins, clean category names ("Mixed · Doubles"), and doubles "Select partner & pay" opens the personal invitation link page.
+
+- 2026-11-20 Junior structure: clubs in the junior tree now expand to list their juniors (name, gender, age group, age) via read-only `org_junior_members_for` (migration 0456); scoped admins only see clubs inside their own junior structure, no DOB/ID/contacts exposed.

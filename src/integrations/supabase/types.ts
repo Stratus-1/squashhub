@@ -25434,6 +25434,16 @@ export type Database = {
           juniors: number
         }[]
       }
+      org_junior_members_for: {
+        Args: { _club_id: string; _org_id: string }
+        Returns: {
+          age: number
+          age_group: string
+          gender: string
+          member_id: string
+          name: string
+        }[]
+      }
       org_owning_association: { Args: { _org_id: string }; Returns: string }
       people_duplicate_candidates: {
         Args: { _limit?: number }

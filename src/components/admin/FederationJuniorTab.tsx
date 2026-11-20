@@ -22,6 +22,35 @@ type Pending = { title: string; run: () => Promise<void> };
 
 const db = supabase as any;
 
+type JuniorRow = { member_id: string; name: string | null; gender: string | null; age: number | null; age_group: string | null };
+
+/** Read-only list of a club's juniors (name, gender, age group — never date of birth or contact details). */
+function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["junior-structure", "members", rootOrgId ?? "all", clubId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc("org_junior_members_for", { _org_id: rootOrgId ?? null, _club_id: clubId });
+      if (error) throw error;
+      return (data || []) as JuniorRow[];
+    },
+  });
+  if (isLoading) return <div className="pl-8 py-1"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>;
+  if (error) return <p className="pl-8 py-1 text-[11px] text-destructive">Could not load the juniors for this club.</p>;
+  if (!data || data.length === 0) return <p className="pl-8 py-1 text-[11px] text-muted-foreground">No juniors at this club.</p>;
+  return (
+    <div className="ml-6 sm:ml-8 my-1 rounded-md border border-border/60 divide-y divide-border/40" data-testid="club-juniors">
+      {data.map((j) => (
+        <div key={j.member_id} className="flex items-center gap-2 px-2 py-1 text-[12px]">
+          <span className="truncate flex-1">{j.name || "Unnamed member"}</span>
+          {j.gender && <span className="text-[11px] text-muted-foreground capitalize">{j.gender}</span>}
+          {j.age_group && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{j.age_group}</Badge>}
+          {j.age != null && <span className="text-[11px] text-muted-foreground w-12 text-right">{j.age} yrs</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function useJuniorData(rootOrgId?: string) {
   return useQuery({
     queryKey: ["junior-structure", rootOrgId ?? "all"],
@@ -59,6 +88,7 @@ export function FederationJuniorTab({ rootOrgId }: { rootOrgId?: string } = {}) 
   const [province, setProvince] = useState("all");
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [clubOpen, setClubOpen] = useState<Set<string>>(new Set());
   const [newName, setNewName] = useState("");
   const [clubName, setClubName] = useState("");
   const [clubTown, setClubTown] = useState("");
@@ -176,6 +206,28 @@ export function FederationJuniorTab({ rootOrgId }: { rootOrgId?: string } = {}) 
 
   const toggleClosed = (id: string) => setClosed((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggle = (id: string) => setOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleClub = (id: string) => setClubOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const juniorCountOf = (c: Org) => (c.club_id && data.juniors.get(c.club_id)) || 0;
+  const JuniorToggle = ({ club, large }: { club: Org; large?: boolean }) => {
+    if (!club.club_id) return <span className={large ? "w-4" : "w-3.5"} />;
+    const isOpen = clubOpen.has(club.id);
+    const cls = large ? "w-4 h-4" : "w-3.5 h-3.5";
+    return (
+      <button type="button" onClick={() => toggleClub(club.id)} aria-expanded={isOpen}
+        aria-label={`${isOpen ? "Hide" : "Show"} juniors at ${club.name}`} className="-m-1 rounded p-1 hover:bg-muted shrink-0">
+        {isOpen ? <ChevronDown className={`${cls} text-muted-foreground`} /> : <ChevronRight className={`${cls} text-muted-foreground`} />}
+      </button>
+    );
+  };
+  const JuniorCount = ({ club }: { club: Org }) => {
+    const n = juniorCountOf(club);
+    const label = `${n} junior${n === 1 ? "" : "s"}`;
+    if (!club.club_id) return <span className="text-[11px] text-muted-foreground whitespace-nowrap">{label}</span>;
+    return (
+      <button type="button" onClick={() => toggleClub(club.id)}
+        className="text-[11px] text-muted-foreground whitespace-nowrap underline-offset-2 hover:underline hover:text-foreground">{label}</button>
+    );
+  };
   const dropProps = (provincialId: string) => ({
     onDragOver: (e: React.DragEvent) => { if (dragId && targetIds.has(provincialId)) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } },
     onDrop: (e: React.DragEvent) => {
@@ -263,12 +315,13 @@ export function FederationJuniorTab({ rootOrgId }: { rootOrgId?: string } = {}) 
                         aria-label={`${cOpen ? "Hide" : "Show"} clubs in ${c.name}`} className="-m-1 rounded p-1 hover:bg-muted">
                         {cOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                       </button>
-                    ) : <span className="w-4" />}
-                    <span className={`text-[13px] truncate min-w-[65%] sm:min-w-0 flex-1 ${isAssoc ? "cursor-pointer" : ""}`}
-                      onClick={isAssoc ? () => toggle(g.id) : undefined}>{c.name}</span>
+                    ) : c.club_id ? <JuniorToggle club={c} large /> : <span className="w-4" />}
+                    <span className={`text-[13px] truncate min-w-[65%] sm:min-w-0 flex-1 ${isAssoc || c.club_id ? "cursor-pointer" : ""}`}
+                      onClick={isAssoc ? () => toggle(g.id) : c.club_id ? () => toggleClub(c.id) : undefined}>{c.name}</span>
                     <OrgKindBadge kind={isAssoc ? "association" : "club"} className="hidden sm:inline-flex" />
                     <span className="ml-auto flex items-center gap-1 shrink-0">
                       {isAssoc && <span className="text-[11px] text-muted-foreground">{clubs.length} club{clubs.length === 1 ? "" : "s"}</span>}
+                      {!isAssoc && <JuniorCount club={c} />}
                       {canEdit && <MoveTo id={c.id} current={p.id} />}
                       {canEdit && (
                         <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground" onClick={() => removeFrom(c.id, p.id)} aria-label={`Remove ${c.name}`}>
@@ -277,24 +330,30 @@ export function FederationJuniorTab({ rootOrgId }: { rootOrgId?: string } = {}) 
                       )}
                     </span>
                   </div>
+                  {!isAssoc && c.club_id && clubOpen.has(c.id) && <ClubJuniors rootOrgId={rootOrgId} clubId={c.club_id} />}
                   {isAssoc && cOpen && (
                     <div className="pl-4 sm:pl-10 space-y-0.5">
                       {clubs.map((cl) => {
                         const ex = excluded.find((e) => e.child_org_id === cl.id);
                         const movedTo = ex ? m.coveredBy.get(cl.id) : undefined;
                         return (
-                          <div key={cl.id} {...(ex || !canEdit ? {} : dragProps(cl.id, p.id))}
+                          <div key={cl.id}>
+                          <div {...(ex || !canEdit ? {} : dragProps(cl.id, p.id))}
                             className={`flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 pl-2 py-0.5 text-[12px] rounded-lg ${ex ? "text-muted-foreground/60" : `text-foreground/80 hover:bg-muted/50 ${canEdit ? "cursor-grab" : ""}`}`}>
                             {ex || !canEdit ? <span className="w-3" /> : <GripVertical className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-label={`Drag ${cl.name}`} />}
-                            <span className={`truncate min-w-[70%] sm:min-w-0 flex-1 ${ex ? "line-through" : ""}`}>{cl.name}</span>
+                            <JuniorToggle club={cl} />
+                            <span className={`truncate min-w-[60%] sm:min-w-0 flex-1 ${ex ? "line-through" : ""} ${cl.club_id ? "cursor-pointer" : ""}`}
+                              onClick={cl.club_id ? () => toggleClub(cl.id) : undefined}>{cl.name}</span>
                             {ex && <span className="text-[11px] whitespace-nowrap">{movedTo && movedTo !== p.id ? `moved to ${name(movedTo)}` : "left out"}</span>}
-                            <span className="text-[11px] text-muted-foreground whitespace-nowrap">{(cl.club_id && data.juniors.get(cl.club_id)) || 0} juniors</span>
+                            <JuniorCount club={cl} />
                             {!ex && canEdit && <MoveTo id={cl.id} current={p.id} fromId={p.id} />}
                             {canEdit && (
                               <Button size="sm" variant="ghost" className="shrink-0 h-6 px-1.5 text-[11px] text-muted-foreground" onClick={() => (ex ? moveInto(cl.id, p.id, p.id) : removeFrom(cl.id, p.id, true))}>
                                 {ex ? <><Eye className="w-3 h-3 mr-1" />Include</> : <><EyeOff className="w-3 h-3 mr-1" />Leave out</>}
                               </Button>
                             )}
+                          </div>
+                          {cl.club_id && clubOpen.has(cl.id) && <ClubJuniors rootOrgId={rootOrgId} clubId={cl.club_id} />}
                           </div>
                         );
                       })}

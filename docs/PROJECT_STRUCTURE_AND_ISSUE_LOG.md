@@ -4803,3 +4803,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Cause: the sale-cost RPC looks up stock movements per sale (~2,083 sales) and `bar_stock_movements` had no index on `(club_id, source_table, source_id)`, so every lookup rescanned the club's movements (~264k buffer hits).
 - Fix (migration 0459): added `bar_stock_movements_source_idx` and `bar_tab_entries_club_created_idx`. RPC now 0.18 s with identical results (bar COGS R31,961.70, 197 uncosted lines; shop R3,799.16). No data, policies or figures changed.
 - Remaining scaling note: journal rows are still paginated to the browser; fine at current volume, consider a server-side aggregate RPC if a club passes ~50k lines per year.
+
+### 2026-11-20 — Bar staff "sold so far" counts for made-to-order items
+- Deon (Uitsig, Bar permission, not full admin) got a 400 on Bar admin made-to-order counts because `bar_made_to_order_sold` allowed only club admins, Super Admins and NSC treasurer.
+- Owner approved Bar-permission access. Migration 0460 adds `has_club_permission(uid, club, 'bar')` to the guard; the function stays security-invoker, so bar-tab RLS (which already lets Bar/Finance permission read all club tabs) still limits what is counted. Ordinary members remain blocked. No sales/stock data changed.

@@ -24646,6 +24646,7 @@ export type Database = {
         Returns: string
       }
       join_club_request: { Args: { p_club_id: string }; Returns: string }
+      journal_read_club_ids: { Args: never; Returns: string[] }
       junior_create_club: {
         Args: { _name: string; _provincial_id: string; _town?: string }
         Returns: string
@@ -25344,6 +25345,7 @@ export type Database = {
         Returns: Json
       }
       my_can_manage_club_comms: { Args: { _club_id: string }; Returns: boolean }
+      my_club_member_ids: { Args: never; Returns: string[] }
       new_invite_token: { Args: never; Returns: string }
       new_model_cap: {
         Args: { _capability: string; _club_id: string; _user_id: string }

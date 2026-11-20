@@ -171,5 +171,5 @@
 
 - [x] View-as-member (i on member page): shared-login profile tabs (e.g. Goosens: Jan/Ebert/Zelda/Tiaan) not shown while viewing as that member
 
-- [ ] Uitsig: Deon reports system hanging / not refreshing (20 Nov) — diagnose
-- [ ] Birth-date reminders (junior tree note, members filter, member banner) — verify & commit
+- [x] Uitsig: Deon Finance hanging — ledger access check timed out; fixed (0458), verified live as Deon.
+- [x] Birth-date reminders: junior tree reads 6-digit IDs + missing count, Members filter, member banner (0457).

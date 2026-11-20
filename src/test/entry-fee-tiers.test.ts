@@ -17,8 +17,14 @@ describe("package price by number of categories", () => {
   it("more categories than the last row pay the last row's price", () => {
     expect(tierFeeCents(tiers, 4)).toBe(30000);
   });
-  it("a doubles category the partner pays for does not count", () => {
-    expect(entryDueCents(20000, [1, 2], [2], tiers)).toBe(20000);
+  it("a partner-covered category is taken off the package price (2 categories R300 − partner's R200 = R100)", () => {
+    expect(entryDueCents(20000, [1, 2], [2], tiers)).toBe(10000);
+  });
+  it("No Frills Doubles: Reinhardt Mens + Mixed R310, Ebert paid his Mens R210 → R100 extra", () => {
+    expect(entryDueCents(21000, [1, 3], [1], { "1": 21000, "2": 31000 })).toBe(10000);
+  });
+  it("a player whose only category is covered owes nothing", () => {
+    expect(entryDueCents(21000, [3], [3], { "1": 21000, "2": 31000 })).toBe(0);
   });
   it("without package prices the fee stays per category", () => {
     expect(entryDueCents(20000, [1, 2])).toBe(40000);

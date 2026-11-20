@@ -263,7 +263,7 @@ export async function fetchPartnerOptions(
     p_token: auth.token || null,
     p_verify: auth.verify || null,
     p_search: search?.trim() || null,
-    p_limit: 50,
+    p_limit: 400,
   });
   if (error) throw error;
   return sanitizePartnerOptions(data);
@@ -486,19 +486,25 @@ export async function proposeExternalPartner(
  * already settled pays only the partner's fee (and nothing if the partner pays
  * their own). The server (`_invite_amount_cents`) re-computes the real amount.
  */
-export function partnerPickDueCents(feeCents: number, payForPartner: boolean, myFeePaid: boolean): number {
+/**
+ * Amount to pay right after picking a partner: my own outstanding fee (the server's figure when known —
+ * package prices and partner cover make it differ from the flat fee) plus the partner's one-event fee if I cover it.
+ */
+export function partnerPickDueCents(feeCents: number, payForPartner: boolean, myFeePaid: boolean, myDueCents = 0): number {
   if (feeCents <= 0) return 0;
-  if (myFeePaid) return payForPartner ? feeCents : 0;
-  return payForPartner ? feeCents * 2 : feeCents;
+  const own = myFeePaid ? 0 : myDueCents > 0 ? myDueCents : feeCents;
+  return own + (payForPartner ? feeCents : 0);
 }
 
 /** What this player still owes for one pair (own fee and/or a partner fee they chose to cover). */
 export function pairAmountOwedCents(pair: MyPair | null, feeCents: number, totalDueCents = 0): number {
   if (!pair || feeCents <= 0) return 0;
   const coversPartner = !!pair.payer_is_me && !!pair.pays_for_partner && !pair.partner_fee_paid;
-  if (pair.my_fee_paid) return coversPartner ? Math.max(totalDueCents || 0, feeCents) : 0;
+  // The server's total (package price less partner cover, plus covered partner fees) wins over the flat fee.
+  const server = totalDueCents > 0 ? totalDueCents : 0;
+  if (pair.my_fee_paid) return coversPartner ? server || feeCents : 0;
   if (pair.covered_by_partner) return 0;
-  return Math.max(totalDueCents || 0, coversPartner ? feeCents * 2 : feeCents);
+  return server || (coversPartner ? feeCents * 2 : feeCents);
 }
 
 /**

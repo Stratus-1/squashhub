@@ -412,7 +412,7 @@ function DivisionPartner({
       }
       // Picking a partner is the moment the entry becomes payable.
       if (job.kind === "propose" && hasFee && onPay) {
-        const due = partnerPickDueCents(feeCents, job.payForPartner, myFeePaid);
+        const due = partnerPickDueCents(feeCents, job.payForPartner, myFeePaid, totalDueCents);
         if (due > 0) onPay(due);
       }
       if (job.kind === "external" && hasFee && onPay) onPay(feeCents * 2);
@@ -426,6 +426,8 @@ function DivisionPartner({
   // partner fees they cover), as the server calculates it.
   const iOwe = pairAmountOwedCents(pair, feeCents, totalDueCents);
 
+  // My own outstanding fee before this pick (server figure; flat fee only as fallback).
+  const myDue = myFeePaid ? 0 : totalDueCents > 0 ? totalDueCents : feeCents;
   const choose = (o: PartnerOption) => {
     // Picking a partner books the pair — the partner never has to accept, and
     // the player who picks covers both entry fees.
@@ -557,9 +559,9 @@ function DivisionPartner({
                 <>Your own entry fee is already paid. You can also pay {feeAsk?.display_name || "your partner"}'s
                 {" "}{money(feeCents)}, or let them pay their own. The pair is confirmed once both fees are paid.</>
               ) : (
-                <>The entry fee is {money(feeCents)} per player. You can pay for both of you ({money(feeCents * 2)}),
-                or pay only your own ({money(feeCents)}) and {feeAsk?.display_name || "your partner"} is asked to pay
-                theirs. The pair is confirmed once both fees are paid.</>
+                <>You still owe {money(myDue)}; {feeAsk?.display_name || "your partner"}'s fee for this event is {money(feeCents)}.
+                You can pay for both of you ({money(myDue + feeCents)}), or pay only your own ({money(myDue)}) and
+                {" "}{feeAsk?.display_name || "your partner"} is asked to pay theirs. The pair is confirmed once both fees are paid.</>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -584,7 +586,7 @@ function DivisionPartner({
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
               }}
             >
-              {myFeePaid ? `Pay their fee · ${money(feeCents)}` : `Pay both · ${money(feeCents * 2)}`}
+              {myFeePaid ? `Pay their fee · ${money(feeCents)}` : `Pay both · ${money(myDue + feeCents)}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

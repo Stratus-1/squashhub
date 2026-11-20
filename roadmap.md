@@ -151,3 +151,8 @@
 - [x] Member-to-member credit transfer (member or admin starts, receiver accepts/declines, 14-day expiry, admin list)
 - [ ] post_journal can be called by anyone without a finance permission check (pre-existing; awaiting Willem's go-ahead to tighten)
 - [x] Check doubles pairs paid on one side, unpaid on the other (Lisa/Riaan, No Frills Doubles)
+
+## No Frills Doubles (20 Nov)
+- [x] Find why new entrants did not choose partners: Mixed list showed only men (fixed)
+- [x] Reinhardt Mixed fee now R100 (package less partner cover)
+- [x] Mixed/Mens/Ladies partner lists filtered by gender

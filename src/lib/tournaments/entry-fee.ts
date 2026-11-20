@@ -36,8 +36,14 @@ export function tierSummary(tiers: FeeTiers, money: (cents: number) => string): 
 
 export function entryDueCents(eventFeeCents: number, divisionChoices: unknown, coveredGroups: Array<number | string> = [], tiers?: FeeTiers | null): number {
   const n = ownEvents(divisionChoices, coveredGroups);
+  const all = ownEvents(divisionChoices, []);
   const tier = tierFeeCents(tiers, n);
-  if (tier != null) return tier;
+  if (tier != null) {
+    // Package price for every event entered, less the one-event fee a partner pays per covered event
+    // (2 events R310, partner covered one at R210 → R100). Mirrors DB champ_reg_own_due_cents.
+    if (n >= all) return tier;
+    return Math.max(0, (tierFeeCents(tiers, all) ?? 0) - (all - n) * (tierFeeCents(tiers, 1) ?? 0));
+  }
   return Math.max(0, Math.round(Number(eventFeeCents) || 0)) * n;
 }
 

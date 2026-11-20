@@ -4752,3 +4752,9 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Reinhardt Falk showed "Not confirmed · Payment outstanding · R210" beside his Mens pair with Ebert, although Ebert paid his Mens fee; Linden (Mens + Mixed, tiered R310) showed R210; total said R1260.
 - Cause: the list used one flat fee per outstanding row and ignored partner-cover payments (`covered_events`, `cover:` fee rows).
 - Fix (display only): `entryMoney` / `eventsWithoutPartner` in `step-handover.ts` read the real fee rows; rows now show "Mens paid by Ebert Goosen", "Mixed: … R210", "also paid for …" and "Mixed: no partner yet". Total now R1360. No entries, pairs or fees changed. Tests: `src/lib/smart-builder/__tests__/entry-partners.test.ts`.
+
+### 2026-11-20 — Men could not find a Mixed partner; Reinhardt's Mixed fee
+- Symptom: new No Frills Doubles entrants (Tiaan/Jan Goosen, Linden, Reinhardt) never chose a Mixed partner.
+- Cause: `list_doubles_partner_options` cut the list at 50 rows *before* sorting and had no gender filter, so a man's Mixed list showed 50 men and none of the 73 invited ladies.
+- Fix: migration 0450 filters by category gender and sorts before the limit; client asks for up to 400. Mens list for a man: 268 options, 0 ladies; Mixed: ladies (plus players with no gender on record).
+- Fee rule (Willem): tiered package counts every category entered, minus the partner's 1-category cover (migration 0451, `champ_reg_own_due_cents` + `entryDueCents`). Reinhardt (Mens+Mixed R310, Ebert covered Mens R210) now owes R100; his unpaid fee was adjusted 210 → 100 with ledger audit. Partner step amounts now use the server due.

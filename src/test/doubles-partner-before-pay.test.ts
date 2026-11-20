@@ -58,3 +58,14 @@ describe("doubles detection for per-category tournaments", () => {
     expect(entryHasDoubles("singles", null)).toBe(false);
   });
 });
+
+describe("partner step uses the server's amount owed, never the flat fee", () => {
+  it("Reinhardt: Mixed pick, only his own R100 (R310 package less Ebert's R210 Mens cover)", () => {
+    expect(partnerPickDueCents(21000, false, false, 10000)).toBe(10000);
+    expect(partnerPickDueCents(21000, true, false, 10000)).toBe(31000);
+  });
+  it("pair card shows the server total (R100), not R210", () => {
+    const pair = { my_fee_paid: false, covered_by_partner: false, payer_is_me: true, pays_for_partner: false, partner_fee_paid: false } as any;
+    expect(pairAmountOwedCents(pair, 21000, 10000)).toBe(10000);
+  });
+});

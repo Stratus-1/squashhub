@@ -525,7 +525,41 @@ export function recipientPreset(kind: "all" | "none" | "not_informed", status: R
 
 /* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
 
-export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number; feeStatus?: string | null };
+export type RegPartner = { name: string; category: string | null; confirmed: boolean };
+export type RegRow = { memberId: string; name: string; partnerName: string | null; partners?: RegPartner[]; status: string; owesCents: number; feeStatus?: string | null };
+
+/** "Mixed 2 · Doubles" + organiser rename {"Mixed 2":"Mixed"} → "Mixed". */
+export function entryCategoryName(groupLabel: string | null | undefined, renames: Record<string, string> = {}): string | null {
+  const base = String(groupLabel ?? "").replace(/ · (Singles|Doubles)$/, "").trim();
+  if (!base) return null;
+  return renames[base]?.trim() || base;
+}
+
+/**
+ * Every live doubles partner of one entrant, one per category. The pairing board (champ_doubles_pairs)
+ * wins; the registration's own partner column is only used when no board row names that partner.
+ * Why: a player in Mens + Mixed has two partners and the registration holds at most one.
+ */
+export function entryPartners(
+  memberId: string,
+  pairs: { member_a: string; member_b: string; group_number?: number | null; status?: string | null }[],
+  regPartnerId: string | null | undefined,
+  names: Map<string, string>,
+  categoryOf: (group: number | null) => string | null,
+): RegPartner[] {
+  const out: (RegPartner & { id: string; group: number | null })[] = [];
+  for (const p of pairs) {
+    if (["cancelled", "declined", "rejected", "withdrawn"].includes(String(p.status ?? "").toLowerCase())) continue;
+    const other = p.member_a === memberId ? p.member_b : p.member_b === memberId ? p.member_a : null;
+    if (!other) continue;
+    const group = p.group_number ?? null;
+    out.push({ id: other, group, name: names.get(other) ?? "Unknown member", category: categoryOf(group), confirmed: p.status === "confirmed" });
+  }
+  if (regPartnerId && !out.some((x) => x.id === regPartnerId)) {
+    out.push({ id: regPartnerId, group: null, name: names.get(regPartnerId) ?? "Unknown member", category: null, confirmed: true });
+  }
+  return out.sort((a, b) => (a.group ?? 99) - (b.group ?? 99)).map(({ name, category, confirmed }) => ({ name, category, confirmed }));
+}
 /** Charged to the member's club account: entry fee satisfied for readiness, but no money received. */
 export const ON_ACCOUNT = "on_account";
 const effStatus = (r: { status: string; feeStatus?: string | null }) => (r.feeStatus === ON_ACCOUNT ? ON_ACCOUNT : r.status);
@@ -553,26 +587,37 @@ export function isEnteredRegistration(r: { status?: string | null; registration_
 export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number; invitedCount?: number }> {
   // Always recompute from current entries; first repair entries left inconsistent by an older replacement.
   await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
-  const [{ data: t }, { data: regs }] = await Promise.all([
-    fromExt("club_champs").select("entry_fee_cents").eq("id", tournamentId).maybeSingle(),
+  const [{ data: t }, { data: regs }, { data: pairRows }, { data: tn }] = await Promise.all([
+    fromExt("club_champs").select("entry_fee_cents, group_labels").eq("id", tournamentId).maybeSingle(),
     fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status, registration_status, registration_source, confirmed_at").eq("champ_id", tournamentId),
+    fromExt("champ_doubles_pairs").select("member_a, member_b, group_number, status").eq("champ_id", tournamentId),
+    fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle(),
   ]);
   const feeCents = Number((t as any)?.entry_fee_cents ?? 0);
   const open = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
   const live = open.filter(isEnteredRegistration);
   const invitedCount = open.length - live.length;
-  const ids = [...new Set(live.flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
+  const liveIds = new Set(live.map((r) => r.club_member_id));
+  const pairs = ((pairRows ?? []) as any[]).filter((p) => liveIds.has(p.member_a) || liveIds.has(p.member_b));
+  const ids = [...new Set([...live.flatMap((r) => [r.club_member_id, r.partner_member_id]), ...pairs.flatMap((p) => [p.member_a, p.member_b])].filter(Boolean))];
   const { data: ms } = ids.length ? await supabase.from("club_members").select("id, name").in("id", ids) : { data: [] as any[] };
   const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
+  const labels = ((t as any)?.group_labels ?? {}) as Record<string, string>;
+  const renames = ((tn as any)?.beta_lifecycle?.answers?.categoryLabels ?? {}) as Record<string, string>;
+  const categoryOf = (g: number | null) => (g == null ? null : entryCategoryName(labels[String(g)], renames));
   return {
     feeCents,
     invitedCount,
-    rows: live.map((r) => ({
-      memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Unknown member",
-      partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Unknown member" : null,
-      status: effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeStatus: r.fee_status ?? null,
-      owesCents: isOutstanding(effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeCents > 0) ? feeCents : 0,
-    })),
+    rows: live.map((r) => {
+      const partners = entryPartners(r.club_member_id, pairs, r.partner_member_id, nm, categoryOf);
+      return {
+        memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Unknown member",
+        partnerName: partners.length ? partners.map((p) => p.name).join(", ") : null,
+        partners,
+        status: effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeStatus: r.fee_status ?? null,
+        owesCents: isOutstanding(effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeCents > 0) ? feeCents : 0,
+      };
+    }),
   };
 }
 

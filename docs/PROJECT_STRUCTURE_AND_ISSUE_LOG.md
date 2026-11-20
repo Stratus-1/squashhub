@@ -4742,3 +4742,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ## 2026-11-19 — Paid doubles players with no partner (Uitsig No Frills Doubles)
 - Cause: the tournament's top-level match type is "singles" while every category is doubles; the in-app invitation sheet read only the top-level value, so it skipped the partner step and let Riaan van Reeuwyk and Bernard Pienaar pay first. The invitation link also hid the partner list behind the phone check with payment wording.
 - Fix: `entryHasDoubles` (src/lib/tournaments/doubles.ts) checks category match types; the in-app sheet now shows payment only after every doubles category has a partner (`partnersCompleteForPayment`, fails open). Players who already paid see a partner-only step and may pay just the partner's fee (`partnerPickDueCents`; server `_invite_amount_cents` decides the amount).
+
+### 2026-11-20 — Manage "Entries & payment status" hid doubles partners
+- Symptom: No Frills Doubles list showed Riaan van Reeuwyk, Lisa van Reeuwyk, AJ Barnard, Ebert Goosen etc. without partners although pairs existed.
+- Cause: `loadRegistrations` read only `club_champs_registrations.partner_member_id`; pairs chosen in the partner picker live in `champ_doubles_pairs` (one per category), so multi-event players had none shown.
+- Fix: read the pairing board too and list each partner with its category (organiser names, e.g. "Mixed"), marking pairs still awaiting payment. Display only; no data changed. Test: `src/lib/smart-builder/__tests__/entry-partners.test.ts`.

@@ -175,9 +175,12 @@ export function TournamentInviteRegisterDialog({
   // the payment options only once every doubles category they entered has a
   // pairing (same rule and cache as the invitation link; fails open on errors).
   const partnerGate = canPickPartner && doublesPickerDivisions.length > 0;
+  // Shared family logins: act as THIS invitation's player via its own token, never
+  // "whoever the login resolves to" (that removed Jan's Mens pair from Tiaan's profile).
+  const playerToken: string | null = (registration as any)?.invite_token || null;
   const pairingQ = useQuery({
-    queryKey: ["champ-pairing-state", String(champ?.id || ""), "auth", "unverified"],
-    queryFn: () => fetchPairingState(String(champ?.id), { token: null, verify: null }),
+    queryKey: ["champ-pairing-state", String(champ?.id || ""), playerToken || "auth", "unverified"],
+    queryFn: () => fetchPairingState(String(champ?.id), { token: playerToken, verify: null }),
     enabled: open && !!champ?.id && partnerGate,
     retry: false,
   });
@@ -571,6 +574,7 @@ export function TournamentInviteRegisterDialog({
                   <DoublesPartnerPicker
                     champId={String(champ.id)}
                     clubId={clubId}
+                    token={playerToken}
                     divisions={doublesPickerDivisions}
                     onPay={() => {
                       // Straight from naming a partner to paying — card if the

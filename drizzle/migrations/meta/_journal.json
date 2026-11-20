@@ -3235,6 +3235,13 @@
       "when": 1795182373786,
       "tag": "0461_doubles_pick_partner_enters_category",
       "breakpoints": true
+    },
+    {
+      "idx": 462,
+      "version": "7",
+      "when": 1795182606548,
+      "tag": "0462_doubles_actor_shared_login_guard",
+      "breakpoints": true
     }
   ]
 }

@@ -365,6 +365,10 @@ function DivisionPartner({
 }) {
   const [search, setSearch] = useState("");
   const [feeAsk, setFeeAsk] = useState<PartnerOption | null>(null);
+  // Removing an agreed or locked partner is a one-way step for the player, so
+  // it always asks first (a family member on a shared login removed a paid pair
+  // with one tap).
+  const [confirmChange, setConfirmChange] = useState(false);
   const action = pairAction(pair, locked);
   const picking = action === "choose";
   const hasFee = feeCents > 0;
@@ -486,7 +490,12 @@ function DivisionPartner({
       )}
 
       {(action === "awaiting_partner" || action === "awaiting_payment" || action === "confirmed") && (
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => act.mutate({ kind: "cancel" })}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => (action === "awaiting_partner" ? act.mutate({ kind: "cancel" }) : setConfirmChange(true))}
+        >
           {action === "awaiting_partner" ? "Cancel request" : "Change partner"}
         </Button>
       )}
@@ -549,6 +558,32 @@ function DivisionPartner({
             onSubmit={(partner) => act.mutate({ kind: "external", partner })} />
         </div>
       )}
+
+      <AlertDialog open={confirmChange} onOpenChange={setConfirmChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {pair?.partner_name || "your partner"} as your {division.label} partner?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pair?.status === "confirmed"
+                ? "This pair is paid and locked. Removing your partner unlocks it, and you will both need to choose new partners."
+                : "Your partner will be removed and you will need to choose a new one."}
+              {" "}No fees are charged or refunded by this step.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Keep {pair?.partner_name || "partner"}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setConfirmChange(false);
+                act.mutate({ kind: "cancel" });
+              }}
+            >
+              Remove partner
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!feeAsk} onOpenChange={(o) => !o && setFeeAsk(null)}>
         <AlertDialogContent>

@@ -17,4 +17,13 @@ describe("notification navigation", () => {
   it("leaves current notification destinations unchanged", () => {
     expect(resolveNotificationUrl("/events/123")).toBe("/events/123");
   });
+
+  it("turns full SquashHub links into in-app paths so they don't open Page not found", () => {
+    expect(resolveNotificationUrl("https://uit.squashhub.co.za/i/abc123")).toBe("/i/abc123");
+    expect(resolveNotificationUrl("https://squashhub.co.za/club-champs/x?tab=1")).toBe("/club-champs/x?tab=1");
+  });
+
+  it("leaves links to other websites as they are", () => {
+    expect(resolveNotificationUrl("https://example.com/pay")).toBe("https://example.com/pay");
+  });
 });

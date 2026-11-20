@@ -11,8 +11,30 @@ const LEGACY_NOTIFICATION_ROUTES: Record<string, string> = {
   "/admin/ai-assistance": "/admin/support?view=ai",
 };
 
+/**
+ * Older notices stored full links (https://uit.squashhub.co.za/i/…). The app's
+ * in-page navigation treats those as a path and showed "Page not found", so
+ * SquashHub links are reduced to their path; other sites stay untouched.
+ */
+function toAppPath(url: string) {
+  if (!/^https?:\/\//i.test(url)) return url;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    const ownHost = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+    const isSquashHub =
+      host === ownHost ||
+      host === "squashhub.co.za" ||
+      host.endsWith(".squashhub.co.za") ||
+      host.endsWith(".lovable.app");
+    return isSquashHub ? `${u.pathname}${u.search}${u.hash}` || "/" : url;
+  } catch {
+    return url;
+  }
+}
+
 export function resolveNotificationUrl(url?: string | null) {
-  const resolvedUrl = String(url || "/notifications");
+  const resolvedUrl = toAppPath(String(url || "/notifications"));
   return LEGACY_NOTIFICATION_ROUTES[resolvedUrl] || resolvedUrl;
 }
 

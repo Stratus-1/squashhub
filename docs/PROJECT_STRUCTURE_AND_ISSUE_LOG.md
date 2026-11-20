@@ -4807,3 +4807,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-20 — Bar staff "sold so far" counts for made-to-order items
 - Deon (Uitsig, Bar permission, not full admin) got a 400 on Bar admin made-to-order counts because `bar_made_to_order_sold` allowed only club admins, Super Admins and NSC treasurer.
 - Owner approved Bar-permission access. Migration 0460 adds `has_club_permission(uid, club, 'bar')` to the guard; the function stays security-invoker, so bar-tab RLS (which already lets Bar/Finance permission read all club tabs) still limits what is counted. Ordinary members remain blocked. No sales/stock data changed.
+
+### 2026-11-20 — Uitsig No Frills Doubles: Jan Goosen lost his paid Mens partner
+- Data: at 11:51 UTC the shared Goosen login opened Jan's link and pressed "Change partner" on the paid, locked Jan + Reinhardt Mens pair (`cancel_doubles_pair`, one tap). Tiaan withdrew Mixed at 11:54. Zelda is entered in Ladies only, so she cannot be picked as Jan's Mixed partner. No data changed pending owner decisions.
+- Fix: "Change partner" on an agreed/locked pair now asks for confirmation first (`DoublesPartnerPicker.tsx`).
+- Fix: notifications that stored full SquashHub links (https://uit.squashhub.co.za/i/…) opened "Page not found"; `resolveNotificationUrl` now reduces SquashHub links to in-app paths.

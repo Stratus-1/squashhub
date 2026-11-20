@@ -4832,3 +4832,9 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - 20 Nov 2026 (Willem approved): removed the 8 self-cancelling No Frills Doubles journal lines (Jan's Mens fee row 55e14c6d, wrongly posted under Ebert via the shared Goosen login, then reversed) from Ebert Goosen's statement. Each account netted to zero, so no member or club balance changed; Jan's own 4 lines untouched; full copies kept in `ledger_audit_log` (action delete).
 - 20 Nov 2026 (Willem approved): Jan Goosen's own No Frills Mixed fee now shows as one R100 "Fee raised" line; the original R210 raise was edited to R100 and the separate R110 "Entry fee adjusted" pair removed. Jan's net balances per account unchanged (debtors −R110 credit); edit and delete recorded in `ledger_audit_log`.
 - 20 Nov 2026: Tournament registrations list now shows "<Category> paid by <payer>" next to a player whose event another member paid (cover fee row's `paid_by_member_id` wins over `covered_events.by`, which still named Ebert after the Jan correction; self-payments never show "paid by"). Same payer source used by the Step-by-Step entries list. Also fixed `entrantFeeText` ignoring object-shaped `covered_events` (Reinhardt showed R310 due instead of R100). Display only; no data changed.
+
+### 2026-11-20 — Tournament fee recording consistency (migration 0466)
+- Adding a category before paying now updates the original unpaid "Fee raised" line (same month, nothing paid, audited) instead of adding an "Entry fee adjusted" pair.
+- Unpaid fee label renames now rename their "Fee raised" journal lines.
+- `champ_admin_confirm_paid` now records partner covers on the payer's account via `champ_apply_paid_registration` (previously only card gateways did).
+- Verified by rolled-back rehearsals (Bernard Welters add-category; admin Paid for Linden covering Clayton). No live data changed.

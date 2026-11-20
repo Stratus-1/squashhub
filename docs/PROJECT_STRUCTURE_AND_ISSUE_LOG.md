@@ -4777,3 +4777,5 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-20 — Champs page header showed "Open Singles Tournament"
 - Symptom: the tournament detail page header read "Open Singles Tournament · <dates>" under the tournament name.
 - Fix: ClubChampsView header now shows the tournament name with dates only (same rule as the tournament cards fix); unused GENDER_LABELS map removed. Display only.
+
+- 2026-11-20: Uitsig Club Champs 2026 finals day postponed from 21 Nov to 5 Dec (migration 0454): tournament note, saved setup/stage schedule dates and the 8 finals-day placeholder games moved; times, courts, results and bookings unchanged; audited in champ_round_date_audit.

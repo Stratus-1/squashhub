@@ -3249,6 +3249,20 @@
       "when": 1795203309120,
       "tag": "0463_doubles_partner_cover_next_event_price",
       "breakpoints": true
+    },
+    {
+      "idx": 464,
+      "version": "7",
+      "when": 1795203731630,
+      "tag": "0464_fee_lines_name_player_category_payer_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 465,
+      "version": "7",
+      "when": 1795203834155,
+      "tag": "0465_invite_reply_uses_package_fee",
+      "breakpoints": true
     }
   ]
 }

@@ -176,5 +176,8 @@
 
 ## Doubles partner fees – second entry R100 (20 Nov)
 - [x] Partner cover in package-priced tournaments = partner's next category price (R100 if partner already paid R210); unpaid "additional events" shrink automatically; reduced fees bank the full payment (0463).
-- [ ] Correct Zelda/Jan: Mixed cover R210→R100, remove Zelda's unpaid R100, record Jan's missing R100 bank receipt, return Jan's R110 overpayment — waiting on Willem's approval/choice.
-- [ ] Answer: should a card payment for a partner be recorded on the payer's member account (own fee + partner's entry) instead of under the partner? — waiting on Willem's choice.
+- [x] Correct Zelda/Jan: Mixed cover R210→R100, remove Zelda's unpaid R100, record Jan's missing R100 bank receipt, R110 as credit on Jan's account (approved).
+- [x] Card/bank payments for a partner: record the partner's entry on the payer's member account ("for <partner> (<category>)"), partner shows covered (Willem chose payer's account).
+- [x] Fee lines name the tournament, player and category, e.g. "No Frills – Jan Goosen – Mens Doubles", "No Frills – Zelda Goosen – Mixed Doubles" (Willem 20 Nov).
+- [x] All other No Frills entries: no other second-entry overcharge; all fee lines renamed.
+- [ ] Michelle Arpin (R210 charged, 2 categories = R310) and Clayton Schlodder (R210 charged while Linden is paying for him) — waiting on Willem's OK to correct. Invite-reply flat-fee bug fixed (0465).

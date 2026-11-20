@@ -23380,6 +23380,10 @@ export type Database = {
           shared_email: boolean
         }[]
       }
+      champ_fee_line_label: {
+        Args: { p_champ_id: string; p_groups: number[]; p_member_id: string }
+        Returns: string
+      }
       champ_fee_post_charges: {
         Args: { p_champ: string; p_expected_total_cents: number }
         Returns: number
@@ -23493,6 +23497,7 @@ export type Database = {
         }
         Returns: string
       }
+      champ_reg_fee_label: { Args: { p_reg_id: string }; Returns: string }
       champ_reg_groups: { Args: { p_choices: number[] }; Returns: number[] }
       champ_reg_own_due_cents: { Args: { p_reg_id: string }; Returns: number }
       champ_reg_own_events: { Args: { p_reg_id: string }; Returns: number }

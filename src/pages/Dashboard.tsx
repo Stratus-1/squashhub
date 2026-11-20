@@ -77,8 +77,8 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub, subdomain } = useClubContext();
-  const { linkedMembers, activeMember, switchMember, effectiveUserId, isViewingAs } = useMemberContext();
-  const showFamilySwitcher = linkedMembers.length > 1;
+  const { switcherMembers, activeMember, switchMember, effectiveUserId, isViewingAs } = useMemberContext();
+  const showFamilySwitcher = switcherMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const {
@@ -654,6 +654,29 @@ export default function Dashboard() {
     return <AssociationDashboard />;
   }
 
+  // Profile tabs for a shared login (or the viewed member's family while an admin views as them).
+  const familySwitcher = showFamilySwitcher ? (
+    <Card className="p-3" data-testid="family-switcher">
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="w-4 h-4 text-primary" />
+        <span className="text-xs font-semibold">Switch Member</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {switcherMembers.map(m => (
+          <Button
+            key={m.id}
+            size="sm"
+            variant={activeMember?.id === m.id ? "default" : "outline"}
+            className="h-8 text-xs"
+            onClick={() => switchMember(m.id)}
+          >
+            {m.name || m.club_member_number || "Member"}
+          </Button>
+        ))}
+      </div>
+    </Card>
+  ) : null;
+
   // Desktop dashboard — keeps mobile layout below untouched
   if (!isMobile) {
     // Ladder entry merges NSA + internal league stats; add tournament W/L for a full picture.
@@ -739,6 +762,7 @@ export default function Dashboard() {
             </div>
           )}
           <div className="mb-3"><LinkExistingMembershipCard /></div>
+          {familySwitcher && <div className="mb-3">{familySwitcher}</div>}
 
           <DashboardTournamentInvitesCard />
           <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
@@ -931,29 +955,7 @@ export default function Dashboard() {
 
 
       {/* Family Member Switcher */}
-      {showFamilySwitcher && (
-        <div className="px-4 mt-2">
-          <Card className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-xs font-semibold">Switch Member</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {linkedMembers.map(m => (
-                <Button
-                  key={m.id}
-                  size="sm"
-                  variant={activeMember?.id === m.id ? "default" : "outline"}
-                  className="h-8 text-xs"
-                  onClick={() => switchMember(m.id)}
-                >
-                  {m.name || m.club_member_number || "Member"}
-                </Button>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
+      {showFamilySwitcher && <div className="px-4 mt-2">{familySwitcher}</div>}
 
       {/* Profile Completion — only show if incomplete. Visitors are not asked to complete a profile. */}
       {!isVisitorRoleMember && (

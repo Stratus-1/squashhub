@@ -208,8 +208,8 @@ export function DashboardAccountSettings() {
     window.location.assign(url.toString());
   };
 
-  const { linkedMembers, allMembers, isAdmin: isMemberAdmin, activeMember, isViewingAs, switchMember, resetToSelf } = useMemberContext();
-  const showFamilySwitcher = linkedMembers.length > 1;
+  const { switcherMembers, allMembers, isAdmin: isMemberAdmin, activeMember, isViewingAs, switchMember, resetToSelf } = useMemberContext();
+  const showFamilySwitcher = switcherMembers.length > 1;
   const [memberSearch, setMemberSearch] = useState("");
 
   // For admin "view as" — filter all members by search
@@ -242,9 +242,9 @@ export function DashboardAccountSettings() {
             <Users className="w-4 h-4 text-primary" />
             <span>Switch Member</span>
           </div>
-          <p className="text-[11px] text-muted-foreground">Multiple members are linked to your email:</p>
+          <p className="text-[11px] text-muted-foreground">{isViewingAs ? "Members on this login:" : "Multiple members are linked to your email:"}</p>
           <div className="flex flex-wrap gap-2">
-            {linkedMembers.map(m => (
+            {switcherMembers.map(m => (
               <Button
                 key={m.id}
                 size="sm"

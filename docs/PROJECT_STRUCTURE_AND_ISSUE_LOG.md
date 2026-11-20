@@ -4786,3 +4786,4 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Dashboard invitations now show only the selected profile's own invitations, label "For <name>" on shared logins, clean category names ("Mixed · Doubles"), and doubles "Select partner & pay" opens the personal invitation link page.
 
 - 2026-11-20 Junior structure: clubs in the junior tree now expand to list their juniors (name, gender, age group, age) via read-only `org_junior_members_for` (migration 0456); scoped admins only see clubs inside their own junior structure, no DOB/ID/contacts exposed.
+- 2026-11-20 View as member: "Switch Member" tabs now follow the viewed member's family (same login or email) via `familyOf` in MemberContext, and the desktop dashboard shows the tabs too (it had none). Display only.

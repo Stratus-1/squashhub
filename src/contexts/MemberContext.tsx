@@ -18,6 +18,11 @@ export interface LinkedMember {
 interface MemberContextType {
   /** Members sharing the current user's email (family accounts) */
   linkedMembers: LinkedMember[];
+  /**
+   * Profiles to offer in the "Switch Member" tabs: the viewed member's family (same login or same
+   * email) while an admin views as someone outside their own family, otherwise `linkedMembers`.
+   */
+  switcherMembers: LinkedMember[];
   /** All club members (only populated for club admins) */
   allMembers: LinkedMember[];
   /** Whether user is club admin */
@@ -37,6 +42,7 @@ interface MemberContextType {
 
 const MemberContext = createContext<MemberContextType>({
   linkedMembers: [],
+  switcherMembers: [],
   allMembers: [],
   isAdmin: false,
   activeMember: null,
@@ -214,10 +220,12 @@ export function MemberProvider({ children }: { children: ReactNode }) {
   const activeMember = [...linkedMembers, ...allMembers].find((m) => m.id === activeMemberId) || null;
   const isViewingAs = !!activeMemberId && activeMemberId !== selfMemberId;
   const effectiveUserId = activeMember?.user_id || user?.id || null;
+  const switcherMembers = familyOf(activeMember, linkedMembers, allMembers);
 
   return (
     <MemberContext.Provider value={{
       linkedMembers,
+      switcherMembers,
       allMembers,
       isAdmin,
       activeMember,
@@ -230,6 +238,22 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       {children}
     </MemberContext.Provider>
   );
+}
+
+/**
+ * Family of the active profile for the switcher. When an admin views as a member who is not in their own
+ * family, the tabs follow the viewed member: everyone at the club on the same login or the same email
+ * (case-insensitive) — the same tabs that member sees. Display only; never grants access.
+ */
+export function familyOf(active: LinkedMember | null, linked: LinkedMember[], all: LinkedMember[]): LinkedMember[] {
+  if (!active || linked.some((m) => m.id === active.id)) return linked;
+  const email = (active.email || "").trim().toLowerCase();
+  const family = all.filter((m) =>
+    m.id === active.id
+    || (!!active.user_id && m.user_id === active.user_id)
+    || (!!email && (m.email || "").trim().toLowerCase() === email),
+  );
+  return family.length ? family : [active];
 }
 
 export function useMemberContext() {

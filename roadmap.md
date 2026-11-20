@@ -168,3 +168,5 @@
 
 - [x] Invitation page: fee line shows the price list (R210 one category, R310 two categories); amount still owed on its own separate line
 - [x] Make the player name prominent at the top of tournament invitation links (Willem 20 Nov).
+
+- [x] View-as-member (i on member page): shared-login profile tabs (e.g. Goosens: Jan/Ebert/Zelda/Tiaan) not shown while viewing as that member

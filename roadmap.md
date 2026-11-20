@@ -180,4 +180,7 @@
 - [x] Card/bank payments for a partner: record the partner's entry on the payer's member account ("for <partner> (<category>)"), partner shows covered (Willem chose payer's account).
 - [x] Fee lines name the tournament, player and category, e.g. "No Frills – Jan Goosen – Mens Doubles", "No Frills – Zelda Goosen – Mixed Doubles" (Willem 20 Nov).
 - [x] All other No Frills entries: no other second-entry overcharge; all fee lines renamed.
-- [ ] Michelle Arpin (R210 charged, 2 categories = R310) and Clayton Schlodder (R210 charged while Linden is paying for him) — waiting on Willem's OK to correct. Invite-reply flat-fee bug fixed (0465).
+- [x] Michelle Arpin (R210 charged, 2 categories = R310) and Clayton Schlodder (R210 charged while Linden is paying for him) — corrected 20 Nov with the app's own fee recalculation; audited.
+- [x] Reinhardt Falk's paid Mens Doubles R210 moved onto Jan Goosen's account: fee raised R210 and payment R210 both show under Jan, zero "covered by Jan" marker left on Reinhardt (Willem approved 20 Nov). Amounts and balances unchanged; audited.
+- [x] Same payer-account rule applied to Neill Barnard's paid Mixed Doubles R210 — moved onto Bernice Barnard's account with fee raised and payment shown there, zero marker left on Neill; audited.
+- [ ] Ebert Goosen's statement still lists self-cancelling No Frills Doubles lines (fee raised / reversal, R210 each side) from the entry that moved to Jan. Balances are correct (his net is zero) — ask Willem whether to hide them from his statement.

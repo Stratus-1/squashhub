@@ -149,3 +149,4 @@
 - [x] General journal entry (balanced Dr/Cr, any account, member on AR/member-credit lines, "Member did work" template)
 - [x] Member-to-member credit transfer (member or admin starts, receiver accepts/declines, 14-day expiry, admin list)
 - [ ] post_journal can be called by anyone without a finance permission check (pre-existing; awaiting Willem's go-ahead to tighten)
+- [x] Check doubles pairs paid on one side, unpaid on the other (Lisa/Riaan, No Frills Doubles)

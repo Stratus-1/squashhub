@@ -4821,3 +4821,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-20 — Shared family login removed the wrong player's doubles pair (Goosen)
 - Cause: the dashboard "Select partner and pay" sheet called the doubles RPCs without the invitation token; `champ_actor_member` then picked any family member sharing the login (`LIMIT 1`). From Tiaan's profile the sheet showed Jan's Mens pair with Reinhardt, and "Change partner" cancelled Jan's pair (11:51 UTC, recorded as Jan). Jan's later screenshots predate the 13:41 UTC restore, so Reinhardt was genuinely missing then.
 - Fix: the sheet passes the selected profile's own `invite_token` (state + picker); migration 0462 makes the no-token path refuse when several live entrants share the login instead of guessing.
+
+### 2026-11-20 — Doubles partner cover charged R210 for a partner's second category (Jan → Zelda, Mixed)
+- Symptom: Zelda had paid R210 for Ladies; Jan paid her Mixed by Stitch at the 1-category price R210 (should be R100, package R310), and Zelda also kept an unpaid R100 "additional events" charge. Jan's own R100 was marked paid but no bank receipt was journalled.
+- Causes: partner cover always used the 1-category fee; refresh never reduced unpaid add-ons; `journal_fee_payment_received` subtracted the earlier fee-reduction credit from the receipt.
+- Fix (migration 0463): `champ_partner_cover_cents` prices a cover as the partner's next category and is frozen in `covered_events`; used by invite/pair/account payment paths, totals and own-due; refresh shrinks unpaid add-ons; receipt journal posts the open balance. Before/after check: only Zelda's own due changed (R100→R210, correct). No data corrected yet — awaiting Willem's approval.

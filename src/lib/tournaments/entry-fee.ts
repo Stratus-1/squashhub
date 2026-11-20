@@ -47,6 +47,19 @@ export function entryDueCents(eventFeeCents: number, divisionChoices: unknown, c
   return Math.max(0, Math.round(Number(eventFeeCents) || 0)) * n;
 }
 
+/**
+ * Package-priced (tiered) tournaments: what a player pays to cover a doubles partner's category.
+ * The cover is priced as the partner's NEXT category: package for all their categories, less what
+ * they (or earlier covers) already paid, never more than the 1-category price.
+ * e.g. tiers 1=R210, 2=R310: partner already paid R210 for Ladies → covering their Mixed costs R100;
+ * partner paid nothing yet → R210 (and the partner then owes R100). Mirrors DB `champ_partner_cover_cents`.
+ */
+export function partnerCoverCents(tiers: FeeTiers, partnerCategories: number, partnerAlreadyPaidCents: number): number {
+  const one = tierFeeCents(tiers, 1) ?? 0;
+  const all = tierFeeCents(tiers, Math.max(1, partnerCategories)) ?? 0;
+  return Math.min(one, Math.max(0, all - Math.max(0, Math.round(partnerAlreadyPaidCents || 0))));
+}
+
 /** "2 events x R150.00 = R300.00", or just "R150.00" for one event; package prices: "2 categories: R300.00". */
 export function feeBreakdownLabel(eventFeeCents: number, events: number, money: (cents: number) => string, tiers?: FeeTiers | null): string {
   const tier = tierFeeCents(tiers, events);

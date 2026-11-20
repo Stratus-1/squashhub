@@ -3242,6 +3242,13 @@
       "when": 1795182606548,
       "tag": "0462_doubles_actor_shared_login_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 463,
+      "version": "7",
+      "when": 1795203309120,
+      "tag": "0463_doubles_partner_cover_next_event_price",
+      "breakpoints": true
     }
   ]
 }

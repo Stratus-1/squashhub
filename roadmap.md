@@ -173,3 +173,8 @@
 
 - [x] Uitsig: Deon Finance hanging — ledger access check timed out; fixed (0458), verified live as Deon.
 - [x] Birth-date reminders: junior tree reads 6-digit IDs + missing count, Members filter, member banner (0457).
+
+## Doubles partner fees – second entry R100 (20 Nov)
+- [x] Partner cover in package-priced tournaments = partner's next category price (R100 if partner already paid R210); unpaid "additional events" shrink automatically; reduced fees bank the full payment (0463).
+- [ ] Correct Zelda/Jan: Mixed cover R210→R100, remove Zelda's unpaid R100, record Jan's missing R100 bank receipt, return Jan's R110 overpayment — waiting on Willem's approval/choice.
+- [ ] Answer: should a card payment for a partner be recorded on the payer's member account (own fee + partner's entry) instead of under the partner? — waiting on Willem's choice.

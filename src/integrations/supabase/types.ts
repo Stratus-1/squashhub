@@ -23464,6 +23464,14 @@ export type Database = {
         Returns: undefined
       }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
+      champ_partner_cover_cents: {
+        Args: {
+          p_champ_id: string
+          p_group: number
+          p_partner_member_id: string
+        }
+        Returns: number
+      }
       champ_payment_claim_review: {
         Args: {
           p_action: string

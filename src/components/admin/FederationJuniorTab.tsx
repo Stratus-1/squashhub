@@ -34,10 +34,25 @@ function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string
       return (data || []) as JuniorRow[];
     },
   });
+  const { data: missing } = useQuery({
+    queryKey: ["junior-structure", "missing-birth", rootOrgId ?? "all", clubId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc("org_club_missing_birth_count_for", { _org_id: rootOrgId ?? null, _club_id: clubId });
+      if (error) return 0;
+      return Number(data) || 0;
+    },
+  });
+  const missingNote = missing ? (
+    <p className="ml-6 sm:ml-8 py-1 text-[11px] text-amber-700 dark:text-amber-400" data-testid="club-missing-birth">
+      {missing} member{missing === 1 ? " has" : "s have"} no ID number or birth date yet, so they can't be placed in an age group.
+      The club can add the first 6 digits of the ID on each member's profile.
+    </p>
+  ) : null;
   if (isLoading) return <div className="pl-8 py-1"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>;
   if (error) return <p className="pl-8 py-1 text-[11px] text-destructive">Could not load the juniors for this club.</p>;
-  if (!data || data.length === 0) return <p className="pl-8 py-1 text-[11px] text-muted-foreground">No juniors at this club.</p>;
+  if (!data || data.length === 0) return <><p className="pl-8 py-1 text-[11px] text-muted-foreground">No juniors at this club.</p>{missingNote}</>;
   return (
+    <>
     <div className="ml-6 sm:ml-8 my-1 rounded-md border border-border/60 divide-y divide-border/40" data-testid="club-juniors">
       {data.map((j) => (
         <div key={j.member_id} className="flex items-center gap-2 px-2 py-1 text-[12px]">
@@ -48,6 +63,8 @@ function ClubJuniors({ rootOrgId, clubId }: { rootOrgId?: string; clubId: string
         </div>
       ))}
     </div>
+    {missingNote}
+    </>
   );
 }
 

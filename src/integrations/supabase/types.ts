@@ -22005,6 +22005,7 @@ export type Database = {
         Args: { _penalty_id: string; _reason: string }
         Returns: Json
       }
+      age_from_id_prefix: { Args: { _id: string }; Returns: number }
       age_group_for_age: { Args: { _age: number }; Returns: string }
       agm_add_nomination_recipients: {
         Args: { p_ballot_id: string; p_member_ids: string[] }
@@ -25400,6 +25401,10 @@ export type Database = {
           _sync_secret?: string
         }
         Returns: Json
+      }
+      org_club_missing_birth_count_for: {
+        Args: { _club_id: string; _org_id: string }
+        Returns: number
       }
       org_descendants: {
         Args: { _org_id: string }

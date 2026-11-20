@@ -4787,3 +4787,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 - 2026-11-20 Junior structure: clubs in the junior tree now expand to list their juniors (name, gender, age group, age) via read-only `org_junior_members_for` (migration 0456); scoped admins only see clubs inside their own junior structure, no DOB/ID/contacts exposed.
 - 2026-11-20 View as member: "Switch Member" tabs now follow the viewed member's family (same login or email) via `familyOf` in MemberContext, and the desktop dashboard shows the tabs too (it had none). Display only.
+
+### 2026-11-20 — Junior ages ignored 6-digit ID entries; birth-date reminders
+- Cause: junior tree age RPCs only parsed full 13-digit IDs, although members/admins are told they may enter just the first 6 digits (YYMMDD). 52 members had 6-digit entries; 3 extra juniors now appear (61 → 64).
+- Fix: migration 0457 adds `age_from_id_prefix(text)` (6 or 13 digits) used by `org_junior_members_for`, `org_junior_counts`, `org_junior_counts_for` (guards unchanged; `_agm_age_from_sa_id` untouched so AGM eligibility is unaffected). New count-only `org_club_missing_birth_count_for` (same guards) shows per-club "no ID / birth date" note in the junior tree.
+- UI: Club Admin Members "No ID / birth date" filter chip; member "Complete your profile" banner asks for ID or first 6 digits when missing. No member data changed.

@@ -428,6 +428,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [search, setSearch] = useState("");
   // Default "All" hides resigned members; pick "Resigned" to see them.
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
+  // Reminder filter: members whose age can't be worked out (no ID digits saved).
+  const [missingIdOnly, setMissingIdOnly] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
@@ -675,6 +677,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const status = (m as any).status || "active";
     // "All" means current members: resigned stay hidden unless "Resigned" is picked.
     if (statusFilter === "all" ? status === "resigned" : status !== statusFilter) return false;
+    if (missingIdOnly && getAgeFromSaId(m.id_number || "") != null) return false;
     // Club record is the source of truth; also match the login profile.
     const hay = [m.name, m.profiles?.name, m.email, m.profiles?.email, m.phone, m.profiles?.phone, m.club_member_number]
       .filter(Boolean).join(" ").toLowerCase();
@@ -1065,6 +1068,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
             {opt.label}
           </button>
         ))}
+        {(() => {
+          const missingCount = members.filter((m: any) => (m.status || "active") !== "resigned" && getAgeFromSaId(m.id_number || "") == null).length;
+          if (missingCount === 0 && !missingIdOnly) return null;
+          return (
+            <button
+              onClick={() => setMissingIdOnly((v) => !v)}
+              title="Members without an ID number or birth date can't be placed in junior age groups. Add the first 6 digits of the ID on their profile."
+              className={`text-[10px] px-2 py-0.5 rounded-full border uppercase tracking-wide border-amber-500/50 text-amber-700 dark:text-amber-400 ${
+                missingIdOnly ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+              }`}
+            >
+              No ID / birth date ({missingCount})
+            </button>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

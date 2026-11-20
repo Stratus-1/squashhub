@@ -56,6 +56,7 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
   if (!missingProfile && !missingMember && !missingFace) return null;
 
   const isFaceOnly = missingFace && !missingProfile && !missingMember;
+  const missingBirth = !!myClubMember && !/^\d{6}(\d{7})?$/.test(String(myClubMember.id_number || "").trim());
 
   return (
     <AnimatePresence>
@@ -77,7 +78,9 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {isFaceOnly
                     ? "One quick step left so the access gates can recognise you."
-                    : "We need a few more details to finish setting up your membership and any league fees."}
+                    : missingBirth
+                      ? "Please add your ID number or just its first 6 digits (your birth date, YYMMDD) so you're placed in the right age group, plus any other missing details."
+                      : "We need a few more details to finish setting up your membership and any league fees."}
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Button

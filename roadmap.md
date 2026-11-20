@@ -170,3 +170,6 @@
 - [x] Make the player name prominent at the top of tournament invitation links (Willem 20 Nov).
 
 - [x] View-as-member (i on member page): shared-login profile tabs (e.g. Goosens: Jan/Ebert/Zelda/Tiaan) not shown while viewing as that member
+
+- [ ] Uitsig: Deon reports system hanging / not refreshing (20 Nov) — diagnose
+- [ ] Birth-date reminders (junior tree note, members filter, member banner) — verify & commit

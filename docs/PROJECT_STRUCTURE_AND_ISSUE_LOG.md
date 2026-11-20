@@ -4844,3 +4844,4 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Junior tree lists juniors by age plus ticked players, with filters, estimated group (no DOB) and green highlight for SportyHQ junior league players; club junior counts include ticked players without a birth date.
 - `sportyhq-history-import` now records junior evidence via `_shared/sportyhq-junior.ts`; 70 earlier-reviewed players backfilled (72 memberships ticked, 1 review).
 - SportyHQ profile and ranking-group pages now return a Cloudflare challenge (403); results pages and player search still work.
+- 2026-11-20 Northern Junior Squash scan: 880 active members in 64 clubs; 99 had SportyHQ links, 617 more matched by exact name + club on SportyHQ search; 91 had junior events in the last 12 months → evidence recorded for 90 (one member has no person record), now ticked across 17 clubs (was 10); Jozelle Meyer stays in review. No new members created, no DOB/ID written.

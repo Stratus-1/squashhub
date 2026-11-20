@@ -4817,3 +4817,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-20 — Doubles partner not entered in that category (Jan Goosen → Zelda, Mixed)
 - Symptom: Jan could not find Zelda in the Mixed partner list because she had entered Ladies only.
 - Fix (migration 0461): `list_doubles_partner_options` also lists invited, gender-eligible players who entered other categories (`needs_entry`); `propose_doubles_partner` adds the category to the partner's entry, reprices via `refresh_tournament_entry_fee` after the pair exists (chooser's "Pay both" cover counted; otherwise package difference as an 'additional events' charge, paid fees untouched) and logs `doubles_partner_entered_category` in `audit_events`. Picker shows "Not in Mixed yet" with an explanation.
+
+### 2026-11-20 — Shared family login removed the wrong player's doubles pair (Goosen)
+- Cause: the dashboard "Select partner and pay" sheet called the doubles RPCs without the invitation token; `champ_actor_member` then picked any family member sharing the login (`LIMIT 1`). From Tiaan's profile the sheet showed Jan's Mens pair with Reinhardt, and "Change partner" cancelled Jan's pair (11:51 UTC, recorded as Jan). Jan's later screenshots predate the 13:41 UTC restore, so Reinhardt was genuinely missing then.
+- Fix: the sheet passes the selected profile's own `invite_token` (state + picker); migration 0462 makes the no-token path refuse when several live entrants share the login instead of guessing.

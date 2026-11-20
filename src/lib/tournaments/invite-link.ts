@@ -1,4 +1,4 @@
-import { tierFeeCents, type FeeTiers } from "./entry-fee";
+import { tierFeeCents, tierSummary, type FeeTiers } from "./entry-fee";
 /**
  * Canonical tournament invitation links.
  *
@@ -368,4 +368,40 @@ export function inviteLoginPath(token: string): string {
 /** Sign-up / claim-membership round-trip that preserves the invitation context. */
 export function inviteSignupPath(token: string): string {
   return `/auth?intent=claim&redirectTo=${encodeURIComponent(inviteePath(token))}`;
+}
+
+/**
+ * Price line at the top of an invitation: the tournament's prices, never what a
+ * particular player still owes. Package pricing lists every tier
+ * ("1 category R210 · 2 or more R310"); otherwise the price of the ticked categories.
+ */
+export function inviteFeePriceLabel(priceCents: number, tiers: FeeTiers | null | undefined): string {
+  const rand = (c: number) => `R${(c / 100).toFixed(2)}`;
+  if (tiers && tierFeeCents(tiers, 1) != null) return `Entry fee: ${tierSummary(tiers, rand)}`;
+  const price = Math.max(0, Math.round(priceCents || 0));
+  return price > 0 ? `${rand(price)} entry fee` : "No entry fee";
+}
+
+/**
+ * Separate "still to pay" line, shown only once the entry exists. The amount is
+ * the server's `invite_payment_options.amount_cents` — the same amount the
+ * payment step charges, after partner cover and payments already made.
+ * Returns null when there is nothing to show (no entry yet, free, or still loading).
+ */
+export function inviteOwedLabel(opts: {
+  entered: boolean;
+  freeTournament: boolean;
+  owedCents: number | null | undefined;
+  settled?: boolean;
+  ownPriceCents?: number;
+}): string | null {
+  const rand = (c: number) => `R${(c / 100).toFixed(2)}`;
+  if (!opts.entered || opts.freeTournament) return null;
+  if (opts.settled) return "Your entry fee is paid";
+  if (opts.owedCents == null) return null;
+  const owed = Math.max(0, Math.round(opts.owedCents));
+  if (owed <= 0) return "Nothing left to pay";
+  const own = Math.max(0, Math.round(opts.ownPriceCents || 0));
+  if (own > 0 && owed > own) return `Still to pay: ${rand(owed)} (includes your partner's fee)`;
+  return `Still to pay: ${rand(owed)}`;
 }

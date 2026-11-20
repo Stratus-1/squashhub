@@ -165,3 +165,5 @@
 - [x] Dashboard "Select partner & pay" must act for the right family member, matching the personal invitation link.
 - [x] Emails/notices to a shared email address must name the family member they are for.
 - [x] Dashboard on a shared login: when a profile (e.g. Ebert) is selected, show only that member's own tournament invitations/entries.
+
+- [x] Invitation page: fee line shows the price list (R210 one category, R310 two categories); amount still owed on its own separate line

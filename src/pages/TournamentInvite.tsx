@@ -21,6 +21,8 @@ import {
   defaultDivisionSelection,
   inviteDivisions,
   inviteTotalFeeCents,
+  inviteFeePriceLabel,
+  inviteOwedLabel,
   inviteAcceptLabel,
   inviteAcceptBlocker,
   inviteFeeTiers,
@@ -148,6 +150,18 @@ export default function TournamentInvite() {
   // Total follows the ticked events — events may be priced differently.
   const feeCents = useMemo(() => inviteTotalFeeCents(data, chosenDivisions), [data, chosenDivisions]);
   const feeTiers = useMemo(() => inviteFeeTiers(data), [data]);
+  // What this entrant still owes, from the same server amount the payment step
+  // charges (shares the payment chooser's cache, refreshed after pairing/paying).
+  const { data: payOptions } = useQuery({
+    queryKey: ["invite-pay-options", token],
+    enabled: !isTest && !!token && !!data?.found,
+    retry: false,
+    queryFn: async () => {
+      const { data: opts, error } = await (supabase as any).rpc("invite_payment_options", { p_token: token });
+      if (error) throw error;
+      return opts as { ok: boolean; methods: string[]; amount_cents: number; status: string; fee_settled_via: string | null };
+    },
+  });
   const [divisionError, setDivisionError] = useState("");
 
   // Pre-tick what the invitee already chose (or the only division on offer).
@@ -291,9 +305,22 @@ export default function TournamentInvite() {
       .filter(Boolean) as string[];
     if (enteredLabels.length > 1) rows.push({ icon: Trophy, label: enteredLabels.join(" + ") });
     else if (data.division_label) rows.push({ icon: Trophy, label: data.division_label });
-    rows.push({ icon: CreditCard, label: feeCents > 0 ? `${money(feeCents)} entry fee` : "No entry fee" });
+    // Price line = the tournament's prices; what this player still owes is a separate line.
+    rows.push({ icon: CreditCard, label: inviteFeePriceLabel(feeCents, feeTiers) });
+    const enteredNow = state === "registered" || state === "payment_pending" || done === "accepted";
+    const settledNow = ["paid", "waived", "on_account"].includes(String(data?.fee_status || "").toLowerCase())
+      || ["card", "eft", "cash", "account"].includes(String(data?.fee_settled_via || ""));
+    const owedNow = payOptions?.ok ? Number(payOptions.amount_cents || 0) : null;
+    const owedLabel = inviteOwedLabel({
+      entered: enteredNow,
+      freeTournament: feeCents <= 0 && !feeTiers,
+      settled: settledNow && !(owedNow != null && owedNow > 0),
+      owedCents: owedNow,
+      ownPriceCents: feeCents,
+    });
+    if (owedLabel) rows.push({ icon: CreditCard, label: owedLabel });
     return rows;
-  }, [data, feeCents, divisions, chosenDivisions]);
+  }, [data, feeCents, feeTiers, divisions, chosenDivisions, state, done, payOptions]);
 
   // Doubles divisions this player has entered — they may pick a partner there.
   const enteredDivisions = useMemo(() => {

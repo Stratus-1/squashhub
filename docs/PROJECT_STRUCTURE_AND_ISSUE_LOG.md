@@ -4763,3 +4763,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: "Please choose your category on your invitation before paying the entry fee" for players who signed up from the tournament page in a multi-league tournament without typed categories; the page offers no category picker.
 - Cause: `champ_registration_payable` (0431) refused any empty `division_choices` when `num_groups > 1`, broader than `beta_tournament_category_guard`, which only applies to typed-category tournaments.
 - Fix: migration 0452 limits the refusal to typed-category tournaments only. No entries, fees or payments changed.
+
+### 2026-11-20 — Manage entries list showed each doubles pair twice
+- Symptom: "Entries & payment status" listed every entrant with their partner, so each pair appeared once per player.
+- Fix: `groupDoublesEntries` (step-handover.ts) groups by category (Mens/Ladies/Mixed), one line per pair with each player's own payment status, solo lines for "No partner yet"; singles tournaments keep the per-player list. Display only; no entries, pairs or fees changed. Tests in `entry-partners.test.ts`.

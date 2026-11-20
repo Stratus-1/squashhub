@@ -65,3 +65,52 @@ describe("entries list money comes from real fee rows", () => {
     expect(eventsWithoutPartner("reinhardt", [1, 3], pairs, cat)).toEqual(["Mixed"]);
   });
 });
+
+import { groupDoublesEntries, type RegRow } from "../step-handover";
+
+describe("doubles entries are listed once per pair", () => {
+  const nm = new Map([["ebert", "Ebert Goosen"], ["reinhardt", "Reinhardt Falk"], ["riaan", "Riaan"], ["lisa", "Lisa"], ["jason", "Jason Maher"], ["duane", "Duane"]]);
+  const live = [
+    { id: "r-e", club_member_id: "ebert", division_choices: [1], covered_events: {} },
+    { id: "r-r", club_member_id: "reinhardt", division_choices: [1, 3], covered_events: { "1": { by: "ebert", paid: true } } },
+    { id: "r-ri", club_member_id: "riaan", division_choices: [1, 3], covered_events: {} },
+    { id: "r-l", club_member_id: "lisa", division_choices: [3], covered_events: {} },
+    { id: "r-d", club_member_id: "duane", division_choices: [1], covered_events: {} },
+  ];
+  const open = [...live, { id: "r-j", club_member_id: "jason", division_choices: [1], covered_events: {} }];
+  const pairs = [
+    { member_a: "reinhardt", member_b: "ebert", group_number: 1, status: "confirmed" },
+    { member_a: "riaan", member_b: "lisa", group_number: 3, status: "confirmed" },
+    { member_a: "duane", member_b: "jason", group_number: 1, status: "awaiting_payment" },
+  ];
+  const row = (memberId: string, status: string, owesCents = 0, unpaidEvents: string[] = []): RegRow =>
+    ({ memberId, name: nm.get(memberId)!, partnerName: null, status, owesCents, unpaidEvents });
+  const rows = [row("ebert", "paid"), row("reinhardt", "pending_payment", 10000, ["Mixed"]), row("riaan", "paid"), row("lisa", "paid"), row("duane", "paid")];
+  const groups = groupDoublesEntries({ live, open, pairs, rows, names: nm, categoryOf: cat, isDoublesGroup: () => true, feeDue: true })!;
+  const mens = groups.find((g) => g.category === "Mens")!;
+  const mixed = groups.find((g) => g.category === "Mixed")!;
+
+  it("shows the Ebert + Reinhardt Mens pair on one line, not once per player", () => {
+    expect(mens.lines.filter((l) => l.people.some((p) => p.memberId === "ebert"))).toHaveLength(1);
+    expect(mens.pairCount).toBe(2);
+  });
+  it("gives each player their own payment status next to their name", () => {
+    const line = mens.lines.find((l) => l.people.some((p) => p.memberId === "ebert"))!;
+    expect(line.people.find((p) => p.memberId === "ebert")!.text).toBe("Paid");
+    expect(line.people.find((p) => p.memberId === "reinhardt")!.text).toBe("Paid by Ebert Goosen");
+  });
+  it("lists Reinhardt alone in Mixed with no partner and R100 outstanding", () => {
+    const line = mixed.lines.find((l) => l.people[0].memberId === "reinhardt")!;
+    expect(line.people).toHaveLength(1);
+    expect(line.needsPartner).toBe(true);
+    expect(line.people[0].text).toBe("Payment outstanding · R100");
+  });
+  it("shows an invited partner who has not entered or paid", () => {
+    const line = mens.lines.find((l) => l.people.some((p) => p.memberId === "duane"))!;
+    expect(line.people.find((p) => p.memberId === "jason")!.text).toBe("Not entered yet · not paid");
+    expect(line.pair).toBe("awaiting");
+  });
+  it("keeps the per-player list for tournaments without doubles", () => {
+    expect(groupDoublesEntries({ live: [live[0]], open: [live[0]], pairs: [], rows, names: nm, categoryOf: cat, isDoublesGroup: () => false, feeDue: true })).toBeNull();
+  });
+});

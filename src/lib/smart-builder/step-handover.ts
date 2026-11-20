@@ -617,6 +617,105 @@ export function entryPartners(
   }
   return out.sort((a, b) => (a.group ?? 99) - (b.group ?? 99)).map(({ name, category, confirmed }) => ({ name, category, confirmed }));
 }
+/* ── Doubles entries listed once per pair, with each player's own payment status ── */
+
+export type EntryPerson = { memberId: string; name: string; text: string; tone: "ok" | "due" | "muted" };
+export type EntryLine = { key: string; people: EntryPerson[]; pair: "confirmed" | "awaiting" | null; needsPartner: boolean };
+export type EntryGroup = { category: string | null; group: number | null; pairCount: number; lines: EntryLine[] };
+type PairLite = { member_a: string; member_b: string; group_number?: number | null; status?: string | null };
+type RegFull = EntryRegLite & { partner_member_id?: string | null };
+
+const DEAD_PAIR = ["cancelled", "declined", "rejected", "withdrawn"];
+
+/**
+ * One line per doubles pair per category (never once per player), each player with their own payment
+ * status for that event: "Paid", "Paid by Ebert Goosen", "Payment outstanding · R100". Entrants still
+ * without a partner get their own line. Returns null when the tournament has no doubles at all (the
+ * per-player list stays). Why: listing every entrant with their partner showed each pair twice.
+ */
+export function groupDoublesEntries(i: {
+  live: RegFull[]; open: RegFull[]; pairs: PairLite[]; rows: RegRow[]; names: Map<string, string>;
+  categoryOf: (group: number | null) => string | null; isDoublesGroup: (group: number) => boolean; feeDue: boolean;
+}): EntryGroup[] | null {
+  const pairs = i.pairs.filter((p) => !DEAD_PAIR.includes(String(p.status ?? "").toLowerCase()));
+  const anyRegPartner = i.live.some((r) => r.partner_member_id);
+  const anyDoubles = i.live.some((r) => (r.division_choices ?? []).some(i.isDoublesGroup));
+  if (!pairs.length && !anyRegPartner && !anyDoubles) return null;
+  const liveBy = new Map(i.live.map((r) => [r.club_member_id, r]));
+  const openBy = new Map(i.open.map((r) => [r.club_member_id, r]));
+  const rowBy = new Map(i.rows.map((r) => [r.memberId, r]));
+  const nm = (id: string | null | undefined) => i.names.get(String(id ?? "")) ?? "Unknown member";
+  const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
+
+  const status = (memberId: string, group: number | null): EntryPerson => {
+    const base = { memberId, name: nm(memberId) };
+    const reg = liveBy.get(memberId) ?? openBy.get(memberId);
+    const cover = group != null ? reg?.covered_events?.[String(group)] : undefined;
+    if (cover?.paid) return { ...base, text: `Paid by ${nm(cover.by)}`, tone: "ok" };
+    const row = rowBy.get(memberId);
+    if (!liveBy.has(memberId) || !row) return { ...base, text: i.feeDue ? "Not entered yet · not paid" : "Not entered yet", tone: "due" };
+    if (!i.feeDue) return { ...base, text: "Entered", tone: "ok" };
+    if (row.status === ON_ACCOUNT) return { ...base, text: "Charged to member account", tone: "ok" };
+    if (row.owesCents > 0) {
+      const ev = row.unpaidEvents ?? [];
+      return { ...base, text: `Payment outstanding · ${money(row.owesCents)}${ev.length > 1 ? ` (${ev.join(" + ")})` : ""}`, tone: "due" };
+    }
+    if (row.status === "paid") return { ...base, text: "Paid", tone: "ok" };
+    if (row.status === "waived") return { ...base, text: "Fee waived", tone: "ok" };
+    if (row.status === "pending_eft") return { ...base, text: "EFT proof waiting", tone: "due" };
+    if (row.status === "payment_failed") return { ...base, text: "Payment failed", tone: "due" };
+    if (isOutstanding(row.status, true)) return { ...base, text: "Payment outstanding", tone: "due" };
+    return { ...base, text: "Entered", tone: "muted" };
+  };
+  const order = (ids: string[]) => [...ids].sort((a, b) => Number(liveBy.has(b)) - Number(liveBy.has(a)) || nm(a).localeCompare(nm(b)));
+
+  const groups = new Map<string, EntryGroup>();
+  const groupFor = (g: number | null) => {
+    const key = String(g ?? "none");
+    if (!groups.has(key)) groups.set(key, { category: g == null ? null : i.categoryOf(g), group: g, pairCount: 0, lines: [] });
+    return groups.get(key)!;
+  };
+  const seenPair = new Set<string>();
+  const shown = new Set<string>();
+  const addPair = (a: string, b: string, g: number | null, st: string | null | undefined) => {
+    const key = `${g ?? "none"}:${[a, b].sort().join("|")}`;
+    if (seenPair.has(key)) return;
+    seenPair.add(key);
+    const grp = groupFor(g);
+    grp.pairCount++;
+    const ids = order([a, b]);
+    ids.forEach((id) => shown.add(`${id}:${g ?? "none"}`));
+    grp.lines.push({ key, people: ids.map((id) => status(id, g)), pair: st == null ? null : st === "confirmed" ? "confirmed" : "awaiting", needsPartner: false });
+  };
+  for (const p of pairs) {
+    if (!liveBy.has(p.member_a) && !liveBy.has(p.member_b)) continue;
+    addPair(p.member_a, p.member_b, p.group_number ?? null, p.status ?? "awaiting_payment");
+  }
+  for (const r of i.live) {
+    const partner = r.partner_member_id;
+    if (partner && ![...seenPair].some((k) => k.split(":")[1].split("|").includes(r.club_member_id) && k.split(":")[1].split("|").includes(partner))) {
+      addPair(r.club_member_id, partner, null, null);
+    }
+  }
+  for (const r of i.live) {
+    if (shown.has(`${r.club_member_id}:none`)) continue;
+    const choices = (r.division_choices ?? []).length ? (r.division_choices as number[]) : [null as unknown as number];
+    for (const g of choices) {
+      const gk = g ?? null;
+      if (shown.has(`${r.club_member_id}:${gk ?? "none"}`)) continue;
+      if (gk == null && [...shown].some((k) => k.startsWith(`${r.club_member_id}:`))) continue;
+      shown.add(`${r.club_member_id}:${gk ?? "none"}`);
+      groupFor(gk).lines.push({
+        key: `${gk ?? "none"}:${r.club_member_id}`, people: [status(r.club_member_id, gk)], pair: null,
+        needsPartner: gk != null && i.isDoublesGroup(gk) && !r.partner_member_id,
+      });
+    }
+  }
+  const out = [...groups.values()];
+  for (const g of out) g.lines.sort((x, y) => (x.people.length === y.people.length ? x.people[0].name.localeCompare(y.people[0].name) : y.people.length - x.people.length));
+  return out.sort((a, b) => (a.group ?? 999) - (b.group ?? 999));
+}
+
 /** Charged to the member's club account: entry fee satisfied for readiness, but no money received. */
 export const ON_ACCOUNT = "on_account";
 const effStatus = (r: { status: string; feeStatus?: string | null }) => (r.feeStatus === ON_ACCOUNT ? ON_ACCOUNT : r.status);
@@ -641,7 +740,7 @@ export function isEnteredRegistration(r: { status?: string | null; registration_
   return false;
 }
 
-export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number; invitedCount?: number }> {
+export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number; invitedCount?: number; entries?: EntryGroup[] | null }> {
   // Always recompute from current entries; first repair entries left inconsistent by an older replacement.
   await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
   const [{ data: t }, { data: regs }, { data: pairRows }, { data: tn }] = await Promise.all([
@@ -678,10 +777,7 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   const labels = ((t as any)?.group_labels ?? {}) as Record<string, string>;
   const renames = ((tn as any)?.beta_lifecycle?.answers?.categoryLabels ?? {}) as Record<string, string>;
   const categoryOf = (g: number | null) => (g == null ? null : entryCategoryName(labels[String(g)], renames));
-  return {
-    feeCents,
-    invitedCount,
-    rows: live.map((r) => {
+  const rows: RegRow[] = live.map((r) => {
       const partners = entryPartners(r.club_member_id, pairs, r.partner_member_id, nm, categoryOf);
       const status = effStatus({ status: String(r.status), feeStatus: r.fee_status });
       const money = entryMoney(r, live, feeRows, nm, categoryOf, feeCents, isOutstanding(status, feeCents > 0));
@@ -693,8 +789,13 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
         ...money,
         noPartnerEvents: r.partner_member_id ? [] : eventsWithoutPartner(r.club_member_id, r.division_choices, pairs, categoryOf),
       };
-    }),
-  };
+    });
+  const isDoublesGroup = (g: number) => /· Doubles$/.test(String(labels[String(g)] ?? "")) || pairs.some((p) => p.group_number === g);
+  let entries: EntryGroup[] | null = null;
+  try {
+    entries = groupDoublesEntries({ live, open, pairs, rows, names: nm, categoryOf, isDoublesGroup, feeDue: feeCents > 0 || !!feeRows?.length });
+  } catch { entries = null; }
+  return { feeCents, invitedCount, rows, entries };
 }
 
 /**

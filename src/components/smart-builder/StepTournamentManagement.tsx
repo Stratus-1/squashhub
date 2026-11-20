@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   LIFECYCLE, blockersFor, finalisePrereqs, isOutstanding, lifecycleIndex, loadHandover, loadLifecycle, loadRegistrations,
-  nextAction, loadConfirmNeedsPay, rebuildHandoverFromServer, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
+  nextAction, loadConfirmNeedsPay, rebuildHandoverFromServer, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow, type EntryGroup,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
 import { StepInvitePanel } from "./StepInvitePanel";
@@ -49,7 +49,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const [diamond, setDiamond] = useState<boolean | null>(null);
   useEffect(() => { let active = true; isDiamondTournament(tournamentId).then((yes) => { if (active) setDiamond(yes); }).catch(() => { if (active) setDiamond(true); }); return () => { active = false; }; }, [tournamentId]);
   const [open, setOpen] = useState(false);
-  const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number; invitedCount?: number } | null>(null);
+  const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number; invitedCount?: number; entries?: EntryGroup[] | null } | null>(null);
   const [showRegs, setShowRegs] = useState(false);
   const [view, setView] = useState<LifecycleKey | null>(null);
   const [payDlg, setPayDlg] = useState<any>(null);
@@ -266,7 +266,24 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           {(regs?.invitedCount ?? 0) > 0 && <div className="text-muted-foreground">{regs!.invitedCount} invited, not entered yet — no fee is owed until a player enters.</div>}
           <div className="text-muted-foreground">Entering a player never marks them as paid.</div>
           {rows.length > 0 && <button type="button" className="mt-1 text-primary underline" onClick={() => setShowRegs((v) => !v)}>{showRegs ? "Hide players" : "Show players"}</button>}
-          {showRegs && <ul className="mt-1 divide-y divide-border rounded border border-border">{rows.map((r) => (
+          {showRegs && regs?.entries?.length ? <div className="mt-1 space-y-2">{regs.entries.map((g) => (
+            <div key={String(g.group ?? "none")}>
+              <div className="font-semibold">{g.category ?? "Entries"}{g.pairCount ? <span className="font-normal text-muted-foreground"> · {g.pairCount} pair{g.pairCount === 1 ? "" : "s"}</span> : null}</div>
+              <ul className="mt-0.5 divide-y divide-border rounded border border-border">{g.lines.map((l) => (
+                <li key={l.key} className="space-y-0.5 px-2 py-1">
+                  {l.people.map((p) => (
+                    <div key={p.memberId} className="flex flex-wrap items-baseline justify-between gap-x-2">
+                      <span>{p.name}</span>
+                      <span className={p.tone === "due" ? "text-destructive" : p.tone === "ok" ? "text-primary" : "text-muted-foreground"}>{p.text}</span>
+                    </div>
+                  ))}
+                  {l.needsPartner && <div className="text-muted-foreground">No partner yet</div>}
+                  {l.pair === "awaiting" && <div className="text-muted-foreground">Pair not confirmed yet — waiting for payment</div>}
+                </li>
+              ))}</ul>
+            </div>
+          ))}</div> : null}
+          {showRegs && !regs?.entries?.length && <ul className="mt-1 divide-y divide-border rounded border border-border">{rows.map((r) => (
             <li key={r.memberId} className="flex flex-wrap justify-between gap-2 px-2 py-1">
               <span>{r.name}{r.partners?.length ? <span className="text-muted-foreground"> + {r.partners.map((p) => `${p.name}${p.category ? ` (${p.category}${p.confirmed ? "" : ", awaiting payment"})` : p.confirmed ? "" : " (awaiting payment)"}`).join(" · ")}</span> : r.partnerName ? <span className="text-muted-foreground"> + {r.partnerName}</span> : null}
                 {r.noPartnerEvents?.length ? <span className="text-muted-foreground"> · {r.noPartnerEvents.join(", ")}: no partner yet</span> : null}</span>

@@ -62,6 +62,9 @@ import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
+import { JuniorSquadsBoard } from "@/components/juniors/JuniorSquadsBoard";
+
+const JUNIOR_TAB = "__junior_squash";
 
 // ─── Types ───
 interface LeaguePlayer {
@@ -271,7 +274,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
   const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
   const tabAssocs: any[] = [...systemAssocs, ...clubAssocs];
-  const activeAssoc = tabAssocs.find((a: any) => a.id === teamsTab) ?? tabAssocs[0] ?? null;
+  const juniorsActive = teamsTab === JUNIOR_TAB;
+  const activeAssoc = juniorsActive ? null : (tabAssocs.find((a: any) => a.id === teamsTab) ?? tabAssocs[0] ?? null);
 
   const columnPropsFor = (title: string, gender: "men" | "ladies" | "mixed" | "open", list: League[]) => ({
     title,
@@ -306,14 +310,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       </div>
 
-      {tabAssocs.length === 0 && (
+      {tabAssocs.length === 0 && !juniorsActive && (
         <Card className="p-6 text-center text-sm text-muted-foreground">
           No leagues yet — use <strong>Create New League</strong> to join a {SYSTEM_LEAGUE} or create your own {CLUB_LEAGUE}.
         </Card>
       )}
 
-      {/* League tabs */}
-      {tabAssocs.length > 0 && (
+      {/* League tabs (+ Junior squash squads, always available) */}
+      {(
         <div className="flex items-center gap-1 flex-wrap border-b pb-2">
           {tabAssocs.map((a: any) => {
             const isClub = isClubLeagueScope(a.scope);
@@ -336,7 +340,23 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setTeamsTab(JUNIOR_TAB)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+              juniorsActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
+            }`}
+          >
+            <span>Junior squash</span>
+            <span className={`text-[9px] uppercase tracking-wide ${juniorsActive ? "opacity-80" : "opacity-70"}`}>Boys / Girls</span>
+          </button>
         </div>
+      )}
+
+      {juniorsActive && (
+        <JuniorSquadsBoard clubId={clubId} />
       )}
 
       {activeAssoc && (() => {

@@ -38,17 +38,25 @@ export function CommsDeliveryLog({ clubId }: { clubId: string }) {
   const [channel, setChannel] = useState("all");
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
+  const [range, setRange] = useState("7d");
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
+  const RANGE_DAYS: Record<string, number | null> = { "24h": 1, "7d": 7, "30d": 30, "90d": 90, all: null };
+
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["comms-deliveries", clubId],
+    queryKey: ["comms-deliveries", clubId, range],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("comms_deliveries")
         .select("*, comms_campaigns(id, name, action, audience_filter, audience_league_id, created_at, sent_at)")
         .eq("club_id", clubId)
         .order("created_at", { ascending: false })
         .limit(2000);
+      const days = RANGE_DAYS[range];
+      if (days != null) {
+        q = q.gte("created_at", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString());
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
@@ -146,6 +154,16 @@ export function CommsDeliveryLog({ clubId }: { clubId: string }) {
             <SelectItem value="skipped">Skipped</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={range} onValueChange={setRange}>
+          <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="24h">Last 24 hours</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="90d">Last 90 days</SelectItem>
+            <SelectItem value="all">All time</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-4 gap-2 text-center">
@@ -163,7 +181,11 @@ export function CommsDeliveryLog({ clubId }: { clubId: string }) {
       </div>
 
       {isLoading && <p className="p-6 text-center text-muted-foreground text-[13px]">Loading…</p>}
-      {!isLoading && !groups.length && <p className="p-6 text-center text-muted-foreground text-[13px]">Nothing sent yet.</p>}
+      {!isLoading && !groups.length && (
+        <p className="p-6 text-center text-muted-foreground text-[13px]">
+          Nothing sent in this period. Try a longer period above to load older deliveries.
+        </p>
+      )}
 
       <div className="space-y-1">
         {groups.map((g) => {

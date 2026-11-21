@@ -192,3 +192,4 @@
 - [x] Count/report how many more juniors SportyHQ shows for Northern Junior Squash clubs (adding new members needs approval)
 - [x] Junior clubs list: show all juniors; SportyHQ-ticked junior league players in a distinct colour
 - [ ] Proposal: Junior squash tab on league page (boys/girls by age group, auto-placed, drag to move; club → provincial junior body) — proposal only, await approval
+- [x] Junior squash tab on Leagues page: Boys/Girls x U11–U19, auto by current age (else SportyHQ estimate), drag to move, reset; clubs + junior body admins manage

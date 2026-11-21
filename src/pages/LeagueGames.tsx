@@ -8,7 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
+import { useMyClub, useMyLeagueRegistration, useIsClubAdmin } from "@/hooks/use-club";
+import { useMyPermissions } from "@/hooks/use-club-permissions";
+import { useMyRoles } from "@/hooks/use-data";
+import { JuniorSquadsBoard } from "@/components/juniors/JuniorSquadsBoard";
 
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
@@ -44,6 +47,11 @@ export default function LeagueGames() {
   const { data: clubData } = useMyClub();
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(activeMember?.id);
   const clubId = md ? md.clubId : clubData?.club?.id;
+  // Junior squads: club admins, Leagues permission holders and platform admins (server re-checks).
+  const isClubAdmin = useIsClubAdmin();
+  const myPermissions = useMyPermissions();
+  const { data: myRoles = [] } = useMyRoles();
+  const showJuniors = !md && !!clubId && (isClubAdmin || myPermissions.has("leagues") || myRoles.includes("admin"));
 
   // Fetch club's configured squash week start day + fill-up-leagues toggle.
   const { data: clubSettings } = useQuery({
@@ -288,13 +296,15 @@ export default function LeagueGames() {
           <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
             No league associations set up yet. An admin can add one in Club Admin → Leagues.
           </div>
+        ) : null}
+        {associations.length === 0 ? (
+          showJuniors && clubId ? <div className="mt-4"><h2 className="text-sm font-semibold mb-2">Junior squash</h2><JuniorSquadsBoard clubId={clubId} /></div> : null
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full gap-1 ${
-              selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-5"
-              : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-4"
-              : hideFillUp ? "grid-cols-3"
-              : "grid-cols-4"
+              ["grid-cols-3", "grid-cols-4", "grid-cols-5", "grid-cols-6"][
+                (selectedAssoc?.scope === "internal" ? 1 : 0) + (hideFillUp ? 0 : 1) + (showJuniors ? 1 : 0)
+              ]
             } h-auto`}>
               <TabsTrigger
                 value="fixtures"
@@ -332,6 +342,15 @@ export default function LeagueGames() {
               >
                 {(selectedAssoc as any)?.discipline === "doubles" ? "Pair Standings" : "Player Standings"}
               </TabsTrigger>
+              {showJuniors && (
+                <TabsTrigger
+                  value="juniors"
+                  className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
+                >
+                  <span className="sm:hidden">Juniors</span>
+                  <span className="hidden sm:inline">Junior squash</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="fixtures" className="mt-4">
@@ -400,6 +419,12 @@ export default function LeagueGames() {
                 </div>
               )}
             </TabsContent>
+
+            {showJuniors && clubId && (
+              <TabsContent value="juniors" className="mt-4">
+                <JuniorSquadsBoard clubId={clubId} />
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </div>

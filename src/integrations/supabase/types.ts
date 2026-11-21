@@ -10888,6 +10888,51 @@ export type Database = {
         }
         Relationships: []
       }
+      junior_group_placements: {
+        Row: {
+          age_group: string | null
+          gender_group: string | null
+          person_id: string
+          set_at: string
+          set_by: string | null
+          set_club_id: string | null
+          set_org_id: string | null
+        }
+        Insert: {
+          age_group?: string | null
+          gender_group?: string | null
+          person_id: string
+          set_at?: string
+          set_by?: string | null
+          set_club_id?: string | null
+          set_org_id?: string | null
+        }
+        Update: {
+          age_group?: string | null
+          gender_group?: string | null
+          person_id?: string
+          set_at?: string
+          set_by?: string | null
+          set_club_id?: string | null
+          set_org_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_group_placements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_group_placements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junior_player_status: {
         Row: {
           admin_set_at: string | null
@@ -21803,6 +21848,7 @@ export type Database = {
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
       _junior_band_n: { Args: { _g: string }; Returns: number }
+      _junior_gender_group: { Args: { _g: string }; Returns: string }
       _junior_player_eval: {
         Args: {
           _admin_set_at: string
@@ -21812,6 +21858,10 @@ export type Database = {
           _last_on: string
         }
         Returns: Record<string, unknown>
+      }
+      _junior_squads_can_manage: {
+        Args: { _club_id: string; _org_id: string; _uid: string }
+        Returns: boolean
       }
       _league_fee_next_due: {
         Args: { _day: number; _month: number }
@@ -24745,6 +24795,25 @@ export type Database = {
         Args: { _child_org_id: string; _provincial_id: string }
         Returns: undefined
       }
+      junior_squads_for: {
+        Args: { _club_id?: string; _org_id?: string }
+        Returns: {
+          age: number
+          age_group: string
+          age_source: string
+          auto_age_group: string
+          auto_gender_group: string
+          club_id: string
+          club_name: string
+          gender_group: string
+          has_person: boolean
+          junior_player: boolean
+          junior_source: string
+          member_id: string
+          moved: boolean
+          name: string
+        }[]
+      }
       ladder_move_apply_now: {
         Args: {
           _club_id: string
@@ -26201,6 +26270,15 @@ export type Database = {
       }
       set_journal_entry_date: {
         Args: { _club_id: string; _date: string; _ref: string }
+        Returns: undefined
+      }
+      set_junior_group: {
+        Args: {
+          _age_group: string
+          _gender_group: string
+          _member_id: string
+          _org_id?: string
+        }
         Returns: undefined
       }
       set_junior_player: {

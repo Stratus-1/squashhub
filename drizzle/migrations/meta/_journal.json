@@ -3277,6 +3277,13 @@
       "when": 1795209664348,
       "tag": "0467_junior_player_tick",
       "breakpoints": true
+    },
+    {
+      "idx": 468,
+      "version": "7",
+      "when": 1795266193435,
+      "tag": "0468_junior_squads",
+      "breakpoints": true
     }
   ]
 }

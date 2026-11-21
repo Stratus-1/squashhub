@@ -362,6 +362,9 @@ export default function TournamentInvite() {
   // Entry fee already paid / waived / on account: the page only needs the partner step.
   const feeAlreadySettled = ["paid", "waived", "on_account"].includes(String(data?.fee_status || ""))
     || ["card", "eft", "cash", "account"].includes(String(data?.fee_settled_via || ""));
+  // Own fee paid but still covering a partner (server amount > 0): keep the payment options.
+  const stillOwes = !!payOptions?.ok && Number(payOptions.amount_cents || 0) > 0;
+  const nothingToPay = feeAlreadySettled && !stillOwes;
 
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
@@ -638,7 +641,7 @@ export default function TournamentInvite() {
               <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
             </Button>
           )
-        ) : feeAlreadySettled ? null : (
+        ) : nothingToPay ? null : (
           partnersChosen ? (
             <div className="space-y-2">
               {payChooser}

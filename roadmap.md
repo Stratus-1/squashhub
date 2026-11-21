@@ -196,4 +196,5 @@
 
 ## Junior birth-date reminders (21 Nov)
 - [x] Juniors with email/mobile but no birth date get automatic reminders (email, WhatsApp, in-app) with a secure link to add the date; stops once added
-- [ ] Publish and switch on the daily reminder run — waiting for Willem's go-ahead (every 2 weeks, max 3 confirmed)
+- [x] Publish and switch on reminders: weekdays 09:23, first run Monday 23 Nov (Willem chose Monday)
+- [x] Fix: players who already paid their own fee can pay their partner's fee from the invitation

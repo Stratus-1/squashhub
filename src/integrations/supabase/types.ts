@@ -10888,6 +10888,102 @@ export type Database = {
         }
         Relationships: []
       }
+      junior_dob_links: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          expires_at: string
+          person_id: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          expires_at: string
+          person_id: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          expires_at?: string
+          person_id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_dob_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_dob_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      junior_dob_reminders: {
+        Row: {
+          channel: string
+          club_id: string
+          club_member_id: string
+          created_at: string
+          error: string | null
+          id: string
+          person_id: string
+          round: number
+          status: string
+        }
+        Insert: {
+          channel: string
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          person_id: string
+          round: number
+          status?: string
+        }
+        Update: {
+          channel?: string
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          person_id?: string
+          round?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_dob_reminders_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_dob_reminders_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junior_group_placements: {
         Row: {
           age_group: string | null
@@ -24785,6 +24881,37 @@ export type Database = {
       journal_read_club_ids: { Args: never; Returns: string[] }
       junior_create_club: {
         Args: { _name: string; _provincial_id: string; _town?: string }
+        Returns: string
+      }
+      junior_dob_due: {
+        Args: never
+        Returns: {
+          club_id: string
+          club_member_id: string
+          club_name: string
+          email: string
+          name: string
+          next_round: number
+          person_id: string
+          phone: string
+          subdomain: string
+          user_id: string
+        }[]
+      }
+      junior_dob_issue_link: {
+        Args: { _club_id: string; _club_member_id: string; _person_id: string }
+        Returns: string
+      }
+      junior_dob_link_info: {
+        Args: { _token: string }
+        Returns: {
+          club_name: string
+          first_name: string
+          status: string
+        }[]
+      }
+      junior_dob_submit: {
+        Args: { _dob: string; _token: string }
         Returns: string
       }
       junior_move_org: {

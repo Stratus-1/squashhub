@@ -191,5 +191,9 @@
 - [x] Junior squash player tick: separate auto-tick from SportyHQ junior sections (12 months), admin tick/untick in junior tree
 - [x] Count/report how many more juniors SportyHQ shows for Northern Junior Squash clubs (adding new members needs approval)
 - [x] Junior clubs list: show all juniors; SportyHQ-ticked junior league players in a distinct colour
-- [ ] Proposal: Junior squash tab on league page (boys/girls by age group, auto-placed, drag to move; club → provincial junior body) — proposal only, await approval
+- [x] Proposal: Junior squash tab on league page (built)
 - [x] Junior squash tab on Leagues page: Boys/Girls x U11–U19, auto by current age (else SportyHQ estimate), drag to move, reset; clubs + junior body admins manage
+
+## Junior birth-date reminders (21 Nov)
+- [x] Juniors with email/mobile but no birth date get automatic reminders (email, WhatsApp, in-app) with a secure link to add the date; stops once added
+- [ ] Publish and switch on the daily reminder run — waiting for Willem's go-ahead (every 2 weeks, max 3 confirmed)

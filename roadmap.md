@@ -227,4 +227,4 @@
 - [x] Gordons Bay: Brad Chairman, Aam Treasurer, Daniel Mommsen Secretary — no full admins left
 - [x] Durbanville: left as is — Theo Engelbrecht stays full admin until Charmaine signs up (owner decision)
 - [x] St John's: left as is for now (owner decision)
-- [~] Nelspruit: Susan Chairman, Rachel Treasurer done; Vian Crafford recorded as Club Captain, rights unchanged — awaiting owner's choice on which extra rights he keeps
+- [x] Nelspruit: Susan Chairman, Rachel Treasurer, Vian Crafford Club Captain (captain rights only, booking rights kept — owner decision 22 Nov 2026)

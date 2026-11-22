@@ -4902,3 +4902,4 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-22 — Office-role rollout, remaining clubs (part 1)
 - Snapshots saved for Highveld, St John's, Gordons Bay, Durbanville, Nelspruit. Chairmen from club records moved to Chairman: Brad Botha (GB), Gerrit Oosthuizen (HSC), Susan Crafford (NSC, keeps federation/ops_booking), Brendan Reilly (St John's). Treasurers: Aam Coetzee (GB), Lamont Lloyd (HSC), Rachel Gates (NSC, keeps Bar). Remaining full admins and Durbanville await owner answers.
+- 22 Nov 2026 — Office-role rollout, Nelspruit: Vian Crafford moved from individually-ticked rights to Club Captain only (leagues, ladder, champs, bookings_others) via `apply_office_role`; his booking permissions (bookings_unlimited, bookings_unlimited_non_peak, ops_booking) were kept. Pre-change snapshot saved earlier and restorable. Owner decision.

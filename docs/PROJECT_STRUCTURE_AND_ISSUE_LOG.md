@@ -4915,3 +4915,5 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Fix: added an always-visible "Club Documents" tile to the desktop Home group.
 - Also found: removing a library document deleted the row first, after which the storage read rule (`can_read_club_library_file`) hid the file so the file delete silently did nothing. `useClubDocumentMutations.deleteDocument` now removes the file first. Two orphaned test files in Riverside cleaned up; no other orphans exist.
 - Riverside's library contains no new upload from today — only the imported IMG_4274 (jet-ski photo, visible to members).
+
+- 2026-11-22: Imported Stitch constitutions (Nelspruit, CSIR, Highveld, Uitsig) switched to Visible to members in Club Documents at owner request; Riverside file unchanged.

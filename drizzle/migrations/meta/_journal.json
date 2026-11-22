@@ -3382,6 +3382,20 @@
       "when": 1795347315136,
       "tag": "0482_office_roles_keep_booking_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 483,
+      "version": "7",
+      "when": 1795347687373,
+      "tag": "0483_office_templates_write_only_when_changed",
+      "breakpoints": true
+    },
+    {
+      "idx": 484,
+      "version": "7",
+      "when": 1795347716982,
+      "tag": "0484_club_documents_description_and_date",
+      "breakpoints": true
     }
   ]
 }

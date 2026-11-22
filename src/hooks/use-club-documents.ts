@@ -46,7 +46,7 @@ export function useClubDocuments(clubId?: string) {
     queryKey: keys.docs(clubId),
     queryFn: async (): Promise<ClubDocument[]> => {
       const { data, error } = await fromExt("club_documents")
-        .select("id, club_id, category_id, title, file_path, file_name, mime_type, size_bytes, members_visible, created_at")
+        .select("id, club_id, category_id, title, file_path, file_name, mime_type, size_bytes, members_visible, created_at, description, document_date, description_source")
         .eq("club_id", clubId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -99,7 +99,7 @@ export function useClubDocumentMutations(clubId?: string) {
   });
 
   const upload = useMutation({
-    mutationFn: async (args: { file: File; title: string; categoryId: string; membersVisible: boolean }) => {
+    mutationFn: async (args: { file: File; title: string; categoryId: string; membersVisible: boolean; documentDate?: string | null }): Promise<string> => {
       const id = crypto.randomUUID();
       const path = libraryFilePath(clubId!, args.file.name, id);
       const { error: upErr } = await supabase.storage
@@ -116,17 +116,22 @@ export function useClubDocumentMutations(clubId?: string) {
         mime_type: args.file.type || null,
         size_bytes: args.file.size,
         members_visible: args.membersVisible,
+        document_date: args.documentDate || null,
       });
       if (error) {
         await supabase.storage.from(CLUB_DOCUMENTS_BUCKET).remove([path]).catch(() => null);
         throw error;
       }
+      return id;
     },
     onSuccess: refresh,
   });
 
   const updateDocument = useMutation({
-    mutationFn: async ({ id, ...patch }: { id: string; title?: string; category_id?: string; members_visible?: boolean }) => {
+    mutationFn: async ({ id, ...patch }: {
+      id: string; title?: string; category_id?: string; members_visible?: boolean;
+      description?: string | null; document_date?: string | null; description_source?: "ai" | "manual" | null;
+    }) => {
       const { error } = await fromExt("club_documents").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -142,7 +147,23 @@ export function useClubDocumentMutations(clubId?: string) {
     onSuccess: refresh,
   });
 
-  return { addCategory, updateCategory, deleteCategory, upload, updateDocument, deleteDocument };
+  /** Lovable AI reads the file and writes a short description + the document's own date. */
+  const describe = useMutation({
+    mutationFn: async (args: { id: string; force?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("club-document-describe", {
+        body: { document_id: args.id, force: !!args.force },
+      });
+      if (error) {
+        let msg = "AI could not describe this document";
+        try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error; } catch { /* keep default */ }
+        throw new Error(msg);
+      }
+      return data as { description: string | null; document_date: string | null; skipped?: string };
+    },
+    onSettled: refresh,
+  });
+
+  return { addCategory, updateCategory, deleteCategory, upload, updateDocument, deleteDocument, describe };
 }
 
 /** Private bucket: open through a short-lived link the storage policy re-checks. */

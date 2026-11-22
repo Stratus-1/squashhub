@@ -6345,6 +6345,10 @@ export type Database = {
           category_id: string
           club_id: string
           created_at: string
+          described_at: string | null
+          description: string | null
+          description_source: string | null
+          document_date: string | null
           file_name: string
           file_path: string
           id: string
@@ -6360,6 +6364,10 @@ export type Database = {
           category_id: string
           club_id: string
           created_at?: string
+          described_at?: string | null
+          description?: string | null
+          description_source?: string | null
+          document_date?: string | null
           file_name?: string
           file_path: string
           id?: string
@@ -6375,6 +6383,10 @@ export type Database = {
           category_id?: string
           club_id?: string
           created_at?: string
+          described_at?: string | null
+          description?: string | null
+          description_source?: string | null
+          document_date?: string | null
           file_name?: string
           file_path?: string
           id?: string

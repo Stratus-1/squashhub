@@ -28,6 +28,11 @@ export interface ClubDocument {
   size_bytes: number | null;
   members_visible: boolean;
   created_at: string;
+  /** Short summary, written by Lovable AI after upload or typed by a manager. */
+  description?: string | null;
+  /** Date the document itself carries (meeting/adopted/signed date), YYYY-MM-DD. */
+  document_date?: string | null;
+  description_source?: "ai" | "manual" | null;
 }
 
 export const CLUB_LIBRARY_MAX_BYTES = 20 * 1024 * 1024;
@@ -86,4 +91,22 @@ export function formatFileSize(bytes: number | null | undefined): string {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** "2026-10-29" or an ISO timestamp → "29 Oct 2026" (South African style). */
+export function formatDocDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Meta line under a document: document date, upload date and size. */
+export function documentMetaLine(doc: Pick<ClubDocument, "document_date" | "created_at" | "size_bytes">): string {
+  const parts: string[] = [];
+  if (doc.document_date) parts.push(`Dated ${formatDocDate(doc.document_date)}`);
+  parts.push(`Uploaded ${formatDocDate(doc.created_at)}`);
+  const size = formatFileSize(doc.size_bytes);
+  if (size) parts.push(size);
+  return parts.join(" · ");
 }

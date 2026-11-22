@@ -29,3 +29,19 @@ describe("club document visibility", () => {
     expect(libraryFilePath("club-1", "AGM minutes.pdf", "abc")).toBe("club-1/library/abc-AGM_minutes.pdf");
   });
 });
+
+import { documentMetaLine, formatDocDate } from "./club-documents";
+
+describe("document dates", () => {
+  it("shows the document's own date before the upload date", () => {
+    expect(documentMetaLine({ document_date: "2026-10-29", created_at: "2026-11-22T10:00:00Z", size_bytes: null }))
+      .toBe("Dated 29 Oct 2026 · Uploaded 22 Nov 2026");
+  });
+  it("shows only the upload date when the document has no date", () => {
+    expect(documentMetaLine({ document_date: null, created_at: "2026-11-22T10:00:00Z", size_bytes: null }))
+      .toBe("Uploaded 22 Nov 2026");
+  });
+  it("ignores invalid dates", () => {
+    expect(formatDocDate("not a date")).toBe("");
+  });
+});

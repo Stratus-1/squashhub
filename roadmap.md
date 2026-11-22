@@ -214,3 +214,10 @@
 - [x] Club Documents tile: always visible on member home
 - [~] Full admin → office-bearer roles (Willem approved 22 Nov): snapshot store + review list + apply/restore built (migrations 0479–0481, Club Admin → Permissions → "Office roles review"); Riverside snapshot of 13 people saved. AWAITING Willem's sign-off to apply roles per club (pilot Riverside → CSIR → Uitsig → rest); keep one club admin per club (Willem chooses); no member messages without approval
 - [x] CSIR: removed 24 deleted test lines dated 5 Oct 2026 and earlier from the audit trail
+
+## Club documents — AI description and dates (22 Nov 2026)
+- [x] AI writes a short description of each uploaded document (editable)
+- [x] Show uploaded date and document date (AI suggests the document date, editable)
+
+## Office-role Apply at Riverside (22 Nov 2026)
+- [x] Riverside templates set to defaults (owner-approved); template reset only writes when changed, so the chairman can Apply for others

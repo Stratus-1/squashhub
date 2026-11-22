@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Eye, EyeOff, FileText, FolderPlus, Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import { Eye, EyeOff, FileText, FolderPlus, Loader2, Pencil, Sparkles, Trash2, Upload } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +18,11 @@ import {
   useClubDocumentCategories, useClubDocumentMutations, useClubDocuments, openClubDocument,
 } from "@/hooks/use-club-documents";
 import {
-  CLUB_LIBRARY_MAX_BYTES, formatFileSize, groupByCategory, isDocumentVisibleToMembers, titleFromFileName,
+  CLUB_LIBRARY_MAX_BYTES, documentMetaLine, groupByCategory, isDocumentVisibleToMembers, titleFromFileName,
   type ClubDocument, type ClubDocumentCategory,
 } from "@/lib/club-documents";
 
-type UploadDraft = { file: File; title: string; categoryId: string; membersVisible: boolean };
+type UploadDraft = { file: File; title: string; categoryId: string; membersVisible: boolean; documentDate: string };
 
 export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
   const { data: categories = [], isLoading: catsLoading } = useClubDocumentCategories(clubId);
@@ -36,6 +37,23 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
   const [editDoc, setEditDoc] = useState<ClubDocument | null>(null);
   const [confirmDoc, setConfirmDoc] = useState<ClubDocument | null>(null);
   const [confirmCat, setConfirmCat] = useState<ClubDocumentCategory | null>(null);
+  const [editOriginalDescription, setEditOriginalDescription] = useState<string>("");
+  // Documents Lovable AI is currently describing.
+  const [describing, setDescribing] = useState<Set<string>>(new Set());
+
+  const describeDoc = async (id: string, force = false) => {
+    setDescribing((prev) => new Set(prev).add(id));
+    try {
+      const res = await m.describe.mutateAsync({ id, force });
+      if (force) toast.success("New AI description written");
+      return res;
+    } catch (err: any) {
+      toast.error(err?.message || "AI could not describe this document");
+      return null;
+    } finally {
+      setDescribing((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
+  };
 
   const groups = useMemo(() => groupByCategory(categories, documents), [categories, documents]);
   const sharedCount = documents.filter((d) =>
@@ -59,6 +77,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
       title: titleFromFileName(file.name),
       categoryId: pendingCategory || categories[0]?.id || "",
       membersVisible: false,
+      documentDate: "",
     });
   };
 
@@ -69,8 +88,14 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
 
   const doUpload = async () => {
     if (!draft || !draft.title.trim() || !draft.categoryId) return;
-    if (await run(m.upload.mutateAsync(draft), draft.membersVisible ? "Document uploaded and shared with members" : "Document uploaded (hidden from members)")) {
+    try {
+      const id = await m.upload.mutateAsync(draft);
+      toast.success(draft.membersVisible ? "Document uploaded and shared with members" : "Document uploaded (hidden from members)");
       setDraft(null);
+      // Description is written in the background; the list shows progress.
+      void describeDoc(id);
+    } catch (err: any) {
+      toast.error(err?.message || "Something went wrong");
     }
   };
 
@@ -148,9 +173,15 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                       <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />
                       <button type="button" onClick={() => open(doc)} className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[13px] hover:underline">{doc.title}</span>
+                        {describing.has(doc.id) ? (
+                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Lovable AI is writing a description…
+                          </span>
+                        ) : doc.description ? (
+                          <span className="block text-[11px] text-muted-foreground line-clamp-2">{doc.description}</span>
+                        ) : null}
                         <span className="block truncate text-[10px] text-muted-foreground">
-                          {new Date(doc.created_at).toLocaleDateString("en-ZA")}
-                          {doc.size_bytes ? ` · ${formatFileSize(doc.size_bytes)}` : ""}
+                          {documentMetaLine(doc)}
                           {doc.members_visible && !category.members_visible ? " · category hidden, so members can't see it" : ""}
                         </span>
                       </button>
@@ -164,7 +195,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                         onCheckedChange={(v) => run(m.updateDocument.mutateAsync({ id: doc.id, members_visible: v }),
                           v ? "Document shared with members" : "Document hidden from members")}
                       />
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => setEditDoc(doc)}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit" onClick={() => { setEditDoc(doc); setEditOriginalDescription(doc.description ?? ""); }}>
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" title="Remove" onClick={() => setConfirmDoc(doc)}>
@@ -200,6 +231,11 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                     {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Date of document (optional)</Label>
+                <Input type="date" value={draft.documentDate} onChange={(e) => setDraft({ ...draft, documentDate: e.target.value })} className="w-44" />
+                <p className="text-[11px] text-muted-foreground">Leave blank and Lovable AI will look for the date on the document. It also writes a short description after upload.</p>
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="upload-visible" checked={draft.membersVisible}
@@ -260,7 +296,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
 
       {/* Edit document */}
       <Dialog open={!!editDoc} onOpenChange={(o) => !o && setEditDoc(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit document</DialogTitle></DialogHeader>
           {editDoc && (
             <div className="space-y-3">
@@ -277,13 +313,48 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs">Description</Label>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                    disabled={describing.has(editDoc.id)}
+                    onClick={async () => {
+                      const res = await describeDoc(editDoc.id, true);
+                      if (res) {
+                        setEditDoc((d) => d ? { ...d, description: res.description, document_date: res.document_date ?? d.document_date, description_source: "ai" } : d);
+                        setEditOriginalDescription(res.description ?? "");
+                      }
+                    }}>
+                    {describing.has(editDoc.id) ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    Write with AI
+                  </Button>
+                </div>
+                <Textarea rows={4} value={editDoc.description ?? ""} placeholder="What is this document about?"
+                  onChange={(e) => setEditDoc({ ...editDoc, description: e.target.value })} />
+                {editDoc.description_source === "ai" && (editDoc.description ?? "") === editOriginalDescription && (
+                  <p className="text-[10px] text-muted-foreground">Written by Lovable AI — check it and edit if needed.</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Date of document</Label>
+                <Input type="date" className="w-44" value={editDoc.document_date ?? ""}
+                  onChange={(e) => setEditDoc({ ...editDoc, document_date: e.target.value || null })} />
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDoc(null)}>Cancel</Button>
             <Button disabled={!editDoc?.title.trim() || m.updateDocument.isPending}
               onClick={async () => {
-                if (editDoc && await run(m.updateDocument.mutateAsync({ id: editDoc.id, title: editDoc.title.trim(), category_id: editDoc.category_id }), "Document updated")) setEditDoc(null);
+                if (!editDoc) return;
+                const desc = (editDoc.description ?? "").trim();
+                const descChanged = desc !== editOriginalDescription.trim();
+                const patch = {
+                  id: editDoc.id, title: editDoc.title.trim(), category_id: editDoc.category_id,
+                  document_date: editDoc.document_date || null,
+                  ...(descChanged ? { description: desc || null, description_source: desc ? "manual" as const : null } : {}),
+                };
+                if (await run(m.updateDocument.mutateAsync(patch), "Document updated")) setEditDoc(null);
               }}>
               Save
             </Button>

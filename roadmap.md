@@ -221,3 +221,10 @@
 
 ## Office-role Apply at Riverside (22 Nov 2026)
 - [x] Riverside templates set to defaults (owner-approved); template reset only writes when changed, so the chairman can Apply for others
+
+## Office-role rollout status (22 Nov 2026)
+- [x] Riverside, CSIR, Uitsig, Highveld done
+- [x] Gordons Bay: Brad Chairman, Aam Treasurer, Daniel Mommsen Secretary — no full admins left
+- [x] Durbanville: left as is — Theo Engelbrecht stays full admin until Charmaine signs up (owner decision)
+- [x] St John's: left as is for now (owner decision)
+- [~] Nelspruit: Susan Chairman, Rachel Treasurer done; Vian Crafford recorded as Club Captain, rights unchanged — awaiting owner's choice on which extra rights he keeps

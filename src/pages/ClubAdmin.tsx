@@ -42,6 +42,7 @@ import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
 import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
 import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-permissions";
+import { useCanManageClubDocuments } from "@/hooks/use-club-documents";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
@@ -86,7 +87,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
   { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true, startHere: true },
-  { value: "rules", label: "Rules & Constitution", icon: ScrollText, permission: "club", color: "amber", noStatus: true },
+  { value: "rules", label: "Rules & Documents", icon: ScrollText, permission: "club", color: "amber", noStatus: true },
   // Courts is core: admins must always be able to add courts.
   { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan" },
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
@@ -120,7 +121,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   club: "Name, contact details and branding",
   settings: "Booking, ladder and general preferences",
   features: "Switch optional modules on or off",
-  rules: "Club rules and constitution documents",
+  rules: "Club rules, constitution and club documents",
   courts: "Courts, slots and booking rules",
   fees: "Membership categories and fees",
   banking: "Bank details and payment gateways",
@@ -193,6 +194,8 @@ export default function ClubAdmin() {
   const { prefs: menuPrefs, canEdit: canEditMenu, save: saveMenu } = useMenuPrefs("club-admin", club?.id);
   const [menuEditing, setMenuEditing] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
+  // Chairman and secretary (also when appointed as office bearers) manage club documents.
+  const { data: canManageDocs } = useCanManageClubDocuments(club?.id);
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
   // seeded capability rows by a DB trigger, so "no rows" is never true — the
@@ -224,7 +227,7 @@ export default function ClubAdmin() {
   // never sent to club registration just because they hold no member row there.
   if (!club && !contextClub) return <Navigate to="/register-club" replace />;
 
-  if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;
+  if (!isAdmin && myPermissions.size === 0 && !canManageDocs) return <Navigate to="/dashboard" replace />;
 
   // Associations have a unified dashboard at "/" — there's no separate admin page.
   if ((club as any).tenant_type === "association") {
@@ -234,6 +237,7 @@ export default function ClubAdmin() {
   // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
   const permFilter = (tab: AdminTab) => {
     if (isAdmin) return true;
+    if (tab.value === "rules" && canManageDocs) return true;
     if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
   };
@@ -317,7 +321,7 @@ export default function ClubAdmin() {
 
       case "router": return <RouterTab clubId={club.id} club={club} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
-      case "rules": return <RulesTab clubId={club.id} club={club} />;
+      case "rules": return <RulesTab clubId={club.id} club={club} canEditRules={isAdmin || myPermissions.has("club")} />;
       case "skills": return <SkillsDirectoryTab clubId={club.id} />;
       case "features": return <FeaturesTab clubId={club.id} club={club} />;
       default: return null;

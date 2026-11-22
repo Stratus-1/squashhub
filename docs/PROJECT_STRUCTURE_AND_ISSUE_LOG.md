@@ -4856,3 +4856,10 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 — SSA club fees moved to one source
 - Symptom: Squash South Africa's 2027 club fees came from SSA's own schedule, but 2026 still lived in 49 typed per-club copies (R300/member, Riverside also R330).
 - Fix: migration 0473 adds SSA 2026 R300/member to `national_body_fee_schedule` and stops `seed_nsa_payable_fees` seeding SSA copies; the per-member SSA copies were switched off (not deleted) with the retired-copy marker. Gordons Bay's R1,400 per-club row left active pending owner review. Member-side `national_body_fees` (what members are charged) untouched.
+
+### 2026-11-22 Rules & Documents (club document library)
+- Club Admin tile renamed "Rules & Constitution" → "Rules & Documents". New "Club documents" section: categories per club (standard: Constitution & amendments, AGM documents, Financial reports — seeded for all 804 clubs and on new clubs; clubs add/rename/remove their own) and documents, each with a "Visible to members" switch; members see a document only when both are on (`club_documents` / `club_document_categories`, migrations 0474–0475).
+- Managers = `can_manage_club_documents` (club admins, chairman, secretary incl. `club_offices` posts, "Club Info" permission). Files live under `<club>/library/` in `club-documents`; the old member read policy now excludes that folder and a dedicated policy follows document visibility.
+- Members: `/club-documents` page + "Club Documents" home tile (only once something is shared).
+- Edge function `club-documents-import-stitch` copied the Stitch-application constitution into "Constitution & amendments" (hidden) for Nelspruit, CSIR, Highveld, Uitsig and Riverside; idempotent via `club_documents.source_ref`.
+- Observed, not changed: the older "Club members read own club documents" storage policy compares the folder to `club_members.name` (unqualified `name`), so that member clause never matches.

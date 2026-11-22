@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { Users } from "lucide-react";
+import { useClubDocumentCategories, useClubDocuments } from "@/hooks/use-club-documents";
+import { memberView } from "@/lib/club-documents";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { isApplicationIncomplete } from "@/lib/membership-application";
@@ -31,7 +33,7 @@ import { AvailableToSpendCard } from "@/components/dashboard/AvailableToSpendCar
 
 import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash, Pencil } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash, Pencil, FolderOpen } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -100,6 +102,10 @@ export default function Dashboard() {
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const clubId = effectiveClub?.id || clubData?.club?.id;
+  // Club Documents tile appears only once the club shares at least one document with members.
+  const { data: docCategories = [] } = useClubDocumentCategories(clubId);
+  const { data: clubDocs = [] } = useClubDocuments(clubId);
+  const hasSharedDocs = memberView(docCategories, clubDocs).length > 0;
   const [editDash, setEditDash] = useState(false);
   // Pilot: Edit dashboard button shown in Riverside only for now (display-only feature).
   const dashEditPilot = !!clubId;
@@ -836,6 +842,7 @@ export default function Dashboard() {
     { id: "bar", label: "Bar / POS", show: !!(effectiveClub && barEnabled && !shortcutFlags.honestyBarEnabled && (effectiveClub as any)?.honesty_bar_enabled) },
     { id: "wifi", label: "Wi-Fi (when available)", show: true },
     { id: "score-match", label: "Score a Match", show: !hasMarkerSession },
+    { id: "club-documents", label: "Club Documents", show: hasSharedDocs },
     { id: "club-admin", label: "Club Admin", show: !!hasAnyAdminAccess },
   ];
   const secDefs: { id: string; label: string; show: boolean }[] = [
@@ -1060,6 +1067,12 @@ export default function Dashboard() {
             >
               <Crosshair className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Score a Match</span>
+            </Button>
+          ))}
+          {tile("club-documents", hasSharedDocs && (
+            <Button data-tone="events" variant="outline" className="member-feature-tile flex-col py-3 gap-2" onClick={() => navigate("/club-documents")}>
+              <FolderOpen className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Club Documents</span>
             </Button>
           ))}
           {tile("club-admin", hasAnyAdminAccess && (

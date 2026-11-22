@@ -198,3 +198,7 @@
 - [x] Juniors with email/mobile but no birth date get automatic reminders (email, WhatsApp, in-app) with a secure link to add the date; stops once added
 - [x] Publish and switch on reminders: weekdays 09:23, first run Monday 23 Nov (Willem chose Monday)
 - [x] Fix: players who already paid their own fee can pay their partner's fee from the invitation
+
+## Club documents (22 Nov 2026)
+- [x] Rename "Rules & Constitution" to "Rules & Documents"; document categories (standard: Constitution & amendments, AGM documents, Financial reports; clubs add own) with member-visibility switches per category and per document; chairman and secretary can upload/share.
+- [x] Copy constitutions clubs already uploaded for their Stitch application into "Constitution & amendments" (hidden from members until shared).

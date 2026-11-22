@@ -6296,6 +6296,113 @@ export type Database = {
           },
         ]
       }
+      club_document_categories: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          members_visible: boolean
+          name: string
+          sort_order: number
+          standard_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          members_visible?: boolean
+          name: string
+          sort_order?: number
+          standard_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          members_visible?: boolean
+          name?: string
+          sort_order?: number
+          standard_key?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_document_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_documents: {
+        Row: {
+          category_id: string
+          club_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          members_visible: boolean
+          mime_type: string | null
+          size_bytes: number | null
+          source_ref: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category_id: string
+          club_id: string
+          created_at?: string
+          file_name?: string
+          file_path: string
+          id?: string
+          members_visible?: boolean
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_ref?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category_id?: string
+          club_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          members_visible?: boolean
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_ref?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_documents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "club_document_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_documents_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -23531,6 +23638,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      can_manage_club_documents: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_family_group: { Args: { _group_id: string }; Returns: boolean }
       can_manage_tournament:
         | { Args: { _tournament_id: string }; Returns: boolean }
@@ -23550,6 +23661,7 @@ export type Database = {
         Args: { _device_id: string; _user_id: string }
         Returns: boolean
       }
+      can_read_club_library_file: { Args: { _path: string }; Returns: boolean }
       can_self_claim_club_admin: {
         Args: { _club_id: string }
         Returns: boolean
@@ -24036,6 +24148,10 @@ export type Database = {
       club_cancel_subscription: {
         Args: { _club_id: string; _reason?: string }
         Returns: Json
+      }
+      club_document_member_visible: {
+        Args: { _doc_id: string }
+        Returns: boolean
       }
       club_financial_access: { Args: { _club_id: string }; Returns: Json }
       club_gateway_fee_percent: {
@@ -25755,6 +25871,10 @@ export type Database = {
         Returns: Json
       }
       my_can_manage_club_comms: { Args: { _club_id: string }; Returns: boolean }
+      my_can_manage_club_documents: {
+        Args: { _club_id: string }
+        Returns: boolean
+      }
       my_club_member_ids: { Args: never; Returns: string[] }
       new_invite_token: { Args: never; Returns: string }
       new_model_cap: {
@@ -26410,6 +26530,10 @@ export type Database = {
       seed_club_balance_template: {
         Args: { p_club_id: string }
         Returns: string
+      }
+      seed_club_document_categories: {
+        Args: { _club_id: string }
+        Returns: undefined
       }
       seed_club_settle_account_template: {
         Args: { p_club_id: string }

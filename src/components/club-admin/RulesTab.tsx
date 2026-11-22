@@ -26,8 +26,9 @@ import {
 } from "@/hooks/use-club-rules";
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { ClubQrShareCard } from "@/components/club-admin/ClubQrShareCard";
+import { ClubDocumentsLibrary } from "@/components/club-admin/ClubDocumentsLibrary";
 
-export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
+export function RulesTab({ clubId, club, canEditRules = true }: { clubId: string; club: any; canEditRules?: boolean }) {
   const { data: rules, isLoading } = useClubRules(clubId);
   const { data: versions = [] } = useClubRuleVersions(clubId);
   const { data: acceptances = [] } = useClubRuleAcceptances(clubId);
@@ -107,6 +108,10 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
   // otherwise redirects signed-in users to their dashboard).
   const previewLandingUrl = club?.subdomain ? `/c/${club.subdomain}?preview=1` : null;
 
+  if (!canEditRules) {
+    return <div className="space-y-4 mt-4"><ClubDocumentsLibrary clubId={clubId} /></div>;
+  }
+
   if (isLoading) {
     return (
       <div className="mt-4 flex justify-center py-10">
@@ -120,7 +125,7 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
       <Card className="p-4 md:p-5 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="font-semibold text-sm">Membership Rules &amp; Constitution</h3>
+            <h3 className="font-semibold text-sm">Membership rules</h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
               The rules every member must read and accept. The same content is shown on your public
               club page (when switched on) and during member registration.
@@ -163,7 +168,7 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
         <Separator />
 
         <div className="space-y-2">
-          <Label className="text-xs">Documents (constitution, house rules — PDF)</Label>
+          <Label className="text-xs">Documents members accept with the rules (house rules — PDF)</Label>
           {documents.length === 0 && (
             <p className="text-[11px] text-muted-foreground italic">No documents uploaded yet.</p>
           )}
@@ -218,6 +223,8 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
           </div>
         </div>
       </Card>
+
+      <ClubDocumentsLibrary clubId={clubId} />
 
       <Dialog open={preview} onOpenChange={setPreview}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

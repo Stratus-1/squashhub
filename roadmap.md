@@ -228,3 +228,8 @@
 - [x] Durbanville: left as is — Theo Engelbrecht stays full admin until Charmaine signs up (owner decision)
 - [x] St John's: left as is for now (owner decision)
 - [x] Nelspruit: Susan Chairman, Rachel Treasurer, Vian Crafford Club Captain (captain rights only, booking rights kept — owner decision 22 Nov 2026)
+
+## Committee approval requests (22 Nov 2026)
+- [ ] Approvals module (requests, approvers, signatures, attachments, audit) in Club Admin
+- [ ] In-app + email notifications from SquashHub main sender
+- [ ] Private email link per approver: view request, files, sign/approve or decline without logging in

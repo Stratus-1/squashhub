@@ -99,6 +99,7 @@ const SuperAdminHelpVideos = lazy(() => import("./pages/admin/SuperAdminHelpVide
 const LeagueGames = lazy(() => import("./pages/LeagueGames"));
 const LeagueGameDetail = lazy(() => import("./pages/LeagueGameDetail"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const ApprovalLink = lazy(() => import("./pages/ApprovalLink"));
 const SuperAdminLayout = lazy(() =>
   import("./components/admin/SuperAdminLayout").then((m) => ({ default: m.SuperAdminLayout })),
 );
@@ -565,6 +566,7 @@ function AppRoutes() {
         <Route path="/s/:code/success" element={<BarPaymentSuccess />} />
         <Route path="/vote/:token" element={<AgmVote />} />
         <Route path="/agm/:token" element={<AgmInvite />} />
+        <Route path="/approve/:token" element={<ApprovalLink />} />
         <Route path="/club-document" element={<ProtectedRoute><ClubDocument /></ProtectedRoute>} />
         <Route path="/club-documents" element={<ProtectedRoute><ClubDocuments /></ProtectedRoute>} />
         <Route path="/nominate/:token" element={<AgmNominate />} />

@@ -4548,6 +4548,224 @@ export type Database = {
           },
         ]
       }
+      club_approval_approvers: {
+        Row: {
+          club_id: string
+          created_at: string
+          decline_reason: string | null
+          id: string
+          member_id: string
+          request_id: string
+          signature_path: string | null
+          signed_at: string | null
+          signed_via: string | null
+          status: string
+          token_hash: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          member_id: string
+          request_id: string
+          signature_path?: string | null
+          signed_at?: string | null
+          signed_via?: string | null
+          status?: string
+          token_hash?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          member_id?: string
+          request_id?: string
+          signature_path?: string | null
+          signed_at?: string | null
+          signed_via?: string | null
+          status?: string
+          token_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_approval_approvers_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_approvers_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_approvers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "club_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_approval_attachments: {
+        Row: {
+          club_id: string
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          path: string
+          request_id: string
+          size_bytes: number | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          path: string
+          request_id: string
+          size_bytes?: number | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          path?: string
+          request_id?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_approval_attachments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_attachments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "club_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_approval_events: {
+        Row: {
+          actor_member_id: string | null
+          club_id: string
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          request_id: string
+        }
+        Insert: {
+          actor_member_id?: string | null
+          club_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          request_id: string
+        }
+        Update: {
+          actor_member_id?: string | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_approval_events_actor_member_id_fkey"
+            columns: ["actor_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "club_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_approval_requests: {
+        Row: {
+          amount: number | null
+          club_id: string
+          created_at: string
+          decided_at: string | null
+          description: string
+          id: string
+          requester_member_id: string
+          requester_signature_path: string
+          status: string
+          topic: string
+        }
+        Insert: {
+          amount?: number | null
+          club_id: string
+          created_at?: string
+          decided_at?: string | null
+          description?: string
+          id?: string
+          requester_member_id: string
+          requester_signature_path: string
+          status?: string
+          topic: string
+        }
+        Update: {
+          amount?: number | null
+          club_id?: string
+          created_at?: string
+          decided_at?: string | null
+          description?: string
+          id?: string
+          requester_member_id?: string
+          requester_signature_path?: string
+          status?: string
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_approval_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_approval_requests_requester_member_id_fkey"
+            columns: ["requester_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_association_fee_due_dates: {
         Row: {
           club_id: string
@@ -15243,6 +15461,45 @@ export type Database = {
           },
         ]
       }
+      member_signatures: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_signatures_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_signatures_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_stats_cache: {
         Row: {
           category: string
@@ -22113,6 +22370,32 @@ export type Database = {
         Returns: Json
       }
       _agm_proxy_list: { Args: { _ballot: string }; Returns: Json }
+      _approval_apply_decline: {
+        Args: { p_approver: string; p_reason: string; p_via: string }
+        Returns: undefined
+      }
+      _approval_apply_sign: {
+        Args: { p_approver: string; p_path: string; p_via: string }
+        Returns: undefined
+      }
+      _approval_finalize: { Args: { p_request: string }; Returns: undefined }
+      _approval_is_eligible_member: {
+        Args: { p_club: string; p_member: string }
+        Returns: boolean
+      }
+      _approval_my_member: { Args: { p_club: string }; Returns: string }
+      _approval_notify: {
+        Args: {
+          p_body: string
+          p_club: string
+          p_email_url: string
+          p_member: string
+          p_request: string
+          p_title: string
+        }
+        Returns: undefined
+      }
+      _approval_token_approver: { Args: { p_token: string }; Returns: string }
       _bar_allocate_shift_tip: { Args: { _tip: string }; Returns: undefined }
       _bar_cash_up_final_staff: {
         Args: { _club: string; _staff: string }
@@ -22778,6 +23061,44 @@ export type Database = {
         Args: { p_club_id: string }
         Returns: string
       }
+      approval_comment: {
+        Args: { p_note: string; p_request: string }
+        Returns: undefined
+      }
+      approval_create: {
+        Args: {
+          p_amount: number
+          p_approvers: string[]
+          p_attachments?: Json
+          p_club: string
+          p_description: string
+          p_id: string
+          p_signature_path: string
+          p_topic: string
+        }
+        Returns: string
+      }
+      approval_decline: {
+        Args: { p_reason: string; p_request: string }
+        Returns: undefined
+      }
+      approval_eligible_members: { Args: { p_club: string }; Returns: Json }
+      approval_list: { Args: { p_club: string }; Returns: Json }
+      approval_log_view: { Args: { p_request: string }; Returns: undefined }
+      approval_sign: {
+        Args: { p_request: string; p_signature_path: string }
+        Returns: undefined
+      }
+      approval_token_decline: {
+        Args: { p_reason: string; p_token: string }
+        Returns: undefined
+      }
+      approval_token_sign: {
+        Args: { p_signature_path: string; p_token: string }
+        Returns: undefined
+      }
+      approval_token_view: { Args: { p_token: string }; Returns: Json }
+      approval_withdraw: { Args: { p_request: string }; Returns: undefined }
       approve_club_claim: { Args: { _request_id: string }; Returns: string }
       approve_ladder_move_pending: {
         Args: { _pending_id: string }
@@ -23824,6 +24145,7 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      can_use_club_approvals: { Args: { p_club: string }; Returns: boolean }
       can_use_tournament_beta: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean

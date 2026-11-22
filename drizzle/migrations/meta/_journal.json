@@ -3424,6 +3424,13 @@
       "when": 1795367149357,
       "tag": "0488_fix_doubles_partner_unassigned_record",
       "breakpoints": true
+    },
+    {
+      "idx": 489,
+      "version": "7",
+      "when": 1795368694566,
+      "tag": "0489_committee_approval_requests",
+      "breakpoints": true
     }
   ]
 }

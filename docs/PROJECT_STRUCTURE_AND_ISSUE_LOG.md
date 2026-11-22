@@ -4930,3 +4930,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 — Support inbox: tapping a ticket on a phone did nothing
 - Symptom: on phones the first open ticket was already highlighted and its conversation sat below a long ticket list; tapping it appeared to do nothing.
 - Fix: `src/pages/AdminSupport.tsx` now shows the list and the conversation one at a time below the `lg` breakpoint — tapping a ticket opens its conversation with a "Back to tickets" button; desktop two-column layout unchanged. Email `?threadId=` links open straight into the conversation.
+
+### 2026-11-22 — Committee approval requests
+- New Club Admin > Approvals: office bearer creates a request (topic, description, amount, files, own signature), picks approving office bearers; each gets an in-app notice and an email (SquashHub sender) with a private link (`/approve/:token`, edge function `approval-link`) to view files and sign/decline without logging in. Saved signatures are reusable; each approval stores its own snapshot. Migration 0489. Rules tested in `src/lib/approvals.test.ts`.

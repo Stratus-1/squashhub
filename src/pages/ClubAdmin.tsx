@@ -1,4 +1,7 @@
 import AppVersionBadge from "@/components/AppVersionBadge";
+import { supabase } from "@/integrations/supabase/client";
+import { ApprovalsTab } from "@/components/club-admin/approvals/ApprovalsTab";
+import { FileSignature } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
@@ -112,6 +115,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
+  { value: "approvals", label: "Approvals", icon: FileSignature, color: "teal", noStatus: true },
   { value: "comms", label: "Member Communications", icon: Mail, permission: "communications", color: "blue" },
   { value: "emails", label: "Message Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
   { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
@@ -143,6 +147,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   awards: "League prizes and awards",
   comms: "Templates, campaigns and sends",
   updates: "News from the SquashHub team",
+  approvals: "Committee sign-off on transactions and decisions",
   emails: "Delivery history of messages",
   bar: "Honesty bar stock and sales",
 };
@@ -197,6 +202,11 @@ export default function ClubAdmin() {
   const capsReady = !capsLoading && !!club?.id;
   // Chairman and secretary (also when appointed as office bearers) manage club documents.
   const { data: canManageDocs } = useCanManageClubDocuments(club?.id);
+  // Office bearers (not only full admins) use committee approvals.
+  const { data: canUseApprovals } = useQuery({
+    queryKey: ["can-use-approvals", club?.id], enabled: !!club?.id,
+    queryFn: async () => !!(await (supabase as any).rpc("can_use_club_approvals", { p_club: club!.id })).data,
+  });
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
   // seeded capability rows by a DB trigger, so "no rows" is never true — the
@@ -228,7 +238,7 @@ export default function ClubAdmin() {
   // never sent to club registration just because they hold no member row there.
   if (!club && !contextClub) return <Navigate to="/register-club" replace />;
 
-  if (!isAdmin && myPermissions.size === 0 && !canManageDocs) return <Navigate to="/dashboard" replace />;
+  if (!isAdmin && myPermissions.size === 0 && !canManageDocs && !canUseApprovals) return <Navigate to="/dashboard" replace />;
 
   // Associations have a unified dashboard at "/" — there's no separate admin page.
   if ((club as any).tenant_type === "association") {
@@ -237,8 +247,10 @@ export default function ClubAdmin() {
 
   // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
   const permFilter = (tab: AdminTab) => {
+    if (tab.value === "approvals") return !!canUseApprovals;
     if (isAdmin) return true;
     if (tab.value === "rules" && canManageDocs) return true;
+    if (tab.value === "approvals") return !!canUseApprovals;
     // AGM and voting lives inside Member Communications.
     if (tab.value === "comms" && myPermissions.has("agm")) return true;
     if (!tab.permission) return false; // permissions tab only for full admins
@@ -302,6 +314,7 @@ export default function ClubAdmin() {
       case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "updates": return <PlatformUpdatesInbox clubId={club.id} />;
+      case "approvals": return <ApprovalsTab clubId={club.id} />;
       case "ai": return <AiAssistantTab clubId={club.id} />;
       case "emails": return <MessageLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;

@@ -1007,7 +1007,13 @@ Deno.serve(async (req) => {
     }
 
 
-    const clubMail = await resolveClubMail(targetUserId, explicitClubId);
+    // Platform-originated mail (notices to office bearers, etc.) must always go
+    // from SquashHub's own sender domain, never from a club's email address —
+    // even when that club has its own SMTP configured. Owner rule, 22 Nov 2026.
+    const PLATFORM_ORIGINATED_TYPES = new Set(["platform_notice"]);
+    const clubMail = PLATFORM_ORIGINATED_TYPES.has(type)
+      ? null
+      : await resolveClubMail(targetUserId, explicitClubId);
     let result: { ok: boolean; skipped?: boolean; reason?: string };
     const platformArgs = {
       to: email,

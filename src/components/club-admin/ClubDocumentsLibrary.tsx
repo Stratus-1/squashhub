@@ -175,7 +175,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                         <span className="block truncate text-[13px] hover:underline">{doc.title}</span>
                         {describing.has(doc.id) ? (
                           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Loader2 className="w-3 h-3 animate-spin" /> Lovable AI is writing a description…
+                            <Loader2 className="w-3 h-3 animate-spin" /> Description being generated…
                           </span>
                         ) : doc.description ? (
                           <span className="block text-[11px] text-muted-foreground line-clamp-2">{doc.description}</span>
@@ -235,7 +235,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
               <div className="space-y-1">
                 <Label className="text-xs">Date of document (optional)</Label>
                 <Input type="date" value={draft.documentDate} onChange={(e) => setDraft({ ...draft, documentDate: e.target.value })} className="w-44" />
-                <p className="text-[11px] text-muted-foreground">Leave blank and Lovable AI will look for the date on the document. It also writes a short description after upload.</p>
+                <p className="text-[11px] text-muted-foreground">Leave blank and the date will be read from the document. A short description is also generated after upload.</p>
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="upload-visible" checked={draft.membersVisible}
@@ -332,7 +332,7 @@ export function ClubDocumentsLibrary({ clubId }: { clubId: string }) {
                 <Textarea rows={4} value={editDoc.description ?? ""} placeholder="What is this document about?"
                   onChange={(e) => setEditDoc({ ...editDoc, description: e.target.value })} />
                 {editDoc.description_source === "ai" && (editDoc.description ?? "") === editOriginalDescription && (
-                  <p className="text-[10px] text-muted-foreground">Written by Lovable AI — check it and edit if needed.</p>
+                  <p className="text-[10px] text-muted-foreground">Description generated — check it and edit if needed.</p>
                 )}
               </div>
               <div className="space-y-1">

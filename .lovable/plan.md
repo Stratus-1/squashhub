@@ -1,42 +1,57 @@
-# Replace "full admin" with office-bearer permissions
+# Committee Approval Requests
 
-## What "full admin" means today
-There are three separate ways someone gets everything in a club:
+An office bearer (e.g. the Treasurer) asks selected committee members to approve something: a payment, an expense, a decision. Each approver signs. When everyone has approved, the requester is told and the request is kept as a permanent record.
 
-1. **Club admin status** on the member record. The person can do everything, including setting permissions and all finance. This is how a club's first administrator is created.
-2. **A role marked "full admin".** Every club was given Chairman, Secretary and Club Captain roles, all set to full admin, plus a "Full Admin" role at some clubs. Anyone given one of these roles can do everything, including entering, deleting and reversing finance transactions. The only exception is the Chairman role, which is already limited to viewing finance.
-3. **The personal "Grant full admin rights" tick** on one member.
+## Where it lives
+- New Club Admin item **Approvals** under **Club operations**, with the description "Committee sign-off on transactions and decisions".
+- A small "Waiting for your approval" count on the Club Admin home and in notifications, so approvers find their requests quickly.
+- Who can see it: office bearers and full club admins of that club only. Each club's requests stay inside that club.
 
-Super Admin is separate and stays exactly as it is.
+## Screens
+1. **Requests list** with tabs **Waiting for me**, **My requests**, **Open**, **Approved**, **Declined**, plus a search box. The Approved tab is the permanent log.
+2. **New request**
+   - Topic and Description
+   - Optional amount (R)
+   - Attach files (PDF, image, invoice, quote), more than one allowed
+   - **Approvers**: a dropdown with the club's current office bearers (name and office). Pick one or more; the requester can't pick themselves.
+   - **Your signature**: draw it with a finger or mouse, upload an image, or reuse your saved signature
+   - Submit
+3. **Request detail** (works like a ticket)
+   - Topic, description, amount, files, the requester's signature and date
+   - Each approver's status: Waiting, Approved (with signature and time) or Declined (with reason)
+   - For an approver who hasn't answered: **Approve and sign** (draw, upload or reuse a saved signature) or **Decline** (reason required)
+   - The requester can **Withdraw** the request while it is still open
+   - A short comment thread for questions
 
-## Who has it now (real clubs, active members)
-- **Through a role (Chairman / Secretary / Club Captain / Full Admin):** about 35 people across CSIR, Uitsig, Highveld, Gordons Bay, Durbanville, De Kaap, Meyerton, Irene, Glenwood, CBCTUT and Nelspruit, plus Riverside's test people.
-- **Personal full admin tick:** Grant Williams (CSIR), Theo Engelbrecht (Durbanville), Izak Lamprecht (Glenwood), Aam Coetzee (Gordons Bay), Gerhard Fourie (Uitsig).
-- **Club admin status:** most of the people above, plus Lamont Lloyd (Highveld treasurer), Hermanus test account, and four St John's committee members.
-- **Things that look wrong:** Uitsig and CSIR each have two Chairmen. CSIR also has two Secretaries. The Gordons Bay and Highveld treasurers hold full rights rather than finance rights.
+## Signatures
+- Signing the first time offers "Save as my signature". After that, signing is one tap: **Use my saved signature**.
+- A saved signature belongs to that person only and can be replaced in My Account.
+- Each approval stores a copy of the signature as it was when signed, so changing your signature later never changes old approvals.
 
-## Proposed default roles (every club; the chairman can adjust later)
-| Role | Gets |
-|---|---|
-| Chairman | Everything, but finance view-only (as now). Can set other people's permissions. |
-| Vice-Chairman | Same as Chairman. |
-| Treasurer | All of Finance, Fees, Banking, Bar cash-up and reports, Members view, Rules & Documents. |
-| Secretary | Club Info, all of Members, Communications, Rules & Documents, AGM and voting, Events, Visitors, Bookings for others, Finance view. |
-| Club Captain | Leagues, Ladder, Tournaments, Courts, Events, Ops bookings, Bookings for others, Members view, Communications send. |
-| Bar Manager | All of Bar / POS. |
+## Notifications (in-app and email, sent from the SquashHub main address)
+- New request: every selected approver gets "Approval needed: {Topic}" with a link that opens the request.
+- Fully approved: the requester gets "Approved: {Topic}".
+- Declined: the requester gets "Declined: {Topic}" with the reason.
+- No reminders and no other automatic messages.
 
-"Full admin" stays available, but nobody receives it automatically any more.
-
-## How we change it safely
-1. **Snapshot first.** Every person's current rights are saved, so any one person can be restored with one click.
-2. **Review list before anything changes.** You get a list of every person showing their office, what they have now, what they would get, and anything they would lose that they actually used in the last 90 days, such as finance entries, approvals or tournament setup.
-3. **Change the role templates** (Chairman, Secretary, Club Captain) to the defaults above, and add Vice-Chairman, Treasurer and Bar Manager where missing.
-4. **Move each person** from "Full Admin" or a personal tick onto the role that matches their office, with extra single permissions only where the review shows they need them.
-5. **Club admin status:** keep it for one main administrator per club, chosen by you. Everyone else keeps their access through their role. Every club keeps at least one person who can set permissions.
-6. **Pilot at Riverside, then CSIR and Uitsig, then the rest**, a club at a time, each after your sign-off.
-7. **No messages** to committee members unless you approve them.
+## Rules
+- A request is **Approved** only when every selected approver has approved.
+- One decline sets the request to **Declined** straight away.
+- After it is decided, a request can't be changed. It can be viewed and downloaded as a PDF summary with all signatures.
+- Every step (created, viewed, approved, declined, withdrawn) is recorded with who did it and when.
+- This is a sign-off record only. It never posts or changes any transaction or balance by itself.
 
 ## Technical details
-- Changes are data updates to `club_permission_roles`, `club_member_permissions` and `club_members.role`, plus `seed_default_permission_roles` for new clubs. A snapshot table holds the earlier rows and drives a restore action.
-- Usage evidence for the review comes from the finance audit trail, journal entries, approvals and tournament or bar audit rows.
-- Who may set permissions doesn't change: admins and office bearers only, and the chairman can't change his own permissions.
+- Tables: `club_approval_requests` (club_id, requester member, topic, description, amount, status open/approved/declined/withdrawn, requester signature path, decided_at), `club_approval_approvers` (request, member, status, signature path, signed_at, decline_reason), `club_approval_attachments`, `club_approval_events` (append-only audit), `member_signatures` (one saved signature per member). Each table gets GRANTs and RLS, and every row is scoped by club_id.
+- The private storage bucket `club-approvals/<club>/<request>/…` keeps a snapshot copy of every signature. Storage policies mirror the table access rules.
+- `can_use_club_approvals(club)` limits access to office bearers and admins. Approvers come from current `club_offices`.
+- SECURITY DEFINER RPCs `approval_create`, `approval_sign`, `approval_decline`, `approval_withdraw` change the status atomically. Status is never written directly by the client.
+- Notifications use the existing in-app notification table and the platform email path (`PLATFORM_ORIGINATED_TYPES`), with idempotency keys per request and recipient.
+- Signature pad: a canvas component exporting PNG, with a file-upload fallback.
+- Tests cover the status rules (all must approve, one decline ends it, decided requests can't change) and the requester being excluded from approvers.
+- Record this module in `ARCHITECTURE.md`/`AGENTS.md` and the issue log.
+
+## Assumptions (tell me if any are wrong)
+- Every selected approver must approve. There is no "any 2 of 3" option.
+- Only office bearers and full admins can create requests or be chosen as approvers.
+- Decline is available as well as Approve.

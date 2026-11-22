@@ -124,14 +124,14 @@ export function SetupStepNav({
       </Button>
       {nextDisabled && nextHint ? (
         <p className="text-xs text-muted-foreground flex-1 text-right min-w-[200px]">{nextHint}</p>
-      ) : (
+      ) : i >= steps.length - 1 ? null : (
         <Button
           variant="outline"
           size="sm"
-          disabled={nextDisabled || i >= steps.length - 1}
+          disabled={nextDisabled}
           onClick={() => onChange(steps[i + 1].id)}
         >
-          Next: {steps[Math.min(i + 1, steps.length - 1)].label}
+          Next: {steps[i + 1].label}
           <ChevronRight className="w-3.5 h-3.5 ml-1" />
         </Button>
       )}

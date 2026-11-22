@@ -11736,6 +11736,12 @@ export type Database = {
           club_id: string | null
           club_member_id: string | null
           consent_at: string | null
+          consent_decided_at: string | null
+          consent_expires_at: string | null
+          consent_sent_at: string | null
+          consent_signed_name: string | null
+          consent_status: string
+          consent_token_hash: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -11744,6 +11750,7 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           decline_reason: string | null
+          filled_by: string | null
           gender: string | null
           id: string
           junior_name: string | null
@@ -11763,6 +11770,12 @@ export type Database = {
           club_id?: string | null
           club_member_id?: string | null
           consent_at?: string | null
+          consent_decided_at?: string | null
+          consent_expires_at?: string | null
+          consent_sent_at?: string | null
+          consent_signed_name?: string | null
+          consent_status?: string
+          consent_token_hash?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -11771,6 +11784,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           decline_reason?: string | null
+          filled_by?: string | null
           gender?: string | null
           id?: string
           junior_name?: string | null
@@ -11790,6 +11804,12 @@ export type Database = {
           club_id?: string | null
           club_member_id?: string | null
           consent_at?: string | null
+          consent_decided_at?: string | null
+          consent_expires_at?: string | null
+          consent_sent_at?: string | null
+          consent_signed_name?: string | null
+          consent_status?: string
+          consent_token_hash?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -11798,6 +11818,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           decline_reason?: string | null
+          filled_by?: string | null
           gender?: string | null
           id?: string
           junior_name?: string | null
@@ -22784,6 +22805,7 @@ export type Database = {
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
       _junior_age_group: { Args: { _dob: string }; Returns: string }
+      _junior_auto_confirm: { Args: { p_req: string }; Returns: undefined }
       _junior_band_n: { Args: { _g: string }; Returns: number }
       _junior_body: { Args: { _org: string }; Returns: boolean }
       _junior_body_clubs: {
@@ -22816,6 +22838,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      _junior_check_guardian: {
+        Args: {
+          p_consent: boolean
+          p_dob: string
+          p_filled_by: string
+          p_parent_email: string
+          p_parent_name: string
+          p_parent_phone: string
+        }
+        Returns: boolean
+      }
+      _junior_check_id: {
+        Args: { p_club: string; p_dob: string; p_except: string; p_id: string }
+        Returns: string
+      }
       _junior_gender_group: { Args: { _g: string }; Returns: string }
       _junior_link_org: { Args: { _token: string }; Returns: string }
       _junior_mark_player: {
@@ -22838,6 +22875,7 @@ export type Database = {
         Args: { _dob: string; _person: string }
         Returns: undefined
       }
+      _junior_send_consent: { Args: { p_req: string }; Returns: undefined }
       _junior_squads_can_manage: {
         Args: { _club_id: string; _org_id: string; _uid: string }
         Returns: boolean
@@ -25878,6 +25916,12 @@ export type Database = {
         Args: { p_confirmed: boolean; p_org: string }
         Returns: undefined
       }
+      junior_consent_decide: {
+        Args: { p_approve: boolean; p_name: string; p_token: string }
+        Returns: Json
+      }
+      junior_consent_resend: { Args: { p_request_id: string }; Returns: Json }
+      junior_consent_view: { Args: { p_token: string }; Returns: Json }
       junior_create_club: {
         Args: { _name: string; _provincial_id: string; _town?: string }
         Returns: string
@@ -25915,13 +25959,16 @@ export type Database = {
       }
       junior_join_claim: {
         Args: {
-          p_consent?: boolean
+          p_address: string
+          p_consent: boolean
           p_dob: string
+          p_filled_by: string
+          p_id_number: string
           p_member_id: string
           p_nsa_number: string
-          p_parent_email?: string
-          p_parent_name?: string
-          p_parent_phone?: string
+          p_parent_email: string
+          p_parent_name: string
+          p_parent_phone: string
           p_token: string
         }
         Returns: Json
@@ -25944,18 +25991,22 @@ export type Database = {
       }
       junior_join_register: {
         Args: {
+          p_address: string
           p_club_id: string
-          p_consent?: boolean
+          p_consent: boolean
           p_dob: string
-          p_email?: string
+          p_email: string
+          p_filled_by: string
           p_gender: string
+          p_id_number: string
           p_kind: string
           p_name: string
-          p_nsa_number?: string
-          p_parent_email?: string
-          p_parent_name?: string
-          p_parent_phone?: string
-          p_phone?: string
+          p_nsa_number: string
+          p_parent_email: string
+          p_parent_name: string
+          p_parent_phone: string
+          p_phone: string
+          p_skill_level: string
           p_token: string
         }
         Returns: Json

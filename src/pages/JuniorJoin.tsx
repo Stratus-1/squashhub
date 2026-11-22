@@ -22,15 +22,17 @@ import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { SEO } from "@/components/SEO";
 import { rememberJoinReturn } from "@/lib/tournaments/join-flow";
 import {
-  clearJuniorPending, guardianProblem, juniorDetailsProblem, juniorJoinPath, needsGuardian, readJuniorPending, saveJuniorPending,
-  type JuniorJoinKind, type JuniorPending,
+  clearJuniorPending, guardianProblem, idNumberProblem, juniorDetailsProblem, juniorJoinPath, needsGuardian, readJuniorPending, saveJuniorPending,
+  type JuniorFilledBy, type JuniorJoinKind, type JuniorPending,
 } from "@/lib/juniors/join-flow";
+import { dobFromSaId } from "@/lib/member-age";
+import { SKILL_LEVELS } from "@/hooks/use-club";
 
 type Club = { club_id: string; club_name: string };
 type Me = { member_id: string; name: string; club_name: string; pending: boolean };
 type Ctx = { found: boolean; name?: string; kind?: string; clubs?: Club[]; me?: Me[] };
 type Found = { member_id: string; display_name: string; has_login: boolean; nsa_on_file: boolean; pending: boolean };
-type Step = "club" | "search" | "details" | "account" | "check_email" | "working" | "done" | "awaiting" | "missing" | "missing_sent";
+type Step = "club" | "search" | "details" | "account" | "check_email" | "working" | "done" | "awaiting" | "consent_sent" | "missing" | "missing_sent";
 
 const db = supabase as any;
 
@@ -59,6 +61,11 @@ export default function JuniorJoin() {
   const [parentPhone, setParentPhone] = useState("");
   const [parentEmail, setParentEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [filledBy, setFilledBy] = useState<JuniorFilledBy | "">("");
+  const [idNumber, setIdNumber] = useState("");
+  const [address, setAddress] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
+  const [sentTo, setSentTo] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [haveLogin, setHaveLogin] = useState(false);
@@ -84,6 +91,7 @@ export default function JuniorJoin() {
     token, clubId, kind: kind!, memberId: picked?.member_id ?? null, nsaNumber: nsa.trim() || null,
     name: name.trim(), gender, dob, phone: phone.trim(), email: jEmail.trim().toLowerCase(),
     parentName: parentName.trim(), parentPhone: parentPhone.trim(), parentEmail: parentEmail.trim().toLowerCase(), consent,
+    filledBy: guardian ? filledBy : "", idNumber: idNumber.replace(/\D/g, ""), address: address.trim(), skillLevel,
     savedAt: Date.now(),
   });
 
@@ -95,7 +103,7 @@ export default function JuniorJoin() {
         const { data, error } = await db.rpc("junior_join_claim", {
           p_token: p.token, p_member_id: p.memberId, p_nsa_number: p.nsaNumber || null, p_dob: p.dob,
           p_parent_name: p.parentName || null, p_parent_phone: p.parentPhone || null, p_parent_email: p.parentEmail || null,
-          p_consent: !!p.consent,
+          p_consent: !!p.consent, p_filled_by: p.filledBy || null, p_id_number: p.idNumber || null, p_address: p.address || null,
         });
         if (error) throw error; res = data;
       } else {
@@ -103,13 +111,16 @@ export default function JuniorJoin() {
           p_token: p.token, p_club_id: p.clubId, p_kind: p.kind, p_name: p.name, p_gender: p.gender, p_dob: p.dob,
           p_phone: p.phone || null, p_email: p.email || null, p_parent_name: p.parentName || null,
           p_parent_phone: p.parentPhone || null, p_parent_email: p.parentEmail || null, p_consent: !!p.consent,
-          p_nsa_number: p.nsaNumber || null,
+          p_nsa_number: p.nsaNumber || null, p_id_number: p.idNumber || null, p_address: p.address || null,
+          p_skill_level: p.skillLevel || null, p_filled_by: p.filledBy || null,
         });
         if (error) throw error; res = data;
       }
       clearJuniorPending(p.token);
       setDoneName(p.kind === "claim" ? (picked?.display_name || "") : (p.name || ""));
-      setStep(res?.status === "pending_claim" ? "awaiting" : "done");
+      setSentTo(p.parentEmail || "");
+      const st = res?.status;
+      setStep(st === "pending_claim" ? "awaiting" : st === "awaiting_consent" || st === "linked_awaiting_consent" ? "consent_sent" : "done");
       load();
     } catch (e: any) {
       setErr(e?.message || "Something went wrong. Please try again.");
@@ -123,16 +134,17 @@ export default function JuniorJoin() {
     const p = readJuniorPending(token);
     if (!p) return;
     resumed.current = true;
-    setClubId(p.clubId); setKind(p.kind);
+    setClubId(p.clubId); setKind(p.kind); setFilledBy(p.filledBy || "");
     finish(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user?.id, ctx?.found, token]);
 
   const proceed = async () => {
     setErr(null);
+    const form = { name, gender, dob, phone, address, idNumber, parentName, parentPhone, parentEmail, filledBy, consent };
     const problem = kind === "claim"
-      ? guardianProblem({ dob, parentName, parentPhone, consent })
-      : juniorDetailsProblem({ name, gender, dob, parentName, parentPhone, consent });
+      ? (guardianProblem(form) || idNumberProblem(idNumber, dob))
+      : juniorDetailsProblem(form);
     if (problem) { setErr(problem); return; }
     if (user) { await finish(pendingFromForm()); return; }
     setStep("account");
@@ -195,22 +207,61 @@ export default function JuniorJoin() {
   const startOver = () => {
     setStep("club"); setClubId(""); setKind(null); setFound(null); setPicked(null); setQuery(""); setNsa("");
     setName(""); setGender(""); setDob(""); setPhone(""); setJEmail(""); setConsent(false); setErr(null);
+    setFilledBy(""); setIdNumber(""); setAddress(""); setSkillLevel("");
   };
 
   if (!ctx) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   const guardianFields = (
     <div className="space-y-2 rounded-md border border-border p-3">
+      {guardian && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium">Who is filling in this form?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(["parent", "player"] as const).map((v) => (
+              <Button key={v} type="button" size="sm" variant={filledBy === v ? "default" : "outline"} onClick={() => setFilledBy(v)}>
+                {v === "parent" ? "Parent or guardian" : "The player"}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="text-xs font-medium">Parent or guardian{guardian ? "" : " (optional from 18)"}</p>
       <div className="space-y-1.5"><Label className="text-xs">Name and surname</Label><Input value={parentName} onChange={(e) => setParentName(e.target.value)} /></div>
       <div className="space-y-1.5"><Label className="text-xs">Cell number</Label><Input inputMode="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} /></div>
-      <div className="space-y-1.5"><Label className="text-xs">Email (optional)</Label><Input type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} /></div>
-      {guardian && (
+      <div className="space-y-1.5">
+        <Label className="text-xs">Email{guardian && filledBy === "player" ? "" : " (optional)"}</Label>
+        <Input type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} />
+      </div>
+      {guardian && filledBy === "parent" && (
         <label className="flex items-start gap-2 text-xs">
           <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
           <span>I am this player's parent or guardian. I agree that {ctx.name} and the club may keep these details to register and organise junior squash.</span>
         </label>
       )}
+      {guardian && filledBy === "player" && (
+        <p className="text-[11px] text-muted-foreground">We'll email your parent or guardian a private link to give consent. They don't need to log in. You're confirmed as soon as they agree.</p>
+      )}
+    </div>
+  );
+
+  const onIdChange = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 13);
+    setIdNumber(digits);
+    const fromId = digits.length === 13 ? dobFromSaId(digits) : null;
+    if (fromId && !dob) setDob(fromId.toISOString().slice(0, 10));
+    if (digits.length === 13 && !gender && kind !== "claim") setGender(Number(digits[6]) >= 5 ? "male" : "female");
+  };
+  const idField = (
+    <div className="space-y-1.5">
+      <Label className="text-xs">Player's SA ID number (optional)</Label>
+      <Input inputMode="numeric" value={idNumber} maxLength={13} onChange={(e) => onIdChange(e.target.value)} />
+    </div>
+  );
+  const addressField = (optional: boolean) => (
+    <div className="space-y-1.5">
+      <Label className="text-xs">Home address{optional ? " (if the club doesn't have it)" : ""}</Label>
+      <Input value={address} placeholder="Street, town" onChange={(e) => setAddress(e.target.value)} />
     </div>
   );
 
@@ -231,12 +282,24 @@ export default function JuniorJoin() {
         <p className="text-xs text-muted-foreground">Open it on this device. It brings you back here and finishes the registration.</p>
       </div>
     );
+    if (step === "consent_sent") return (
+      <div className="space-y-3">
+        <p className="flex items-start gap-2">
+          <Clock className="mt-0.5 h-4 w-4 text-primary" />
+          <span>
+            {kind === "claim" ? `${doneName || "The player"} is linked to your login.` : `${doneName || "The player"} is registered.`}{" "}
+            We emailed {sentTo || "your parent or guardian"} a link to give consent.{kind === "claim" ? "" : " The player is confirmed as soon as they agree."}
+          </span>
+        </p>
+        <Button variant="outline" className="w-full" onClick={startOver}><Users className="mr-2 h-4 w-4" />Register another player</Button>
+      </div>
+    );
     if (step === "done" || step === "awaiting") return (
       <div className="space-y-3">
         <p className="flex items-start gap-2">
           {step === "done" ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" /> : <Clock className="mt-0.5 h-4 w-4 text-primary" />}
           {step === "done"
-            ? (kind === "claim" ? `${doneName || "The player"} is now linked to your login.` : `${doneName || "The player"} is registered. The club or association will confirm them.`)
+            ? (kind === "claim" ? `${doneName || "The player"} is now linked to your login.` : `${doneName || "The player"} is registered and confirmed${club ? ` at ${club.club_name}` : ""}.`)
             : "Thanks. The club or association will confirm that this profile belongs to you."}
         </p>
         <Button variant="outline" className="w-full" onClick={startOver}><Users className="mr-2 h-4 w-4" />Register another player</Button>
@@ -327,8 +390,10 @@ export default function JuniorJoin() {
                     <Input value={nsa} onChange={(e) => setNsa(e.target.value)} placeholder="Optional. Without it the club or association confirms" />
                   </div>
                 )}
-                {!picked.nsa_on_file && !picked.has_login && <p className="text-xs text-muted-foreground">The club or association will confirm this profile belongs to you.</p>}
+                {!picked.nsa_on_file && !picked.has_login && <p className="text-xs text-muted-foreground">If the club already has this player's date of birth and it matches, the profile links straight away. Otherwise the club or association confirms it.</p>}
                 {dobField}
+                {idField}
+                {addressField(true)}
                 {guardianFields}
                 <Button className="w-full" onClick={proceed}>Continue</Button>
               </div>
@@ -355,7 +420,7 @@ export default function JuniorJoin() {
         {club && step === "details" && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              {kind === "existing_unlisted" ? `Plays at ${club.club_name} but isn't on the list yet.` : `New junior at ${club.club_name}.`} The club or association will confirm the player.
+              {kind === "existing_unlisted" ? `Plays at ${club.club_name} but isn't on the list yet.` : `New junior at ${club.club_name}.`} Fill in the details the club needs for a member. The player is confirmed straight away (under 18: once a parent gives consent).
             </p>
             <div className="space-y-1.5"><Label className="text-xs">Player's first name and surname</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div className="space-y-1.5">
@@ -366,8 +431,17 @@ export default function JuniorJoin() {
               </Select>
             </div>
             {dobField}
-            <div className="space-y-1.5"><Label className="text-xs">Player's own cell (optional)</Label><Input inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+            {idField}
+            <div className="space-y-1.5"><Label className="text-xs">Player's own cell{guardian ? " (optional, the parent's cell is used)" : ""}</Label><Input inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
             <div className="space-y-1.5"><Label className="text-xs">Player's own email (optional)</Label><Input type="email" value={jEmail} onChange={(e) => setJEmail(e.target.value)} /></div>
+            {addressField(false)}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Skill level (optional)</Label>
+              <Select value={skillLevel} onValueChange={setSkillLevel}>
+                <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                <SelectContent>{SKILL_LEVELS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5"><Label className="text-xs">NSA number (optional)</Label><Input value={nsa} onChange={(e) => setNsa(e.target.value)} /></div>
             {guardianFields}
             <Button className="w-full" onClick={proceed}>Continue</Button>

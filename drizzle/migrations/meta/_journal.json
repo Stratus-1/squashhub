@@ -3459,6 +3459,13 @@
       "when": 1795386730978,
       "tag": "0493_junior_register_no_ladder",
       "breakpoints": true
+    },
+    {
+      "idx": 494,
+      "version": "7",
+      "when": 1795387844292,
+      "tag": "0494_junior_auto_confirm_parent_consent",
+      "breakpoints": true
     }
   ]
 }

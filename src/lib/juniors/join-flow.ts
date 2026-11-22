@@ -10,12 +10,20 @@
 
 export type JuniorJoinKind = "claim" | "existing_unlisted" | "new";
 
+/** Who is filling in the form. Under 18 a parent consents on the form; a player sends a consent link to the parent. */
+export type JuniorFilledBy = "parent" | "player";
+
 export interface JuniorForm {
   name?: string;
   gender?: string;
   dob?: string;
+  phone?: string;
+  address?: string;
+  idNumber?: string;
   parentName?: string;
   parentPhone?: string;
+  parentEmail?: string;
+  filledBy?: JuniorFilledBy | "";
   consent?: boolean;
 }
 
@@ -25,9 +33,8 @@ export interface JuniorPending extends JuniorForm {
   kind: JuniorJoinKind;
   memberId?: string | null;
   nsaNumber?: string | null;
-  phone?: string;
   email?: string;
-  parentEmail?: string;
+  skillLevel?: string;
   savedAt: number;
 }
 
@@ -62,7 +69,9 @@ export function needsGuardian(dobValue: string | null | undefined, today: Date =
   return !dob || ageOn(dob, today) < 18;
 }
 
-/** Same checks as `_junior_check_details`: real past date, under 100, guardian details under 18. */
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** Same checks as `_junior_check_guardian`: real past date, under 100, guardian details under 18. */
 export function guardianProblem(f: JuniorForm, today: Date = new Date()): string | null {
   const dob = parseDob(f.dob);
   if (!dob) return "Please enter the player's date of birth.";
@@ -73,17 +82,39 @@ export function guardianProblem(f: JuniorForm, today: Date = new Date()): string
     if ((f.parentName ?? "").trim().length < 3 || (f.parentPhone ?? "").replace(/\D/g, "").length < 9) {
       return "A parent or guardian's name and cell number are needed for players under 18.";
     }
-    if (!f.consent) return "A parent or guardian must give consent for players under 18.";
+    if (f.filledBy !== "parent" && f.filledBy !== "player") return "Please say who is filling in the form.";
+    if (f.filledBy === "parent" && !f.consent) return "A parent or guardian must give consent for players under 18.";
+    if (f.filledBy === "player" && !EMAIL_RE.test((f.parentEmail ?? "").trim())) {
+      return "Please enter your parent or guardian's email so they can give consent.";
+    }
   }
   return null;
 }
 
-/** New / unlisted junior: first name + surname, boy or girl, then the guardian rules. */
+/** Optional SA ID: 13 digits whose first six match the birth date (same as `_junior_check_id`). */
+export function idNumberProblem(id: string | null | undefined, dobValue: string | null | undefined): string | null {
+  const digits = (id ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length !== 13) return "An SA ID number has 13 digits.";
+  const dob = parseDob(dobValue);
+  if (dob) {
+    const yymmdd = `${String(dob.getUTCFullYear()).slice(2)}${String(dob.getUTCMonth() + 1).padStart(2, "0")}${String(dob.getUTCDate()).padStart(2, "0")}`;
+    if (digits.slice(0, 6) !== yymmdd) return "The ID number does not match the date of birth.";
+  }
+  return null;
+}
+
+/** New / unlisted junior: the normal member details (name, boy or girl, cell, address, optional SA ID) plus the guardian rules. */
 export function juniorDetailsProblem(f: JuniorForm, today: Date = new Date()): string | null {
   const name = (f.name ?? "").trim().replace(/\s+/g, " ");
   if (!name.includes(" ") || name.length < 4) return "Please enter the player's first name and surname.";
   if (f.gender !== "male" && f.gender !== "female") return "Please choose boy or girl.";
-  return guardianProblem(f, today);
+  const guardian = guardianProblem(f, today);
+  if (guardian) return guardian;
+  const cell = (f.phone ?? "").replace(/\D/g, "") || (f.parentPhone ?? "").replace(/\D/g, "");
+  if (cell.length < 9) return "Please enter a cell number.";
+  if ((f.address ?? "").trim().length < 5) return "Please enter the player's home address.";
+  return idNumberProblem(f.idNumber, f.dob);
 }
 
 export function saveJuniorPending(p: JuniorPending, store: Storage = localStorage): void {
@@ -109,5 +140,5 @@ export function clearJuniorPending(token: string, store: Storage = localStorage)
 /** WhatsApp message leaders send to their juniors. */
 export function juniorLinkShareText(bodyName: string, url: string): string {
   return `${bodyName}: please register as a junior squash player on SquashHub. ` +
-    `Choose your club, find your name (or add yourself) and a parent confirms the details.\n${url}`;
+    `Choose your club, find your name (or add yourself). Players under 18 need a parent's consent.\n${url}`;
 }

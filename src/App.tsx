@@ -86,6 +86,7 @@ const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
 const TournamentGroupAction = lazy(() => import("./pages/TournamentGroupAction"));
 const TournamentJoin = lazy(() => import("./pages/TournamentJoin"));
 const JuniorJoin = lazy(() => import("./pages/JuniorJoin"));
+const JuniorConsent = lazy(() => import("./pages/JuniorConsent"));
 
 const MobileBillingBridge = lazy(() => import("./pages/MobileBillingBridge"));
 const MobileCheckout = lazy(() => import("./pages/MobileCheckout"));
@@ -658,6 +659,7 @@ function AppRoutes() {
         <Route path="/c/:subdomain/t/:champId/join" element={<TournamentJoin />} />
         {/* Junior association registration link */}
         <Route path="/j/:token" element={<JuniorJoin />} />
+        <Route path="/junior-consent/:token" element={<JuniorConsent />} />
 
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/updates" element={<ProtectedRoute><Updates /></ProtectedRoute>} />

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { Check, Copy, Link2, Loader2, MessageCircle, RefreshCw, ShieldCheck, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, Copy, Link2, Loader2, Mail, MessageCircle, RefreshCw, ShieldCheck, X, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,8 @@ const SITE = "https://squashhub.co.za";
 type Req = {
   id: string; kind: "claim" | "new" | "existing_unlisted" | "missing_club"; club_name: string | null; junior_name: string | null;
   gender: string | null; age_group: string | null; parent_name: string | null; parent_phone: string | null; parent_email: string | null;
-  consent: boolean; nsa_number: string | null; missing_club_name: string | null; missing_club_town: string | null;
+  consent: boolean; consent_status: "not_needed" | "given" | "awaiting" | "declined"; filled_by: "parent" | "player" | null;
+  consent_signed_name: string | null; consent_decided_at: string | null; consent_sent_at: string | null; auto: boolean; nsa_number: string | null; missing_club_name: string | null; missing_club_town: string | null;
   contact_name: string | null; contact_phone: string | null; contact_email: string | null;
   status: "pending" | "approved" | "declined" | "linked"; decided_by: string | null; decided_at: string | null;
   decline_reason: string | null; via: string | null; created_at: string;
@@ -108,7 +109,7 @@ export function JuniorRegistrationsTab({ clubId }: { clubId: string }) {
             <p className="text-muted-foreground">Confirm the club list first.</p>
           ) : !url ? (
             <div className="space-y-2">
-              <p className="text-muted-foreground">Create one link for all your juniors. They choose their club, find their name or add themselves, and a parent confirms the details.</p>
+              <p className="text-muted-foreground">Create one link for all your juniors. They choose their club, find their name or add themselves, and are confirmed straight away. Players under 18 need a parent's consent.</p>
               <Button disabled={run.isPending} onClick={() => run.mutate(() => db.rpc("junior_link_create", { p_org: orgId }))}><Link2 className="mr-2 h-4 w-4" />Create link</Button>
             </div>
           ) : (
@@ -159,21 +160,38 @@ export function JuniorRegistrationsTab({ clubId }: { clubId: string }) {
                   </p>
                 </div>
                 <Badge variant={r.status === "pending" ? "secondary" : r.status === "declined" ? "destructive" : "default"}>
-                  {r.status === "pending" ? "To review" : r.status === "declined" ? "Declined" : r.status === "linked" ? "Linked" : r.kind === "missing_club" ? "Done" : "Approved"}
+                  {r.status === "pending" ? (r.consent_status === "awaiting" && r.kind !== "claim" ? "Waiting for parent" : "To review")
+                    : r.status === "declined" ? "Declined" : r.status === "linked" ? "Linked" : r.kind === "missing_club" ? "Done" : r.auto ? "Confirmed automatically" : "Approved"}
                 </Badge>
               </div>
               {(r.parent_name || r.contact_name) && (
                 <p className="text-xs">
                   {r.kind === "missing_club" ? "Asked by " : "Parent/guardian: "}
                   {r.parent_name || r.contact_name} · {r.parent_phone || r.contact_phone}{(r.parent_email || r.contact_email) ? ` · ${r.parent_email || r.contact_email}` : ""}
-                  {r.kind !== "missing_club" && (r.consent ? " · consent given" : "")}
                 </p>
+              )}
+              {r.kind !== "missing_club" && r.consent_status !== "not_needed" && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className={r.consent_status === "declined" ? "text-destructive" : r.consent_status === "given" ? "" : "text-muted-foreground"}>
+                    {r.consent_status === "given"
+                      ? `Consent given${r.consent_signed_name ? ` by ${r.consent_signed_name}` : ""}${r.filled_by === "player" ? " through the email link" : " on the form"}${r.consent_decided_at ? ` on ${fmt(r.consent_decided_at)}` : ""}`
+                      : r.consent_status === "declined"
+                        ? `Parent declined consent${r.consent_signed_name ? ` (${r.consent_signed_name})` : ""}`
+                        : `Waiting for parent consent${r.consent_sent_at ? ` · emailed ${fmt(r.consent_sent_at)}` : ""}`}
+                  </span>
+                  {r.consent_status === "awaiting" && r.status !== "declined" && (
+                    <Button size="sm" variant="outline" className="h-7" disabled={run.isPending}
+                      onClick={() => run.mutate(() => db.rpc("junior_consent_resend", { p_request_id: r.id }), { onSuccess: () => toast.success("Consent email sent again") })}>
+                      <Mail className="mr-1 h-3.5 w-3.5" />Resend
+                    </Button>
+                  )}
+                </div>
               )}
               {r.status === "declined" && r.decline_reason && <p className="text-xs text-muted-foreground">Reason: {r.decline_reason}</p>}
               {r.decided_by && r.status !== "pending" && <p className="text-xs text-muted-foreground">{r.status === "declined" ? "Declined" : "Decided"} by {r.decided_by} on {fmt(r.decided_at)}</p>}
               {r.status === "pending" && (
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button size="sm" disabled={run.isPending} onClick={() => decide(r, true)}><Check className="mr-1 h-3.5 w-3.5" />{r.kind === "missing_club" ? "Mark done" : "Approve"}</Button>
+                  <Button size="sm" disabled={run.isPending || (r.consent_status === "awaiting" && r.kind !== "claim")} onClick={() => decide(r, true)}><Check className="mr-1 h-3.5 w-3.5" />{r.kind === "missing_club" ? "Mark done" : "Approve"}</Button>
                   <Button size="sm" variant="outline" disabled={run.isPending} onClick={() => { setDeclining(r); setReason(""); }}><X className="mr-1 h-3.5 w-3.5" />Decline</Button>
                 </div>
               )}

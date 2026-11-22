@@ -244,3 +244,6 @@
 - [x] Junior registrations inbox (club admins or association leaders approve; DOB required; parent details + consent for under-18s).
 - [ ] Live use waits on Vian: confirm each body's club list, add leaders, create links. Mpumalanga West has only 1 club and no club-list editor for regional bodies yet.
 - [ ] PAUSED by Willem (23 Nov): review association office bearers and resulting permissions; suggestions only.
+- [x] Junior link: automatic confirmation, full member details, parent consent on the form or via a private no-login email link (0494).
+- [ ] Junior consent by WhatsApp as well as email — waits on Willem's answer.
+- [ ] Association office-bearer roles/permissions review — paused by Willem.

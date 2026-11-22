@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ageOn, guardianProblem, isJuniorToken, juniorDetailsProblem, needsGuardian, parseDob, readJuniorPending, saveJuniorPending,
+  ageOn, guardianProblem, idNumberProblem, isJuniorToken, juniorDetailsProblem, needsGuardian, parseDob, readJuniorPending, saveJuniorPending,
 } from "../join-flow";
 import { isSafeJoinPath } from "@/lib/tournaments/join-flow";
 
@@ -29,8 +29,31 @@ describe("junior registration link", () => {
     const u18 = { dob: "2014-05-01" };
     expect(needsGuardian(u18.dob, today)).toBe(true);
     expect(guardianProblem(u18, today)).toMatch(/parent or guardian's name/);
-    expect(guardianProblem({ ...u18, parentName: "Anna Venter", parentPhone: "082 555 1234" }, today)).toMatch(/consent/);
-    expect(guardianProblem({ ...u18, parentName: "Anna Venter", parentPhone: "082 555 1234", consent: true }, today)).toBeNull();
+    const parent = { ...u18, parentName: "Anna Venter", parentPhone: "082 555 1234" };
+    expect(guardianProblem(parent, today)).toMatch(/who is filling in/);
+    expect(guardianProblem({ ...parent, filledBy: "parent" }, today)).toMatch(/consent/);
+    expect(guardianProblem({ ...parent, filledBy: "parent", consent: true }, today)).toBeNull();
+  });
+
+  it("a player under 18 filling in the form must give the parent's email for the consent link", () => {
+    const f = { dob: "2014-05-01", parentName: "Anna Venter", parentPhone: "082 555 1234", filledBy: "player" as const };
+    expect(guardianProblem(f, today)).toMatch(/parent or guardian's email/);
+    expect(guardianProblem({ ...f, parentEmail: "anna@example" }, today)).toMatch(/email/);
+    expect(guardianProblem({ ...f, parentEmail: "anna@example.com" }, today)).toBeNull();
+  });
+
+  it("new juniors give a cell number and home address like a normal member", () => {
+    const f = { name: "Liam Venter", gender: "male", dob: "2008-01-01" };
+    expect(juniorDetailsProblem(f, today)).toMatch(/cell number/);
+    expect(juniorDetailsProblem({ ...f, phone: "082 555 1234" }, today)).toMatch(/home address/);
+    expect(juniorDetailsProblem({ ...f, phone: "082 555 1234", address: "12 Main Road, Nelspruit" }, today)).toBeNull();
+  });
+
+  it("an SA ID number is optional but must have 13 digits and match the birth date", () => {
+    expect(idNumberProblem("", "2014-05-01")).toBeNull();
+    expect(idNumberProblem("140501", "2014-05-01")).toMatch(/13 digits/);
+    expect(idNumberProblem("1405025800085", "2014-05-01")).toMatch(/does not match/);
+    expect(idNumberProblem("1405015800085", "2014-05-01")).toBeNull();
   });
 
   it("does not ask for a parent from 18", () => {
@@ -42,7 +65,7 @@ describe("junior registration link", () => {
     const ok = { dob: "2008-01-01" };
     expect(juniorDetailsProblem({ ...ok, name: "Liam", gender: "male" }, today)).toMatch(/surname/);
     expect(juniorDetailsProblem({ ...ok, name: "Liam Venter" }, today)).toMatch(/boy or girl/);
-    expect(juniorDetailsProblem({ ...ok, name: "Liam Venter", gender: "male" }, today)).toBeNull();
+    expect(juniorDetailsProblem({ ...ok, name: "Liam Venter", gender: "male", phone: "0825551234", address: "1 Oak Street" }, today)).toBeNull();
   });
 
   it("only real junior links are safe return paths", () => {

@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  approverOptions, isWaitingForMe, STATUS_LABEL,
+  approverOptions, isWaitingForMe, officeLabel, STATUS_LABEL,
   type ApprovalRequest, type EligibleMember, type RequestStatus,
 } from "@/lib/approvals";
 import { SignaturePad, dataUrlToBlob, type SignatureValue } from "./SignaturePad";
@@ -278,7 +278,7 @@ function RequestDetail({ r, mine, savedUrl, onBack, storeSignature, onChanged }:
         {r.approvers.map((a) => (
           <div key={a.id} className="rounded-lg border p-3 flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium">{a.name}{a.office ? <span className="text-muted-foreground font-normal"> · {a.office}</span> : null}</p>
+              <p className="text-sm font-medium">{a.name}{a.office ? <span className="text-muted-foreground font-normal"> · {officeLabel(a.office)}</span> : null}</p>
               <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                 {a.status === "approved" ? <><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Approved {a.signed_at && format(new Date(a.signed_at), "d MMM yyyy, HH:mm")}{a.signed_via === "email link" ? " (via email)" : ""}</>
                   : a.status === "declined" ? <><XCircle className="w-3.5 h-3.5 text-destructive" /> Declined: {a.decline_reason}</>
@@ -423,7 +423,7 @@ function NewRequestDialog({ clubId, mine, savedUrl, storeSignature, onClose, onC
                   <label key={m.member_id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                     <Checkbox checked={approvers.includes(m.member_id)}
                       onCheckedChange={(v) => setApprovers((p) => v ? [...p, m.member_id] : p.filter((x) => x !== m.member_id))} />
-                    <span className="flex-1">{m.name}<span className="text-muted-foreground"> · {m.office || (m.is_admin ? "Club admin" : "")}</span></span>
+                    <span className="flex-1">{m.name}<span className="text-muted-foreground"> · {officeLabel(m.office) || (m.is_admin ? "Club admin" : "")}</span></span>
                     {!m.has_email && <span className="text-[10px] text-muted-foreground">in-app only</span>}
                   </label>
                 ))}

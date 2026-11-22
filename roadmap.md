@@ -230,6 +230,6 @@
 - [x] Nelspruit: Susan Chairman, Rachel Treasurer, Vian Crafford Club Captain (captain rights only, booking rights kept — owner decision 22 Nov 2026)
 
 ## Committee approval requests (22 Nov 2026)
-- [ ] Approvals module (requests, approvers, signatures, attachments, audit) in Club Admin
-- [ ] In-app + email notifications from SquashHub main sender
-- [ ] Private email link per approver: view request, files, sign/approve or decline without logging in
+- [x] Approvals module (requests, approvers, signatures, attachments, audit) in Club Admin
+- [x] In-app + email notifications from SquashHub main sender
+- [x] Private email link per approver: view request, files, sign/approve or decline without logging in

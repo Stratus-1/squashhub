@@ -41,3 +41,9 @@ export function canEdit(status: RequestStatus): boolean {
 export const STATUS_LABEL: Record<RequestStatus, string> = {
   open: "Waiting", approved: "Approved", declined: "Declined", withdrawn: "Withdrawn",
 };
+
+/** "vice_chair" → "Vice chair"; "chairman, treasurer" → "Chairman, Treasurer". */
+export function officeLabel(office: string | null | undefined): string {
+  if (!office) return "";
+  return office.split(",").map((o) => { const t = o.trim().replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); }).join(", ");
+}

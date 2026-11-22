@@ -4852,3 +4852,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 NSA fees: one source of truth
 - NSA rates were stored twice: NSA's own schedule (`association_fee_items`) and typed copies in each club's `club_fees_payable` (seeded by `seed_nsa_payable_fees`, R2,600/team — wrong; owner confirmed 2026 = R1,600/team).
 - Fix: migration 0472 stops the trigger copying NSA rates (SSA starter row unchanged); all 94 club NSA copies (47 clubs, member + team) set inactive with a "[Switched off 22 Nov 2026 … own schedule.]" note (not deleted); `isRetiredCopy` hides them on the Fees page and from "Copy previous year". Clubs see NSA's rates under "Billed by association". No member charges, balances or batches changed; Riverside's pending 2027 test batch (9 × R2,600, raised 4 Sep) left untouched.
+
+### 2026-11-22 — SSA club fees moved to one source
+- Symptom: Squash South Africa's 2027 club fees came from SSA's own schedule, but 2026 still lived in 49 typed per-club copies (R300/member, Riverside also R330).
+- Fix: migration 0473 adds SSA 2026 R300/member to `national_body_fee_schedule` and stops `seed_nsa_payable_fees` seeding SSA copies; the per-member SSA copies were switched off (not deleted) with the retired-copy marker. Gordons Bay's R1,400 per-club row left active pending owner review. Member-side `national_body_fees` (what members are charged) untouched.

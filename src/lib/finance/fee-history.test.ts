@@ -50,3 +50,15 @@ describe("fees payable by the club per season", () => {
     expect(isPayableSeasonLocked(2027, 2026)).toBe(false);
   });
 });
+
+describe("switched-off club copies of association rates", () => {
+  it("hides an NSA copy switched off because NSA's own schedule now sets the rate", async () => {
+    const { isRetiredCopy } = await import("./payable-schedule");
+    expect(isRetiredCopy({ active: false, notes: "NSA 2026 League fees @ R2600 per team. [Switched off 22 Nov 2026: NSA rates come from NSA's own schedule.]" })).toBe(true);
+  });
+  it("keeps a club's own fee that an admin merely paused", async () => {
+    const { isRetiredCopy } = await import("./payable-schedule");
+    expect(isRetiredCopy({ active: false, notes: "Paused for now" })).toBe(false);
+    expect(isRetiredCopy({ active: true, notes: "[Switched off 22 Nov 2026: NSA rates come from NSA's own schedule.]" })).toBe(false);
+  });
+});

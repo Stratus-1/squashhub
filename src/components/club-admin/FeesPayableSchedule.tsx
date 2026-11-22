@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2, Copy, Lock } from "lucide-react";
 import { useClubCurrency } from "@/hooks/use-currency";
-import { coveredPayableIds, isPayableSeasonLocked, payableSeasons } from "@/lib/finance/payable-schedule";
+import { coveredPayableIds, isPayableSeasonLocked, isRetiredCopy, payableSeasons } from "@/lib/finance/payable-schedule";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -110,9 +110,9 @@ export function FeesPayableSchedule({ clubId, season: seasonProp, onSeasonChange
     },
   });
 
-  const seasons = useMemo(() => payableSeasons(thisYear, allFees.map((f) => f.season_year)), [thisYear, allFees]);
+  const seasons = useMemo(() => payableSeasons(thisYear, allFees.filter((f) => !isRetiredCopy(f)).map((f) => f.season_year)), [thisYear, allFees]);
 
-  const seasonFees = allFees.filter((f) => f.season_year === season);
+  const seasonFees = allFees.filter((f) => f.season_year === season && !isRetiredCopy(f));
   const covered = coveredPayableIds(seasonFees, assocStatement, nationalStatement, assocRows, nbLinks);
   const fees = seasonFees.filter((f) => !covered.has(f.id));
 
@@ -129,7 +129,7 @@ export function FeesPayableSchedule({ clubId, season: seasonProp, onSeasonChange
   ];
 
   // Rows from the previous season that would still be needed this season.
-  const prevFees = allFees.filter((f) => f.season_year === season - 1);
+  const prevFees = allFees.filter((f) => f.season_year === season - 1 && !isRetiredCopy(f));
   const prevCovered = coveredPayableIds(prevFees, assocStatement, nationalStatement, assocRows, nbLinks);
   const copyable = prevFees.filter((f) => !prevCovered.has(f.id));
   const canCopy = !locked && seasonFees.length === 0 && copyable.length > 0;

@@ -3305,6 +3305,13 @@
       "when": 1795336409793,
       "tag": "0471_fee_year_audit_trail",
       "breakpoints": true
+    },
+    {
+      "idx": 472,
+      "version": "7",
+      "when": 1795337403498,
+      "tag": "0472_stop_copying_nsa_fees_into_clubs",
+      "breakpoints": true
     }
   ]
 }

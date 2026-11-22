@@ -62,3 +62,10 @@ export function payableSeasons(thisYear: number, rowSeasons: number[]): number[]
 
 /** Past seasons are a read-only record. */
 export const isPayableSeasonLocked = (season: number, thisYear: number) => season < thisYear;
+
+/** Marker on club rows retired because the body's own schedule now supplies the rate. */
+export const RETIRED_COPY_MARKER = "own schedule.]";
+
+/** A switched-off club copy of a rate the association now sets itself: hidden and never copied forward. */
+export const isRetiredCopy = (f: { active: boolean; notes?: string | null }) =>
+  !f.active && !!f.notes && f.notes.includes("[Switched off") && f.notes.includes(RETIRED_COPY_MARKER);

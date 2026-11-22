@@ -4848,3 +4848,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-22 Fees by year (audit trail)
 - Club Admin → Fees: year dropdown on "Fees payable to the club" (history from `club_fee_rate_history`, 2026 baseline, edit dialog asks which year a new amount is for) and on "Fees payable by the club" (one shared season for Affiliation billing + Fees Payable Schedule; association/national-body set rates shown read-only; copy previous season's rows). Existing payable rows backfilled to 2026. Migration 0471. No amounts or member charges changed.
+
+### 2026-11-22 NSA fees: one source of truth
+- NSA rates were stored twice: NSA's own schedule (`association_fee_items`) and typed copies in each club's `club_fees_payable` (seeded by `seed_nsa_payable_fees`, R2,600/team — wrong; owner confirmed 2026 = R1,600/team).
+- Fix: migration 0472 stops the trigger copying NSA rates (SSA starter row unchanged); all 94 club NSA copies (47 clubs, member + team) set inactive with a "[Switched off 22 Nov 2026 … own schedule.]" note (not deleted); `isRetiredCopy` hides them on the Fees page and from "Copy previous year". Clubs see NSA's rates under "Billed by association". No member charges, balances or batches changed; Riverside's pending 2027 test batch (9 × R2,600, raised 4 Sep) left untouched.

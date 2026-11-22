@@ -142,7 +142,7 @@
 - [x] In-app entry path requires doubles partner before payment
 
 ## Junior workspaces (19 Nov)
-- [x] Workspaces for Northerns Junior Squash + 4 provincial junior associations (admins still to be named by Willem)
+- [x] Workspaces for Northerns Junior Squash + 4 provincial junior associations (Vian Crafford admin of zone + all junior provincial/regional workspaces, 22 Nov 2026)
 - [x] Junior tree in those workspaces: bring in / move / remove clubs, create a new club
 - [x] Separate icon colours for clubs, regional associations, provincial associations and zones (workspace switcher / left menu)
 

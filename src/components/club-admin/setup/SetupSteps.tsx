@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { createContext, useContext } from "react";
 
@@ -11,7 +12,21 @@ export interface SetupStep {
   label: string;
   /** Plain-language explanation of what happens on this page */
   description: string;
+  /** Optional hover tooltip on the tab label itself */
+  tooltip?: string;
   complete?: boolean;
+}
+
+function StepLabel({ step }: { step: SetupStep }) {
+  if (!step.tooltip) return <>{step.label}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="underline decoration-dotted decoration-current/50 underline-offset-2">{step.label}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-xs">{step.tooltip}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 /**
@@ -33,6 +48,7 @@ export function SetupSteps({
   const presentation = variant ?? (clubAdminPresentation ? "connected" : "pills");
   const current = steps.find((s) => s.id === value) ?? steps[0];
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="space-y-2">
       {presentation === "connected" ? (
         <div className="overflow-hidden rounded-md border bg-card">
@@ -45,7 +61,7 @@ export function SetupSteps({
                   active ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : s.complete ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}>
                 <span className="flex size-4 shrink-0 items-center justify-center text-[11px]">{s.complete ? <Check className="size-3.5" /> : i + 1}</span>
-                {s.label}
+                <StepLabel step={s} />
               </Button>;
             })}
           </div>
@@ -78,7 +94,7 @@ export function SetupSteps({
               >
                 {s.complete ? <Check className="w-2.5 h-2.5" /> : i + 1}
               </span>
-              {s.label}
+              <StepLabel step={s} />
             </button>
           );
         })}
@@ -92,6 +108,7 @@ export function SetupSteps({
         </p>
       )}
     </div>
+    </TooltipProvider>
   );
 }
 

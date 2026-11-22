@@ -275,7 +275,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   };
 
   const steps: SetupStep[] = [
-    { id: "receivable", label: "Fees payable to the club", description: "Fees your club charges members — membership, league and national body levies.", complete: fees.length > 0 },
+    { id: "receivable", label: "Fees payable to the club", tooltip: "Your club's own fee structure — the fees you charge your members.", description: "Fees your club charges members — membership, league and national body levies.", complete: fees.length > 0 },
     { id: "payable", label: "Fees payable by the club", description: "What the club owes onward to associations and national bodies.", complete: true },
   ];
 

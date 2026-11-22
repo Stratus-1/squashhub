@@ -2293,7 +2293,7 @@ export default function LeagueGameDetail() {
     const _fxStartTime: string | undefined = (fixture as any)?.start_time;
     const _todayStr = format(new Date(), "yyyy-MM-dd");
     const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
-    const wouldFinalize = !!(adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig));
+    const wouldFinalize = !!(adminOverride || (canManageLeagueResults && isFixtureSameDayOrPast) || (homeSig && awaySig));
     if (wouldFinalize && !adminOverride) {
       // Doubles sub rules: block a final result with a sub the league doesn't allow.
       for (let i = 0; i < positions.length; i++) {
@@ -2400,9 +2400,9 @@ export default function LeagueGameDetail() {
         // A full scorecard submission is authoritative again — release any
         // previous admin manual-total override.
         totals_locked: false,
-        status: (adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig)) ? "submitted" : "draft",
-        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
-        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
+        status: (adminOverride || (canManageLeagueResults && isFixtureSameDayOrPast) || (homeSig && awaySig)) ? "submitted" : "draft",
+        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (canManageLeagueResults && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
+        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (canManageLeagueResults && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
         submitted_by: user.id, submitted_at: new Date().toISOString(),
         match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });
@@ -2874,6 +2874,9 @@ export default function LeagueGameDetail() {
   // Bonus-point (original players) adjustments and recalculated-points saves
   // follow the same authority as editing submitted scores.
   const canAdjustLeaguePoints = isClubAdmin || canEditSubmittedScores;
+  // Full league result authority (owner request 22 Nov 2026): club admins and
+  // Leagues-permission holders (e.g. Club Captain) for their own club's fixtures.
+  const canManageLeagueResults = canAdjustLeaguePoints;
   const canEditLineup = !isSubmitted && !md && !isMarkOnly && (isClubAdmin || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission);
   /**
    * Per-rubber edit authority.
@@ -2886,7 +2889,7 @@ export default function LeagueGameDetail() {
     const isCaptain = side === "home" ? isHomeCaptain : isAwayCaptain;
     return rubberEditRights({
       hasPlay: rubberHasPlay(pos),
-      isClubAdmin,
+      isClubAdmin: canManageLeagueResults,
       isCaptain: !isMarkOnly && (isCaptain || isHomeCaptain || isAwayCaptain || hasFixtureSetupPermission),
       isViewMode,
     });
@@ -4027,7 +4030,7 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {!isSubmittedLocked && isFixturePast && isClubAdmin && (
+        {!isSubmittedLocked && isFixturePast && canManageLeagueResults && (
           <div className="rounded-md border-2 border-amber-500/60 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
             <div className="font-bold mb-1">Overdue fixture — admin entry</div>
             <p className="leading-snug">This match date has passed and no results were submitted. As an admin, you can enter scores below and submit on behalf of the captains.</p>
@@ -4052,7 +4055,7 @@ export default function LeagueGameDetail() {
               {isSubmittedLocked ? "Adjust Final Score" : "Enter Final Score Manually"}
             </Button>
 
-            {isClubAdmin && fixtureId && (
+            {canManageLeagueResults && fixtureId && (
               <Button
                 size="sm"
                 variant="outline"
@@ -4322,7 +4325,7 @@ export default function LeagueGameDetail() {
         />
       )}
 
-      {isClubAdmin && fixtureId && (
+      {canManageLeagueResults && fixtureId && (
         <LadderImpactPreview
           open={ladderPreviewOpen}
           onOpenChange={setLadderPreviewOpen}

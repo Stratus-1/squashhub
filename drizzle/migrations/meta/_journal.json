@@ -3403,6 +3403,13 @@
       "when": 1795348612035,
       "tag": "0485_office_vice_chair_mapping",
       "breakpoints": true
+    },
+    {
+      "idx": 486,
+      "version": "7",
+      "when": 1795349993133,
+      "tag": "0486_league_participant_correction_leagues_permission",
+      "breakpoints": true
     }
   ]
 }

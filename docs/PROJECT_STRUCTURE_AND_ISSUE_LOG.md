@@ -4875,3 +4875,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Migration 0478 retargeted 72 functions and ~100 policies in place (reads → `<area>.view`, writes → part), added `is_club_finance_part_writer` journal/bank/fee policies, `can_comms_part` (templates/send), `can_manage_agm`, `can_manage_club_bookings`, `documents` in `can_manage_club_documents`, and a members guard requiring `members.status` to suspend/resign/reinstate. 0477 is an empty placeholder (comment only).
 - UI: grouped `PermissionPicker` in both permission windows; Club Admin tiles open for any part; Finance, Bar, Members, Tournaments (setup/results/paid), Communications and Bookings screens hide or disable actions the person lacks.
 - Not covered: the dormant shadow capability model (`has_cap`, `club_permission_settings.new_permissions_enabled`) is untouched.
+
+### 2026-11-22 CSIR deleted test lines removed from audit trail
+- Willem asked to remove CSIR deleted test transactions dated 5 Oct 2026 and earlier. Removed 24 `club_journal_entry_changes` delete records (14 Jul, 23 Sep, 5 Oct); live ledger and balances untouched. 18 deleted lines from 9 Nov remain.

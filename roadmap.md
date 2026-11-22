@@ -209,3 +209,7 @@
 - [x] Split Finance, Bar/POS, Members, Tournaments, Communications into main areas with sub-permissions; add Documents, AGM, Bookings for others. Existing whole-area grants keep full access.
 - [x] Enforce sub-permissions in background checks (migration 0478) and on screens. Not yet tried with a real part-only login end to end.
 - [x] Who may hand out permissions: unchanged (admins + office bearers; chairman not own) — Willem confirmed.
+
+## Requests 22 Nov 2026
+- [ ] Full admin: replace with office-bearer default roles (plan awaiting Willem review)
+- [x] CSIR: removed 24 deleted test lines dated 5 Oct 2026 and earlier from the audit trail

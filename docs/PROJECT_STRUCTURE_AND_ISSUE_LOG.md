@@ -4896,3 +4896,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 — Vice-Chair office not mapped to Vice-Chairman role (CSIR office-role move)
 - `club_offices` stores `vice_chair`, but `office_to_role_name` only matched `vice-chairman`, so recorded Vice-Chairs got no proposed role. Migration 0485 adds the `vice-chair` mapping.
 - CSIR moved from Full Admin to office roles with owner sign-off: Grant Williams Chairman, Herman Claassen Vice-Chairman, Willem Pretorius Secretary (Super Admin stays global), Grantham Daniels Club Captain, Ilana Carstens Treasurer; Zelda Van Heerden no office (booking permissions kept). Pre-change snapshot saved.
+
+### 2026-11-22 — Uitsig moved from Full Admin to office roles (owner sign-off)
+- Reinhardt Falk Chairman, Zelda Coetzee Vice-Chairman, Deon Groenewald Treasurer + full Bar, Gerhard Fourie Club Captain + messages/events; Brett Cousins and Duane Rossouw no office (admin removed). Johann du Rand, Kaylee Hunt, Kayla Randall unchanged. Pre-change snapshot saved.

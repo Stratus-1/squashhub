@@ -29,7 +29,12 @@ export type EntryAudit =
 
 export type AuditedEntry = Record<string, any> & { audit?: EntryAudit };
 
-export type AuditView = "with_changes" | "live_only" | "changes_only";
+export type AuditView = "with_changes" | "clean" | "live_only" | "changes_only";
+
+export const AUDIT_VIEWS: AuditView[] = ["with_changes", "clean", "live_only", "changes_only"];
+
+/** True for an original that was reversed or the reversal that cancelled it (the pair nets to zero). */
+export const isReversedPair = (e: AuditedEntry) => e.audit?.status === "reversed" || e.audit?.status === "reversal";
 
 const who = (r: LedgerAuditRow) => r.actor_name || "System";
 
@@ -89,6 +94,8 @@ export const countable = <T extends AuditedEntry>(rows: T[]): T[] => rows.filter
 
 export function applyAuditView<T extends AuditedEntry>(rows: T[], view: AuditView): T[] {
   if (view === "live_only") return rows.filter((e) => !isDeleted(e));
+  // Hides deleted lines and both halves of every reversal, so what remains still nets correctly.
+  if (view === "clean") return rows.filter((e) => !isDeleted(e) && !isReversedPair(e));
   if (view === "changes_only") return rows.filter((e) => !!e.audit);
   return rows;
 }

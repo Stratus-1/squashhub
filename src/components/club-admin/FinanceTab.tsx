@@ -51,7 +51,7 @@ import { trialBalanceReport } from "@/lib/finance/report-export";
 import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
 import { JournalEntryDialog } from "./finance/JournalEntryDialog";
 import { CreditTransfersPanel } from "./finance/CreditTransfersPanel";
-import { mergeLedgerAudit, applyAuditView, countable, isDeleted, auditLabel, type AuditView, type AuditedEntry, type LedgerAuditRow } from "@/lib/finance/ledger-audit";
+import { mergeLedgerAudit, applyAuditView, AUDIT_VIEWS, countable, isDeleted, auditLabel, type AuditView, type AuditedEntry, type LedgerAuditRow } from "@/lib/finance/ledger-audit";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -377,7 +377,17 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     },
     enabled: !!clubId,
   });
-  const [auditView, setAuditView] = useState<AuditView>("with_changes");
+  // Display preference only (never affects totals); remembered on this device.
+  const [auditView, setAuditViewState] = useState<AuditView>(() => {
+    try {
+      const v = localStorage.getItem("sh.finance.auditView") as AuditView | null;
+      return v && AUDIT_VIEWS.includes(v) ? v : "with_changes";
+    } catch { return "with_changes"; }
+  });
+  const setAuditView = (v: AuditView) => {
+    setAuditViewState(v);
+    try { localStorage.setItem("sh.finance.auditView", v); } catch { /* ignore */ }
+  };
   const ledgerRows: AuditedEntry[] = mergeLedgerAudit(journalEntries || [], auditRows)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || String(a.id).localeCompare(String(b.id)));
   const auditWhen = (iso: string) => format(new Date(iso), "dd MMM yyyy HH:mm");
@@ -1123,7 +1133,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 <SelectTrigger className="w-[210px] h-8 text-xs" aria-label="Deleted and reversed entries"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="with_changes">Show deleted &amp; reversed</SelectItem>
-                  <SelectItem value="live_only">Hide deleted entries</SelectItem>
+                  <SelectItem value="clean">Hide deleted &amp; reversed</SelectItem>
+                  <SelectItem value="live_only">Hide deleted only</SelectItem>
                   <SelectItem value="changes_only">Only deleted, reversed &amp; edited</SelectItem>
                 </SelectContent>
               </Select>
@@ -1881,7 +1892,8 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           <SelectTrigger className="w-[230px] h-8 text-xs" aria-label="Deleted and reversed entries on statement"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="with_changes">Show deleted &amp; reversed</SelectItem>
-                            <SelectItem value="live_only">Hide deleted entries</SelectItem>
+                  <SelectItem value="clean">Hide deleted &amp; reversed</SelectItem>
+                            <SelectItem value="live_only">Hide deleted only</SelectItem>
                             <SelectItem value="changes_only">Only deleted, reversed &amp; edited</SelectItem>
                           </SelectContent>
                         </Select>

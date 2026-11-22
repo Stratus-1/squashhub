@@ -35,6 +35,14 @@ describe("finance audit trail display", () => {
     expect(merged.find((e) => e.id === "e1")?.audit).toMatchObject({ status: "edited", by: "System", was: { debit: 210 } });
   });
 
+  it("can hide deleted and reversed lines together, keeping the reversal pair out so totals still net", () => {
+    const ids = applyAuditView(merged, "clean").map((e) => e.id);
+    expect(ids).not.toContain("a1");
+    expect(ids).not.toContain("r1");
+    expect(ids.some((id) => String(id).startsWith("deleted:"))).toBe(false);
+    expect(ids).toContain("e1");
+  });
+
   it("can hide deleted lines or show only changed lines", () => {
     expect(applyAuditView(merged, "live_only").some((e) => e.entry_id === "d1")).toBe(false);
     expect(applyAuditView(merged, "changes_only").map((e) => e.id).sort()).toEqual(["a1", "a2", "deleted:d1:2026-11-05T08:00:00Z", "e1", "r1"].sort());

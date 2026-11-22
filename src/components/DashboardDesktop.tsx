@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity,
-  Home, BarChart3, LayoutGrid, Crosshair, Wine, Wallet, ShieldCheck, GraduationCap,
+  Home, BarChart3, LayoutGrid, Crosshair, Wine, Wallet, ShieldCheck, GraduationCap, FolderOpen,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -346,6 +346,8 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
     ...(flags.bookingsEnabled
       ? [{ title: "Court Bookings", url: "/bookings", icon: Calendar, color: "blue" } as Tile]
       : []),
+    // Always shown (even when empty) so members know where shared club documents live.
+    { title: "Club Documents", url: "/club-documents", icon: FolderOpen, color: "sky" },
   ];
 
   const activities: Tile[] = [

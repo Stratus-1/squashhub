@@ -140,9 +140,11 @@ export function useClubDocumentMutations(clubId?: string) {
 
   const deleteDocument = useMutation({
     mutationFn: async (doc: ClubDocument) => {
+      // Remove the file first: the storage rule only lets managers see (and so
+      // delete) a library file while its document row still exists.
+      await supabase.storage.from(CLUB_DOCUMENTS_BUCKET).remove([doc.file_path]).catch(() => null);
       const { error } = await fromExt("club_documents").delete().eq("id", doc.id);
       if (error) throw error;
-      await supabase.storage.from(CLUB_DOCUMENTS_BUCKET).remove([doc.file_path]).catch(() => null);
     },
     onSuccess: refresh,
   });

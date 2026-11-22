@@ -155,6 +155,31 @@ export function AssociationPayablesPanel({ clubId }: Props) {
     enabled: !!clubId,
   });
 
+  /* ─── National body fees (e.g. Squash South Africa) for the selected season ─── */
+  const { data: nationalStatement = [] } = useQuery({
+    queryKey: ["national-body-statement", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("club_national_body_statement", {
+        _club_id: clubId,
+        _season_year: season,
+      });
+      if (error) throw error;
+      return (data || []) as {
+        organisation_id: string;
+        organisation_name: string;
+        fee_id: string;
+        label: string;
+        basis: "per_court" | "per_member" | "per_club";
+        amount: number;
+        units: number;
+        total: number;
+      }[];
+    },
+    enabled: !!clubId,
+  });
+  const nationalUnit = (b: string) => (b === "per_court" ? "court" : b === "per_member" ? "member" : "club");
+  const nationalTotal = nationalStatement.reduce((s, r) => s + Number(r.total || 0), 0);
+
   const feeTenant = (f: PayableFee): string | null => {
     if (f.payee_type === "league_association" && f.payee_ref_id) {
       return assocRows.find((a) => a.id === f.payee_ref_id)?.tenant_association_id ?? null;
@@ -180,8 +205,14 @@ export function AssociationPayablesPanel({ clubId }: Props) {
       if (!t) return;
       if (statement.some((r) => r.association_tenant_id === t && r.basis === basisMap[f.basis])) set.add(f.id);
     });
+    // A national body's own season schedule replaces the club's manual row for that body and basis.
+    fees.forEach((f) => {
+      if (f.payee_type !== "national_body") return;
+      const name = f.payee_name.toLowerCase();
+      if (nationalStatement.some((r) => r.basis === f.basis && name.startsWith(r.organisation_name.toLowerCase()))) set.add(f.id);
+    });
     return set;
-  }, [fees, statement, assocRows, nbLinks]);
+  }, [fees, statement, nationalStatement, assocRows, nbLinks]);
 
   const manualFees = fees.filter((f) => !coveredFeeIds.has(f.id));
   const statementTotal = statement.reduce((s, r) => s + Number(r.total_submitted || 0), 0);
@@ -261,6 +292,40 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         </div>
       )}
 
+      {nationalStatement.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">Billed by national body — {season}</h4>
+            <span className="text-xs text-muted-foreground">
+              Estimated total <span className="font-semibold text-foreground tabular-nums">{money(nationalTotal)}</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {nationalStatement.map((r) => (
+              <Card key={r.fee_id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{r.organisation_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{r.label}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                    {money(Number(r.amount))} / {nationalUnit(r.basis)}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">
+                    {r.units} {nationalUnit(r.basis)}{r.units === 1 ? "" : "s"}
+                    {r.basis === "per_member" ? " with league numbers" : r.basis === "per_court" ? " (active)" : ""}
+                  </span>
+                  <span className="font-semibold tabular-nums">{money(Number(r.total))}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Set by {r.organisation_name} for {season}.</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {manualFees.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-semibold">Other payables (manual)</h4>
@@ -292,7 +357,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         </div>
       )}
 
-      {statement.length === 0 && manualFees.length === 0 && (
+      {statement.length === 0 && nationalStatement.length === 0 && manualFees.length === 0 && (
         <Card className="p-6 text-center text-sm text-muted-foreground">
           No payable fees yet. Association fees appear here once you submit your teams and players.
         </Card>

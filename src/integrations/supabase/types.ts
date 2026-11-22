@@ -15060,6 +15060,59 @@ export type Database = {
           },
         ]
       }
+      national_body_fee_schedule: {
+        Row: {
+          active: boolean
+          amount: number
+          basis: string
+          created_at: string
+          due_day: number | null
+          due_month: number | null
+          id: string
+          label: string
+          notes: string | null
+          organisation_id: string
+          season_year: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          basis: string
+          created_at?: string
+          due_day?: number | null
+          due_month?: number | null
+          id?: string
+          label: string
+          notes?: string | null
+          organisation_id: string
+          season_year: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          basis?: string
+          created_at?: string
+          due_day?: number | null
+          due_month?: number | null
+          id?: string
+          label?: string
+          notes?: string | null
+          organisation_id?: string
+          season_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "national_body_fee_schedule_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       national_body_fees: {
         Row: {
           abbreviation: string | null
@@ -23961,6 +24014,21 @@ export type Database = {
           address: string
           id_number: string
           member_id: string
+        }[]
+      }
+      club_national_body_statement: {
+        Args: { _club_id: string; _season_year: number }
+        Returns: {
+          amount: number
+          basis: string
+          due_day: number
+          due_month: number
+          fee_id: string
+          label: string
+          organisation_id: string
+          organisation_name: string
+          total: number
+          units: number
         }[]
       }
       club_new_perms_on: { Args: { _club_id: string }; Returns: boolean }

@@ -3354,6 +3354,27 @@
       "when": 1795345728723,
       "tag": "0478_finer_club_permissions_apply",
       "breakpoints": true
+    },
+    {
+      "idx": 479,
+      "version": "7",
+      "when": 1795346971871,
+      "tag": "0479_office_role_snapshots_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 480,
+      "version": "7",
+      "when": 1795347007006,
+      "tag": "0480_fix_permission_review_timestamp",
+      "breakpoints": true
+    },
+    {
+      "idx": 481,
+      "version": "7",
+      "when": 1795347023145,
+      "tag": "0481_grant_office_role_helpers_service",
+      "breakpoints": true
     }
   ]
 }

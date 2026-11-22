@@ -8098,6 +8098,69 @@ export type Database = {
           },
         ]
       }
+      club_permission_snapshots: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          custom_permissions: string[] | null
+          id: string
+          is_full_admin: boolean | null
+          member_role: string | null
+          permission_role_id: string | null
+          reason: string | null
+          role_is_full_admin: boolean | null
+          role_name: string | null
+          role_permissions: string[] | null
+          taken_at: string
+          taken_by: string | null
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          custom_permissions?: string[] | null
+          id?: string
+          is_full_admin?: boolean | null
+          member_role?: string | null
+          permission_role_id?: string | null
+          reason?: string | null
+          role_is_full_admin?: boolean | null
+          role_name?: string | null
+          role_permissions?: string[] | null
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          custom_permissions?: string[] | null
+          id?: string
+          is_full_admin?: boolean | null
+          member_role?: string | null
+          permission_role_id?: string | null
+          reason?: string | null
+          role_is_full_admin?: boolean | null
+          role_name?: string | null
+          role_permissions?: string[] | null
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_permission_snapshots_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_permission_snapshots_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_ranking_rule_versions: {
         Row: {
           club_id: string
@@ -22677,6 +22740,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      apply_office_role: {
+        Args: {
+          p_club_member_id: string
+          p_keep_club_admin?: boolean
+          p_role_name: string
+        }
+        Returns: undefined
+      }
       apply_payfast_actual_fee: {
         Args: { _club_id: string; _fee: number; _reference: string }
         Returns: number
@@ -24293,6 +24364,7 @@ export type Database = {
         }
         Returns: Record<string, unknown>
       }
+      club_permission_review: { Args: { p_club_id: string }; Returns: Json }
       club_ranked_match_counts: {
         Args: { _club_id: string }
         Returns: {
@@ -24429,6 +24501,10 @@ export type Database = {
         Returns: undefined
       }
       ensure_invite_short_code: { Args: { p_token: string }; Returns: string }
+      ensure_office_role_templates: {
+        Args: { p_club_id: string }
+        Returns: undefined
+      }
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
         Returns: string
@@ -25992,6 +26068,8 @@ export type Database = {
         Args: { _club_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
+      office_role_defaults: { Args: { _role_name: string }; Returns: string[] }
+      office_to_role_name: { Args: { _office: string }; Returns: string }
       open_bar_guest_tab:
         | { Args: { _code: string; _guest_name: string }; Returns: Json }
         | {
@@ -26479,6 +26557,10 @@ export type Database = {
         }
         Returns: Json
       }
+      restore_permission_snapshot: {
+        Args: { p_snapshot_id: string }
+        Returns: undefined
+      }
       reverse_ranking_points_pending: {
         Args: { _pending_id: string; _reason?: string }
         Returns: undefined
@@ -26769,6 +26851,10 @@ export type Database = {
       }
       shares_club_with: { Args: { _target_user_id: string }; Returns: boolean }
       snapshot_all_club_rankings: { Args: never; Returns: number }
+      snapshot_club_permissions: {
+        Args: { p_club_id: string; p_reason?: string }
+        Returns: number
+      }
       snapshot_club_rankings: {
         Args: { _club_id: string; _period?: string }
         Returns: string

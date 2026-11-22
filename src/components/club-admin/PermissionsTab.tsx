@@ -26,6 +26,7 @@ import { permissionSlugsForTenant, permissionLabel, visibleSlugs } from "@/lib/p
 import { NewPermissionsPanel, useNewPermissionsOn } from "./NewPermissionsPanel";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { PermissionPicker } from "./PermissionPicker";
+import { OfficeRoleReview } from "./OfficeRoleReview";
 import { parentOf } from "@/lib/permissions/fine-permissions";
 
 /**
@@ -56,6 +57,7 @@ export function PermissionsTab({ clubId }: { clubId: string }) {
     ...(newOn ? [{ id: "new", label: "Offices & detailed permissions", description: "The new permissions for this club: offices, templates, personal grants and denies, with full history.", complete: true }] : []),
     { id: "roles", label: newOn ? "Old permission roles" : "Permission roles", description: "Create reusable roles like Treasurer or Committee, each with a preset list of what they may access.", complete: roles.length > 0 },
     { id: "members", label: newOn ? "Old member permissions" : "Member permissions", description: "Assign a role — or individual permissions — to each member who helps run the club.", complete: roles.length > 0 },
+    { id: "office-review", label: "Office roles review", description: "Move people from Full Admin onto office-bearer roles, with a saved snapshot and one-click restore.", complete: false },
   ];
   const current = newOn && step === "roles" && !touched.current ? "new" : step;
 
@@ -65,6 +67,7 @@ export function PermissionsTab({ clubId }: { clubId: string }) {
       {current === "new" && <NewPermissionsPanel clubId={clubId} />}
       {current === "roles" && <RolesSection clubId={clubId} />}
       {current === "members" && <MemberPermissionsSection clubId={clubId} />}
+      {current === "office-review" && <OfficeRoleReview clubId={clubId} />}
       <SetupStepNav steps={steps} value={current} onChange={(s) => { touched.current = true; setStep(s); }} />
     </div>
   );

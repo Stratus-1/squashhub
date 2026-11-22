@@ -211,5 +211,6 @@
 - [x] Who may hand out permissions: unchanged (admins + office bearers; chairman not own) — Willem confirmed.
 
 ## Requests 22 Nov 2026
-- [ ] Full admin: replace with office-bearer default roles (plan awaiting Willem review)
+- [x] Club Documents tile: always visible on member home
+- [~] Full admin → office-bearer roles (Willem approved 22 Nov): snapshot store + review list + apply/restore built (migrations 0479–0481, Club Admin → Permissions → "Office roles review"); Riverside snapshot of 13 people saved. AWAITING Willem's sign-off to apply roles per club (pilot Riverside → CSIR → Uitsig → rest); keep one club admin per club (Willem chooses); no member messages without approval
 - [x] CSIR: removed 24 deleted test lines dated 5 Oct 2026 and earlier from the audit trail

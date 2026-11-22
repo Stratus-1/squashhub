@@ -4878,3 +4878,12 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-22 CSIR deleted test lines removed from audit trail
 - Willem asked to remove CSIR deleted test transactions dated 5 Oct 2026 and earlier. Removed 24 `club_journal_entry_changes` delete records (14 Jul, 23 Sep, 5 Oct); live ledger and balances untouched. 18 deleted lines from 9 Nov remain.
+
+### 2026-11-22 Club Documents tile always visible
+- Willem asked where members view shared documents. The member home "Club Documents" tile (`src/pages/Dashboard.tsx`) now always shows; `/club-documents` already shows "Your club hasn't shared any documents yet." when empty.
+
+### 2026-11-22 Office-bearer roles replace Full Admin (snapshots + review, pilot pending)
+- Request (Willem): move committee members off "Full Admin" onto office roles (Chairman, Vice-Chairman, Treasurer, Secretary, Club Captain, Bar Manager), safely — snapshot first, review list, per-club sign-off, pilot Riverside → CSIR → Uitsig.
+- Migrations 0479–0481: `club_permission_snapshots` (one-click restore store), `office_role_defaults`/`office_to_role_name`, guarded RPCs `snapshot_club_permissions`, `club_permission_review` (shows office, current rights, proposed role, finance/comms/cash-up use in last 90 days), `ensure_office_role_templates`, `apply_office_role` (snapshots first, clears personal full-admin/custom, optional keep-club-admin), `restore_permission_snapshot`. All guarded by `is_club_admin_or_permitted(..., 'users')`.
+- UI: Club Admin → Permissions → "Office roles review" step (`OfficeRoleReview.tsx`): review table, Save-everyone's-rights button, per-person role picker + Apply, snapshots list with Restore.
+- Verified at Riverside in preview: 13 people reviewed, snapshot of all 13 saved. No one's access changed yet; per-club application awaits Willem's sign-off.

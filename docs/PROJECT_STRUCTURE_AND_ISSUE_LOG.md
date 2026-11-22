@@ -4942,3 +4942,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Added `CommitteeFeatureNotice` (mounted in `App.tsx`): one pop-up announcing Committee approvals and Club documents, shown to office bearers/full admins at active or unexpired-trial clubs (`is_committee_at_active_club()` RPC). Closing it writes `feature_notice_dismissals` (per user + key) so it never returns on any device.
 - Fixed `/club-admin?tab=approvals` (and `?tab=rules` for document managers) being replaced by the first tab before the async access checks resolved, in `ClubAdmin.tsx`.
 - Verified approver lists include every committee member except the requester (CSIR: Grant Williams, Grantham Daniels, Herman Claassen, Ilana Carstens).
+
+### 2026-11-22 — Club documents rows unreadable on phones
+- Symptom: Club Admin → Rules & Documents document rows squeezed the title/description into a one-word-wide column on mobile.
+- Cause: `flex-wrap` row with a `flex-1 min-w-0` text button never wrapped; the badge/switch/buttons took the width.
+- Fix: `ClubDocumentsLibrary.tsx` rows stack on phones (text full width, controls on a second line), side by side from `sm` up. No data changes.

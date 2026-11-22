@@ -326,6 +326,8 @@ export type Database = {
           allow_self_actions: boolean
           allow_self_vote: boolean
           club_id: string
+          completed_at: string | null
+          completion_note: string | null
           created_at: string
           created_by: string | null
           deadline: string
@@ -348,6 +350,8 @@ export type Database = {
           allow_self_actions?: boolean
           allow_self_vote?: boolean
           club_id: string
+          completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           created_by?: string | null
           deadline: string
@@ -370,6 +374,8 @@ export type Database = {
           allow_self_actions?: boolean
           allow_self_vote?: boolean
           club_id?: string
+          completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           created_by?: string | null
           deadline?: string

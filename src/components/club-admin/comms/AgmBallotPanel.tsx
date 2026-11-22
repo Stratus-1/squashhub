@@ -75,13 +75,20 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
                 className={`w-full text-left flex items-center gap-2 p-2 rounded border ${b.id === selectedId ? "border-primary" : "border-border"}`}>
                 <span className="flex-1 text-sm truncate">{b.title}</span>
                 <span className="text-[11px] text-muted-foreground">closes {fmt(b.deadline)}</span>
-                <Badge variant="secondary" className="text-[10px]">{b.status === "draft" ? "draft" : closed ? "closed" : "open"}</Badge>
+                <Badge variant="secondary" className="text-[10px]">{b.status === "completed" ? "done" : b.status === "draft" ? "draft" : closed ? "closed" : "open"}</Badge>
               </button>
             );
           })}
         </div>
       </Card>
-      {ballot && (ballot.status === "draft"
+      {ballot && ballot.status === "completed" && (
+        <Card className="p-3 space-y-1">
+          <p className="text-sm font-semibold">AGM done{ballot.completed_at ? ` — marked ${fmt(ballot.completed_at)}` : ""}</p>
+          <p className="text-xs text-muted-foreground">{ballot.completion_note || "This AGM was held outside SquashHub and is no longer outstanding."}</p>
+          <p className="text-[11px] text-muted-foreground">Nominations and history are kept. No invitations, nominations or voting can be opened for it.</p>
+        </Card>
+      )}
+      {ballot && ballot.status !== "completed" && (ballot.status === "draft"
         ? <DraftEditor key={ballot.id} clubId={clubId} ballot={ballot} />
         : <>
             <StepHeader step={3} title="AGM invitation & voting" state="current"
@@ -91,7 +98,7 @@ export function AgmBallotPanel({ clubId, clubName }: { clubId: string; clubName:
             <OpenBallot key={ballot.id} clubId={clubId} ballot={ballot}
               runoff={ballots.find((b) => b.runoff_parent_id === ballot.id)} onSelect={setSelectedId} />
           </>)}
-      {ballot && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
+      {ballot && ballot.status !== "completed" && <AgmTestEmail key={`test-${ballot.id}`} clubId={clubId} ballotId={ballot.id} />}
     </div>
   );
 }

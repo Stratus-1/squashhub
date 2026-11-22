@@ -3410,6 +3410,13 @@
       "when": 1795349993133,
       "tag": "0486_league_participant_correction_leagues_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 487,
+      "version": "7",
+      "when": 1795353406343,
+      "tag": "0487_agm_completed_outside_status",
+      "breakpoints": true
     }
   ]
 }

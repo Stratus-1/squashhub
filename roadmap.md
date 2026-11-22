@@ -233,3 +233,5 @@
 - [x] Approvals module (requests, approvers, signatures, attachments, audit) in Club Admin
 - [x] In-app + email notifications from SquashHub main sender
 - [x] Private email link per approver: view request, files, sign/approve or decline without logging in
+- [x] One-time committee pop-up (Approvals + Club documents) for active/trial clubs, then publish
+- [x] Approver list: every committee member except the requester must be selectable

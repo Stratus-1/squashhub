@@ -74,3 +74,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - AGM (see src/components/club-admin/comms/AGENTS.md): secrecy, one vote, deadline and post-close results live in security-definer RPCs; votes never reference members; why: UI can't secure a secret ballot.
 - AGM run-offs are immutable-parent child ballots for server-computed tied remaining seats; token resolution follows child rounds and locks each round's voter independently; why: original results and receipts stay intact while every eligible member gets one new secret vote.
 - Ladder moves go through `apply_ladder_result` (club source switches + per-source approval; events only narrow); why: no unchosen reshuffles.
+- One-time feature notices use a code-defined notice key plus server-side `feature_notice_dismissals` per user, with eligibility from a security-definer RPC; why: closed once means closed on every device, and audience rules stay server-side.

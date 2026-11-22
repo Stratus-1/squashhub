@@ -10853,6 +10853,24 @@ export type Database = {
           },
         ]
       }
+      feature_notice_dismissals: {
+        Row: {
+          dismissed_at: string
+          notice_key: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          notice_key: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          notice_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fee_payments: {
         Row: {
           amount: number
@@ -25571,6 +25589,7 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_committee_at_active_club: { Args: never; Returns: boolean }
       is_league_captain: {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean

@@ -19,6 +19,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
+import { CommitteeFeatureNotice } from "@/components/CommitteeFeatureNotice";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
 import { DelegationRequestDialog } from "@/components/DelegationRequestDialog";
@@ -678,6 +679,7 @@ function AppRoutes() {
       {!isTvRoute && !isMobileCheckout && <UpdatePrompt />}
       {user && <NotificationListener />}
       {user && !isMobileCheckout && <NotificationActionModal />}
+      {user && !isAdminRoute && !isTvRoute && !isMobileCheckout && <CommitteeFeatureNotice />}
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
       {user && !isMobileCheckout && <DelegationRequestDialog />}

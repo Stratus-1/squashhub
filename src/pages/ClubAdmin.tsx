@@ -201,9 +201,9 @@ export default function ClubAdmin() {
   const [menuEditing, setMenuEditing] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
   // Chairman and secretary (also when appointed as office bearers) manage club documents.
-  const { data: canManageDocs } = useCanManageClubDocuments(club?.id);
+  const { data: canManageDocs, isLoading: docsAccessLoading } = useCanManageClubDocuments(club?.id);
   // Office bearers (not only full admins) use committee approvals.
-  const { data: canUseApprovals } = useQuery({
+  const { data: canUseApprovals, isLoading: approvalsAccessLoading } = useQuery({
     queryKey: ["can-use-approvals", club?.id], enabled: !!club?.id,
     queryFn: async () => !!(await (supabase as any).rpc("can_use_club_approvals", { p_club: club!.id })).data,
   });
@@ -281,7 +281,11 @@ export default function ClubAdmin() {
 
   // If active tab isn't visible, switch to first visible (safe: setState in render triggers rerender, doesn't change hook order)
   // An empty tab means "show the menu", so it must never be replaced by a workspace.
-  if (activeTab && visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
+  // Wait for the async approvals/documents access checks, or links such as
+  // ?tab=approvals are swapped for the first tab before access is known.
+  const tabAccessLoading = (activeTab === "approvals" && approvalsAccessLoading)
+    || (activeTab === "rules" && docsAccessLoading);
+  if (activeTab && visibleTabs.length > 0 && !tabAccessLoading && !visibleTabs.find(t => t.value === activeTab)) {
     setActiveTab(visibleTabs[0].value);
   }
 

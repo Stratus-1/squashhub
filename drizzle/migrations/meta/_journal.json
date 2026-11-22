@@ -3438,6 +3438,13 @@
       "when": 1795369880610,
       "tag": "0490_approval_committee_all_office_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 491,
+      "version": "7",
+      "when": 1795370998572,
+      "tag": "0491_committee_feature_notice",
+      "breakpoints": true
     }
   ]
 }

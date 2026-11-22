@@ -107,6 +107,13 @@ export function RulesTab({ clubId, club, canEditRules = true }: { clubId: string
   // otherwise redirects signed-in users to their dashboard).
   const previewLandingUrl = club?.subdomain ? `/c/${club.subdomain}?preview=1` : null;
 
+  // Links such as the committee notice open straight at the documents library.
+  useEffect(() => {
+    if (isLoading || typeof window === "undefined" || window.location.hash !== "#club-documents") return;
+    const t = window.setTimeout(() => document.getElementById("club-documents")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    return () => window.clearTimeout(t);
+  }, [isLoading]);
+
   if (!canEditRules) {
     return <div className="space-y-4 mt-4"><ClubDocumentsLibrary clubId={clubId} /></div>;
   }
@@ -223,7 +230,9 @@ export function RulesTab({ clubId, club, canEditRules = true }: { clubId: string
         </div>
       </Card>
 
-      <ClubDocumentsLibrary clubId={clubId} />
+      <div id="club-documents" className="scroll-mt-20">
+        <ClubDocumentsLibrary clubId={clubId} />
+      </div>
 
       <Dialog open={preview} onOpenChange={setPreview}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

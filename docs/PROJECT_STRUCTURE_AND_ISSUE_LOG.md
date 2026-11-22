@@ -4937,3 +4937,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 Approvals: approver list missed committee members
 - Riverside's New request listed only Pieter van Wyk: eligibility read only `club_offices`, but positions are also kept on `clubs.*_member_id` and office permission roles (Chairman, Vice-Chairman, Secretary, Treasurer, Club Captain, Club Manager).
 - Migration 0490 adds `_approval_member_offices` (union of all three) used by eligibility, the approver list and request display; `officeLabel` shows proper position names.
+
+### 2026-11-22 — One-time committee notice + Approvals deep link
+- Added `CommitteeFeatureNotice` (mounted in `App.tsx`): one pop-up announcing Committee approvals and Club documents, shown to office bearers/full admins at active or unexpired-trial clubs (`is_committee_at_active_club()` RPC). Closing it writes `feature_notice_dismissals` (per user + key) so it never returns on any device.
+- Fixed `/club-admin?tab=approvals` (and `?tab=rules` for document managers) being replaced by the first tab before the async access checks resolved, in `ClubAdmin.tsx`.
+- Verified approver lists include every committee member except the requester (CSIR: Grant Williams, Grantham Daniels, Herman Claassen, Ilana Carstens).

@@ -635,9 +635,9 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? "Edit" : "Add"} Fee</DialogTitle></DialogHeader>
-        <div className="space-y-4">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="px-6 pt-6 pb-3 shrink-0"><DialogTitle>{isEdit ? "Edit" : "Add"} Fee</DialogTitle></DialogHeader>
+        <div className="space-y-4 overflow-y-auto px-6 pb-4 min-h-0 flex-1">
           {/* Fee Type selector */}
           <div className="space-y-1">
             <Label>Fee Type</Label>
@@ -817,7 +817,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
               </p>
             </div>
           )}
-
+        </div>
+        <div className="shrink-0 border-t border-border px-6 py-4">
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>
       </DialogContent>

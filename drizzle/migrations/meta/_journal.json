@@ -3417,6 +3417,13 @@
       "when": 1795353406343,
       "tag": "0487_agm_completed_outside_status",
       "breakpoints": true
+    },
+    {
+      "idx": 488,
+      "version": "7",
+      "when": 1795367149357,
+      "tag": "0488_fix_doubles_partner_unassigned_record",
+      "breakpoints": true
     }
   ]
 }

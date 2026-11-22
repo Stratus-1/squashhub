@@ -4917,3 +4917,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Riverside's library contains no new upload from today — only the imported IMG_4274 (jet-ski photo, visible to members).
 
 - 2026-11-22: Imported Stitch constitutions (Nelspruit, CSIR, Highveld, Uitsig) switched to Visible to members in Club Documents at owner request; Riverside file unchanged.
+
+### 2026-11-22 — Doubles partner pick fails: record "v_join_reg" is not assigned yet
+- Symptom: No Frills Doubles invitation (Johann du Rand) — choosing Manie Barnard showed `record "v_join_reg" is not assigned yet` and the page stayed the same.
+- Cause: `propose_doubles_partner` only filled the `v_join_reg` record when the partner was NOT already invited to the category, but always read `v_join_reg.id` later; reading an unassigned plpgsql record raises.
+- Fix: migration 0488 uses plain `v_join_id uuid` / `v_join_choices int[]` (NULL by default). Behaviour, fees and guards unchanged. Verified with a rolled-back trial: pair created as `awaiting_payment`.

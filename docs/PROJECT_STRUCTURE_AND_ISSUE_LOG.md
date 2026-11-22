@@ -4922,3 +4922,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: No Frills Doubles invitation (Johann du Rand) — choosing Manie Barnard showed `record "v_join_reg" is not assigned yet` and the page stayed the same.
 - Cause: `propose_doubles_partner` only filled the `v_join_reg` record when the partner was NOT already invited to the category, but always read `v_join_reg.id` later; reading an unassigned plpgsql record raises.
 - Fix: migration 0488 uses plain `v_join_id uuid` / `v_join_choices int[]` (NULL by default). Behaviour, fees and guards unchanged. Verified with a rolled-back trial: pair created as `awaiting_payment`.
+
+### 2026-11-22 — Super Admin could not open a support ticket
+- Symptom: the email link `/admin/support?threadId=…` ignored `threadId`, and on a phone tapping a ticket only highlighted it while the conversation stayed off-screen below the list.
+- Fix: `AdminSupport.tsx` opens the ticket named in `threadId`, scrolls to the conversation on narrow screens, and the icon-only reply button has an accessible "Send reply" label.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -87,7 +87,18 @@ export default function AdminSupport() {
   const send = useSendSupportMessage();
   const updateThread = useUpdateSupportThread();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Email notifications link to /admin/support?threadId=… — open that ticket directly.
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("threadId"),
+  );
+  const conversationRef = useRef<HTMLDivElement | null>(null);
+  const openThread = (id: string) => {
+    setSelectedId(id);
+    // On phones the conversation sits below the ticket list; bring it into view.
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches) {
+      requestAnimationFrame(() => conversationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  };
   const [reply, setReply] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "pending" | "closed">("all");
@@ -378,7 +389,7 @@ export default function AdminSupport() {
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setSelectedId(t.id)}
+                      onClick={() => openThread(t.id)}
                       className={cn(
                         "w-full text-left rounded-xl px-3 py-2.5 border transition-colors",
                         selected ? "border-primary/40 bg-primary/5" : "border-border/50 hover:border-border hover:bg-muted/30"
@@ -426,7 +437,7 @@ export default function AdminSupport() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60">
+        <Card ref={conversationRef} className="border-border/60 scroll-mt-4">
           <CardContent className="p-3 space-y-3">
             {!selectedThread ? (
               <div className="p-6 text-center text-muted-foreground">
@@ -579,7 +590,7 @@ export default function AdminSupport() {
                     placeholder="Type your reply…"
                     className="min-h-[44px] max-h-[140px]"
                   />
-                  <Button onClick={sendReply} disabled={send.isPending || !reply.trim() || selectedThread.status === "closed"} className="h-11 px-4">
+                  <Button onClick={sendReply} aria-label="Send reply" disabled={send.isPending || !reply.trim() || selectedThread.status === "closed"} className="h-11 px-4">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>

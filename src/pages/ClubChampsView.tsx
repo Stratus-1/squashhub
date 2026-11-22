@@ -1940,9 +1940,12 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
     URL.revokeObjectURL(url);
   };
 
-  const hasChampsPermission = useHasPermission("champs");
+  // Set-up actions need "Set up tournaments"; result entry/correction also accepts "Enter or correct results".
+  const hasChampsPermission = useHasPermission("champs.setup");
+  const hasResultsPermission = useHasPermission("champs.results");
   const isClubAdminUser = useIsClubAdmin();
   const canManage = !md && (hasChampsPermission || isClubAdminUser);
+  const canManageResults = canManage || (!md && hasResultsPermission);
   const qc = useQueryClient();
   const navigate = useMdNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
@@ -3669,7 +3672,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
         {(() => {
           // "Enter Result" for a match that was played away from the live
           // marker. Same audience as marking — participants and officials.
-          const perm = canEnterChampResult(m, myMemberId, { canManage, anyClubMember: true });
+          const perm = canEnterChampResult(m, myMemberId, { canManage: canManageResults, anyClubMember: true });
           if (!perm.allowed) return null;
           return (
             <Button
@@ -3688,7 +3691,7 @@ export default function ClubChampsView({ inlineStandings, embeddedChampId }: { i
           );
         })()}
 
-        {canManage && completed && !isBye && (
+        {canManageResults && completed && !isBye && (
           <Button
             type="button"
             variant="ghost"

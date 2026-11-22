@@ -399,6 +399,8 @@ export default function Bookings() {
   const canBypassBookingLimits = useHasPermission("bookings_unlimited");
   const canBypassNonPeak = useHasPermission("bookings_unlimited_non_peak");
   const canOpsBook = useHasPermission("ops_booking");
+  // "Bookings for others": may change or cancel other members' bookings.
+  const canManageOthersBookings = useHasPermission("bookings_others");
   const [opsDialogOpen, setOpsDialogOpen] = useState(false);
   const bookingLimitsBypassed = isFullAdmin || canBypassBookingLimits;
   const myClub = myClubData?.club;
@@ -2659,7 +2661,7 @@ export default function Bookings() {
               const canEnterResult = isPastBooking && !isBlocked && (isBooker || isOpponent || isAdmin);
               // Either player on the booking (and club admins) may move or cancel it,
               // not just whoever clicked "book" first.
-              const canManageBooking = isBooker || isOpponent || isAdmin;
+              const canManageBooking = isBooker || isOpponent || isAdmin || canManageOthersBookings;
 
               return (
                 <>

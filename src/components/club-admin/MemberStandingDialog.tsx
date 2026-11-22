@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ export function MemberStandingDialog({ memberId, memberName, hasEmail, target, o
   const [sendEmail, setSendEmail] = useState(true);
   const [until, setUntil] = useState("");
   const [busy, setBusy] = useState(false);
+  // Suspending, resigning or reinstating needs "Suspend or resign members".
+  const canChangeStatus = useHasPermission("members.status");
   const isSuspend = target === "suspended";
   const tomorrow = new Date(Date.now() + 86400000);
   const minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
@@ -99,7 +102,7 @@ export function MemberStandingDialog({ memberId, memberName, hasEmail, target, o
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button onClick={submit} disabled={busy} variant={isSuspend ? "destructive" : "default"}>
+          <Button onClick={submit} disabled={busy || !canChangeStatus} title={canChangeStatus ? undefined : "Needs the 'Suspend or resign members' permission"} variant={isSuspend ? "destructive" : "default"}>
             {busy ? "Saving…" : TITLES[target]}
           </Button>
         </DialogFooter>

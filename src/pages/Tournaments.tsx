@@ -111,7 +111,9 @@ export default function Tournaments() {
   const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
   // Club/tournament officials and super admins may capture any result;
   // everyone else only their own matches.
-  const canManageChamps = useHasPermission("champs") && !md;
+  const canManageChamps = useHasPermission("champs.setup") && !md;
+  // "Enter or correct results" alone may enter/correct results but not set up.
+  const canResultsChamps = (useHasPermission("champs.results") && !md) || canManageChamps;
   const [resultMatch, setResultMatch] = useState<any | null>(null);
   const [correctionMatch, setCorrectionMatch] = useState<any | null>(null);
   // Game the player is being asked to confirm before scoring (not a participant).
@@ -1766,7 +1768,7 @@ export default function Tournaments() {
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
           if (isPlaceholder || isBye) return null;
-          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps || isClubAdmin, anyClubMember: true });
+          const perm = canEnterChampResult(m, memberId, { canManage: canResultsChamps || isClubAdmin, anyClubMember: true });
           if (!perm.allowed) return null;
           return (
             <Button
@@ -1792,7 +1794,7 @@ export default function Tournaments() {
           if (isPlaceholder || isBye || awaitingQualification) return null;
           const selfScheduled = stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "self";
           if (selfScheduled) {
-            const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
+            const perm = canEnterChampResult(m, memberId, { canManage: canResultsChamps, anyClubMember: true });
             if (!perm.allowed) return null;
           }
           return (

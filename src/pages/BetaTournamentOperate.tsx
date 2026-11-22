@@ -26,7 +26,7 @@ export default function BetaTournamentOperate() {
   const { champId } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const hasPerm = useHasPermission("champs");
+  const hasPerm = useHasPermission("champs.setup");
   const isAdmin = useIsClubAdmin();
   const canManage = hasPerm || isAdmin;
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);

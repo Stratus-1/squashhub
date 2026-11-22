@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import type React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
@@ -37,6 +38,8 @@ export function cashUpFigures(c: CashUpRow, previous: CashUpRow | undefined) {
 
 export function CashUpsReport({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
+  // Editing a saved cash-up needs the "Cash-up" part; others may view it.
+  const canCashup = useHasPermission("bar.cashup");
   const today = format(new Date(), "yyyy-MM-dd");
   const [from, setFrom] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [to, setTo] = useState(today);
@@ -104,7 +107,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
       return sum + (value !== undefined && MONEY.test(value) ? Number(value) - Number(p.amount) : 0);
     }, 0);
     const f = { ...saved, tipsOut: saved.tipsOut + payoutDelta, cashShould: saved.cashShould - payoutDelta };
-    const locked = busy;
+    const locked = busy || !canCashup;
     const vCash = MONEY.test(edit.cash) ? Number(edit.cash) - f.cashShould : null;
     const vCard = MONEY.test(edit.card) ? Number(edit.card) - f.cardShould : null;
     const variance = vCash === null || vCard === null ? null : Math.round((vCash + vCard) * 100) / 100;
@@ -157,7 +160,7 @@ export function CashUpsReport({ clubId }: { clubId: string }) {
         <Label htmlFor="cu-reason">Reason for change (required)</Label>
         <Input id="cu-reason" maxLength={500} value={edit.reason} disabled={busy} onChange={e => setEdit({ ...edit, reason: e.target.value })} />
         <div className="flex flex-wrap gap-2">
-          <Button onClick={save} disabled={busy || !valid}>Save changes</Button>
+          {canCashup && <Button onClick={save} disabled={busy || !valid}>Save changes</Button>}
         </div>
       </div>
     </div>;

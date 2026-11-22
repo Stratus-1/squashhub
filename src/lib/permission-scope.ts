@@ -15,6 +15,7 @@ export const CLUB_ONLY_SLUGS = [
   "bookings_unlimited",
   "bookings_unlimited_non_peak",
   "ops_booking",
+  "bookings_others",
 ] as const;
 
 /** Association-specific wording for slugs whose club label is club-centric. */

@@ -42,6 +42,7 @@ import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
 import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
 import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-permissions";
+import { hasPermissionArea } from "@/lib/permissions/fine-permissions";
 import { useCanManageClubDocuments } from "@/hooks/use-club-documents";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -238,8 +239,11 @@ export default function ClubAdmin() {
   const permFilter = (tab: AdminTab) => {
     if (isAdmin) return true;
     if (tab.value === "rules" && canManageDocs) return true;
+    // AGM and voting lives inside Member Communications.
+    if (tab.value === "comms" && myPermissions.has("agm")) return true;
     if (!tab.permission) return false; // permissions tab only for full admins
-    return myPermissions.has(tab.permission);
+    // Any part of an area (e.g. "finance.view") opens that area's tile.
+    return hasPermissionArea(myPermissions, tab.permission);
   };
   // Capability filter — core tabs (no capability) are always visible.
   // Ladder is the exception: "Show club ladder to members" only hides it from

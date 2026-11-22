@@ -6,6 +6,7 @@ import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { useClubContext } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
+import { ALL_CHILD_SLUGS, expandPermissions, permissionGranted } from "@/lib/permissions/fine-permissions";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [
@@ -31,9 +32,13 @@ export const PERMISSION_SLUGS = [
   { value: "bookings_unlimited", label: "Unlimited Bookings (bypass daily/peak/event caps)" },
   { value: "bookings_unlimited_non_peak", label: "Unlimited Non-Peak Bookings (bypass caps outside peak hours)" },
   { value: "ops_booking", label: "Ops Bookings (maintenance / cleaning, free)" },
+  { value: "bookings_others", label: "Bookings for others (make or cancel other members' bookings)" },
+  { value: "documents", label: "Rules & Documents (upload and share)" },
+  { value: "agm", label: "AGM and voting" },
 ] as const;
 
-export type PermissionSlug = typeof PERMISSION_SLUGS[number]["value"];
+/** A whole-area slug, or one of its finer parts such as "finance.enter". */
+export type PermissionSlug = typeof PERMISSION_SLUGS[number]["value"] | (string & {});
 
 /** Slugs only a platform super admin may hand out. */
 export const SUPER_ADMIN_ONLY_SLUGS: string[] = PERMISSION_SLUGS
@@ -139,10 +144,15 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const { data: perm } = useMemberPermission(memberId);
 
   if (isSuperAdmin) return true;
-  if (permission === "communications" && canManageComms) return true;
   // Explicit grants always count — including restricted slugs handed out by a super admin.
-  if (perm?.custom_permissions?.includes(permission)) return true;
-  if (perm?.club_permission_roles?.permissions?.includes(permission)) return true;
+  // A whole area covers its parts; any part lets the member view the area.
+  const held = [...(perm?.custom_permissions ?? []), ...(perm?.club_permission_roles?.permissions ?? [])];
+  if (permissionGranted(held, permission)) return true;
+  // Office bearers manage all of Communications unless they were given only some parts of it.
+  if (
+    (permission === "communications" || permission.startsWith("communications.")) &&
+    canManageComms && !held.some((h) => h.startsWith("communications."))
+  ) return true;
   // Implied full access never covers super-admin-only slugs.
   if (restricted) return false;
   if (isChairman || isChairmanRole(perm?.club_permission_roles?.role_name)) return true;
@@ -184,17 +194,23 @@ export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading:
   // Club-level full admin gets everything except super-admin-only slugs.
   const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
 
-  if (isSuperAdmin) return { permissions: new Set(allSlugs), isLoading: false, isFullAdmin: true };
+  if (isSuperAdmin) return { permissions: new Set([...allSlugs, ...ALL_CHILD_SLUGS]), isLoading: false, isFullAdmin: true };
 
-  const perms = new Set<string>();
-  // Explicit grants first (these may include restricted slugs granted by a super admin).
-  perm?.custom_permissions?.forEach(p => perms.add(p));
-  perm?.club_permission_roles?.permissions?.forEach(p => perms.add(p));
-  if (commsQuery.data) perms.add("communications");
+  // Explicit grants first (these may include restricted slugs granted by a super admin),
+  // expanded so a whole area includes its parts and any part includes "<area>.view".
+  const perms = expandPermissions([
+    ...(perm?.custom_permissions ?? []),
+    ...(perm?.club_permission_roles?.permissions ?? []),
+  ]);
+  // Office bearers manage all of Communications unless they were given only some parts of it.
+  if (commsQuery.data) {
+    const partsOnly = [...perms].some((p) => p.startsWith("communications."));
+    if (!partsOnly) expandPermissions(["communications"]).forEach((p) => perms.add(p));
+  }
 
   const impliedFull =
     isRoleFullAccess || isChairman || isChairmanRole(perm?.club_permission_roles?.role_name) || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
-  if (impliedFull) clubWide.forEach(p => perms.add(p));
+  if (impliedFull) { clubWide.forEach(p => perms.add(p)); ALL_CHILD_SLUGS.forEach(p => perms.add(p)); }
 
   return {
     permissions: perms,

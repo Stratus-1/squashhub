@@ -1,4 +1,5 @@
 import { useFinancialAccess } from "@/hooks/use-financial-access";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { MemberBarPurchases } from "./MemberBarPurchases";
 import { directBarStatementLines } from "@/lib/finance/direct-bar-lines";
 import { Club, useClubMembers } from "@/hooks/use-club";
@@ -163,6 +164,17 @@ const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
 export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clubId: string; party?: "member" | "club" }) {
   const { canChange } = useFinancialAccess(clubId);
+  // Finer finance permissions: a whole "Finance" grant includes every part.
+  const permEnter = useHasPermission("finance.enter");
+  const permApprove = useHasPermission("finance.approve");
+  const permReverse = useHasPermission("finance.reverse");
+  const permBank = useHasPermission("finance.bank");
+  const permBill = useHasPermission("finance.billing");
+  const canEnter = canChange && permEnter;
+  const canApprove = canChange && permApprove;
+  const canReverse = canChange && permReverse;
+  const canBank = canChange && permBank;
+  const canBill = canChange && permBill;
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   const partyPlural = party === "club" ? "clubs" : "members";
@@ -744,7 +756,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem
-          disabled={!canChange} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
+          disabled={!canReverse} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "reverse", summary: journalRefSummary(entry.journal_ref) })}
         >
           <Undo2 className="w-3.5 h-3.5 mr-2" /> Reverse entry
         </DropdownMenuItem>
@@ -754,7 +766,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          disabled={!canChange} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
+          disabled={!canReverse} onClick={() => setRowAction({ ref: entry.journal_ref, mode: "delete", summary: journalRefSummary(entry.journal_ref) })}
         >
           <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete entry
         </DropdownMenuItem>
@@ -934,6 +946,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
       <FinanceHub
         readOnly={!canChange}
+        allow={{ enter: canEnter, bill: canBill, bank: canBank }}
         pendingCount={(pendingTransactions || []).length}
         onStatement={() => setStatementOpen(true)}
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
@@ -977,32 +990,32 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!(canBill || canEnter)} size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
                   <Receipt className="w-3.5 h-3.5" /> Bill {Party} / Post correction
                 </Button>
-                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
+                <Button disabled={!canEnter} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
                   <BookOpen className="w-3.5 h-3.5" /> Journal entry
                 </Button>
-                <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!canEnter} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
               </div>
             </div>
-            {canChange && <RecurringPendingPanel clubId={clubId} />}
+            {canApprove && <RecurringPendingPanel clubId={clubId} />}
 
 
 
         <TabsContent value="association-payables">
-          {canChange && <AssociationPayablesPanel clubId={clubId} />}
+          {canBill && <AssociationPayablesPanel clubId={clubId} />}
         </TabsContent>
 
         <TabsContent value="renewals">
-          {canChange && <RenewalInvoicesTab clubId={clubId} />}
+          {canBill && <RenewalInvoicesTab clubId={clubId} />}
         </TabsContent>
 
         <TabsContent value="banking">
           <BankingPanel
-            readOnly={!canChange}
+            readOnly={!canBank}
             clubId={clubId}
             money={money}
             moneyAccounts={["bank_current", "bank", "cash"]
@@ -1015,7 +1028,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         </TabsContent>
 
         <TabsContent value="debit-orders">
-          {canChange && <DebitOrdersPanel clubId={clubId} />}
+          {canBill && <DebitOrdersPanel clubId={clubId} />}
         </TabsContent>
 
         {party === "member" && <TabsContent value="credit-transfers">
@@ -1024,7 +1037,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
         {party === "member" && <TabsContent value="billing-settings">
           <h2 className="text-base font-semibold">Member Billing · Settings</h2>
-          <MemberCreditControl clubId={clubId} readOnly={!canChange} />
+          <MemberCreditControl clubId={clubId} readOnly={!canBill} />
         </TabsContent>}
 
         <TabsContent value="income">
@@ -1071,10 +1084,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                 </Button>
                 )}
 
-                <Button disabled={!canChange} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
+                <Button disabled={!canEnter} size="sm" variant="outline" onClick={() => setJournalOpen(true)} className="gap-1.5 h-8">
                   <BookOpen className="w-3.5 h-3.5" /> Journal entry
                 </Button>
-                <Button disabled={!canChange} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
+                <Button disabled={!canEnter} size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
               </div>
@@ -1299,10 +1312,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       ) : tx.method === "eft" ? (
                         <span className="self-center text-[11px] text-muted-foreground">No proof uploaded</span>
                       ) : null}
-                      <Button disabled={!canChange} size="sm" variant="outline" onClick={() => handleRejectPayment(tx.id)}>
+                      <Button disabled={!canApprove} size="sm" variant="outline" onClick={() => handleRejectPayment(tx.id)}>
                         <XCircle className="w-4 h-4 mr-1" /> Reject
                       </Button>
-                      <Button disabled={!canChange} size="sm" onClick={() => handleConfirmPayment(tx.id)}>
+                      <Button disabled={!canApprove} size="sm" onClick={() => handleConfirmPayment(tx.id)}>
                         <CheckCircle2 className="w-4 h-4 mr-1" /> Confirm
                       </Button>
                     </div>
@@ -2398,6 +2411,8 @@ interface FinanceHubProps {
   onEnterTx: () => void;
   onJournal: () => void;
   onImportBank: () => void;
+  /** Finer finance parts the viewer holds (defaults to all when omitted). */
+  allow?: { enter: boolean; bill: boolean; bank: boolean };
   onOpeningBalances: () => void;
   moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
   onSelectAccount: (account: string) => void;
@@ -2405,7 +2420,7 @@ interface FinanceHubProps {
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, onBill, onEnterTx, onJournal, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
+function FinanceHub({ readOnly = false, allow = { enter: true, bill: true, bank: true }, pendingCount, onStatement, onBalances, onBill, onEnterTx, onJournal, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
   const Party = party === "club" ? "Club" : "Member";
   const partyLower = party === "club" ? "club" : "member";
   // Approval emails link to ?tab=finance&view=pending&tx=<id>.
@@ -2498,10 +2513,10 @@ function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, o
         <Button variant="outline" onClick={() => setView("coa")} className="gap-1.5">
           <ListTree className="w-4 h-4" /> Chart of Accounts
         </Button>
-        <Button variant="outline" disabled={readOnly} onClick={onJournal} className="gap-1.5">
+        <Button variant="outline" disabled={readOnly || !allow.enter} onClick={onJournal} className="gap-1.5">
           <BookOpen className="w-4 h-4" /> Journal entry
         </Button>
-        <Button disabled={readOnly} onClick={onEnterTx} className="gap-1.5">
+        <Button disabled={readOnly || !allow.enter} onClick={onEnterTx} className="gap-1.5">
           <Plus className="w-4 h-4" /> Enter Transaction
         </Button>
       </div>
@@ -2511,7 +2526,10 @@ function FinanceHub({ readOnly = false, pendingCount, onStatement, onBalances, o
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3 items-start">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {active.tiles.filter(t => !readOnly || !["association-payables", "renewals", "debit-orders"].includes(t.key) && t.onClick !== onBill && t.onClick !== onImportBank).map((t, i) => {
+          {active.tiles.filter(t => (!readOnly || !["association-payables", "renewals", "debit-orders"].includes(t.key) && t.onClick !== onBill && t.onClick !== onImportBank)
+            && (allow.bill || !["association-payables", "renewals", "debit-orders", "billing-settings"].includes(t.key))
+            && (allow.bill || allow.enter || t.onClick !== onBill)
+            && (allow.bank || t.onClick !== onImportBank)).map((t, i) => {
             const Icon = t.icon;
             const handleClick = t.onClick ? t.onClick : () => setView(t.key);
             return (

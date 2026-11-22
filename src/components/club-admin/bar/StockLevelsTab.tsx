@@ -7,6 +7,7 @@
  * quantities (typed in or uploaded), see the differences, and finalise —
  * optionally correcting stock on hand to the counted figures.
  */
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +57,9 @@ function csvEscape(v: unknown) {
 
 export function StockLevelsTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
+  // Stock takes need "Stock takes"; club-use giveaways need "Stock and purchases".
+  const canStocktake = useHasPermission("bar.stocktake");
+  const canStock = useHasPermission("bar.stock");
   const { format: money } = useClubCurrency();
   const [date, setDate] = useState(today());
   const [counts, setCounts] = useState<Record<string, string>>({});
@@ -313,7 +317,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
-      <ClubUseCard clubId={clubId} />
+      {canStock && <ClubUseCard clubId={clubId} />}
       <Card className="p-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm">Allow selling below zero</h3>
@@ -344,7 +348,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
             <Label className="text-[11px]">Date</Label>
             <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="h-9" />
           </div>
-          {!take ? (
+          {!canStocktake ? null : !take ? (
             <Button className="h-9" disabled={busy || isLoading} onClick={startTake}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Prepare stock take"}
             </Button>
@@ -363,7 +367,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
         </div>
       </Card>
 
-      {take && !finalised && (
+      {canStocktake && take && !finalised && (
         <Card className="p-3 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={downloadSheet}>
             <Download className="w-3.5 h-3.5 mr-1" /> Download count sheet
@@ -456,7 +460,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
               <span className="text-right w-16 tabular-nums">{r.expected}</span>
               <span className="text-right w-16 tabular-nums text-muted-foreground">{r.y > 1 ? `${r.current_qty}+${(r.current_units ?? 0) % r.y}` : r.current_qty}</span>
               <span className="w-24 text-right">
-                {take && !finalised ? (
+                {canStocktake && take && !finalised ? (
                   <>
                   <Input
                     inputMode="numeric"
@@ -503,7 +507,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
         )}
       </Card>
 
-      {take && !finalised && (
+      {canStocktake && take && !finalised && (
         <Card className="p-3 space-y-1.5">
           <Label className="text-[11px]">Notes for this stock take</Label>
           <Textarea

@@ -1,4 +1,5 @@
 import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { BarStaffPay } from "@/components/bar/BarStaffPay";
 import { StaffTips } from "@/components/bar/StaffTips";
@@ -115,6 +116,10 @@ interface BarTabEntry {
 
 export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) {
   const { format: money } = useClubCurrency();
+  // Finer Bar permissions (a whole "Bar / POS" grant includes every part).
+  const canStock = useHasPermission("bar.stock");
+  const canStaff = useHasPermission("bar.staff");
+  const canPayroll = useHasPermission("finance.payroll");
   const qc = useQueryClient();
   const { data: tipConfig } = useBarTips(clubId);
   const updateClub = useUpdateClub();
@@ -209,13 +214,13 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     { id: "costing", label: "Costing & margins", description: "Optional average-cost tracking with cost of sales, gross profit and margin.", complete: false },
     { id: "staff", label: "Staff", description: "Monthly salaries, pay day and the monthly salary-and-tips payout for the people behind the bar.", complete: false },
     { id: "reports", label: "Reports", description: "", complete: enabled },
-  ];
+  ].filter((s) => s.id === "stock-purchases" ? canStock : s.id === "staff" ? (canStaff || canPayroll) : true);
 
 
 
   return (
     <div className="space-y-6 mt-4">
-      <CounterModeCard clubId={clubId} />
+      {canStaff && <CounterModeCard clubId={clubId} />}
       <Card className="p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
@@ -343,7 +348,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 
-      {step === "stock-purchases" && (
+      {canStock && step === "stock-purchases" && (
         <div className="space-y-4">
           <PurchaseInvoice clubId={clubId} items={items} />
 
@@ -382,7 +387,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
       {step === "costing" && <CostingTab clubId={clubId} />}
 
-      {step === "staff" && <BarStaffPay clubId={clubId} />}
+      {(canStaff || canPayroll) && step === "staff" && <BarStaffPay clubId={clubId} />}
 
       {step === "reports" && <div className="flex flex-wrap gap-1" role="group" aria-label="Choose report">{reportOptions.map(r => <Button key={r.id} size="sm" variant={report === r.id ? "default" : "outline"} aria-pressed={report === r.id} onClick={() => setReport(r.id)}>{r.label}</Button>)}</div>}
       {showReport("open-tabs") && <OpenTabsTab clubId={clubId} />}
@@ -416,6 +421,7 @@ const emptyForm = (division = "bar", category = "") => ({
 function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels }: { clubId: string; items: BarItem[]; soldCounts: Map<string, number>; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
+  const canPrices = useHasPermission("bar.prices");
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -934,17 +940,17 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
               <QrCode className="w-3.5 h-3.5 mr-1" />Product QR labels
             </Button>
           )}
-          {!adding && !editItem && (
+          {canPrices && !adding && !editItem && (
             <Button size="sm" variant="outline" onClick={() => { setAdding(true); resetForm(); }}>
               <Plus className="w-3.5 h-3.5 mr-1" />Add Item
             </Button>
           )}
-          {!adding && !editItem && (
+          {canPrices && !adding && !editItem && (
             <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="w-3.5 h-3.5 mr-1" />Import Items
             </Button>
           )}
-          {!adding && !editItem && (
+          {canPrices && !adding && !editItem && (
             <Button size="sm" onClick={() => {
               resetForm();
               setForm(p => ({ ...p, item_kind: "special" }));
@@ -976,7 +982,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
         usedDivisions={new Set(allItems.map(i => i.division || "bar"))}
       />
 
-      <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
+      <Dialog open={canPrices && (!!adding || !!editItem)} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{form.item_kind === "special" ? (editItem ? "Edit special / bundle" : "Add special / bundle") : editItem ? "Edit item" : "Add item"}</DialogTitle></DialogHeader>
           {itemForm}

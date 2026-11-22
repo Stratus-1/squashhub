@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone } from "lucide-react";
+import { toast } from "sonner";
+import { useCanManageComms, useHasPermission } from "@/hooks/use-club-permissions";
 import {
   CommsTemplateEditor,
   EMPTY_TEMPLATE,
@@ -24,7 +26,18 @@ import { AgmBallotPanel } from "./comms/AgmBallotPanel";
  * template, an audience and the channels for THAT send.
  */
 export function CommunicationsTab({ clubId }: { clubId: string }) {
-  const [tab, setTab] = useState("templates");
+  // Finer Communications permissions; AGM-only holders see only the AGM process.
+  const { data: canComms = false } = useCanManageComms(clubId);
+  const canTemplates = useHasPermission("communications.templates");
+  const canSend = useHasPermission("communications.send");
+  const canAgm = useHasPermission("agm");
+  const visibleTabs = [
+    ...(canComms ? ["templates"] : []),
+    ...(canComms ? ["campaigns", "queue", "log"] : []),
+    ...(canAgm ? ["agm"] : []),
+  ];
+  const [tabState, setTab] = useState("templates");
+  const tab = visibleTabs.includes(tabState) ? tabState : (visibleTabs[0] ?? "templates");
   const [editing, setEditing] = useState<TemplateRecord | null>(null);
   const [templatePreview, setTemplatePreview] = useState(false);
   const [sending, setSending] = useState<TemplateRecord | null>(null);
@@ -43,6 +56,7 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
   });
 
   const openWizard = (t: TemplateRecord | null) => {
+    if (!canSend) { toast.error("Sending messages needs the 'Send messages' permission"); return; }
     setSending(t);
     setWizardOpen(true);
   };
@@ -62,11 +76,11 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
       <Tabs value={tab} onValueChange={setTab}>
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="w-max min-w-full justify-start">
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-            <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>
-            <TabsTrigger value="log">Delivery log</TabsTrigger>
-            <TabsTrigger value="agm">AGM process</TabsTrigger>
+            {canComms && <TabsTrigger value="templates">Templates</TabsTrigger>}
+            {canComms && <TabsTrigger value="campaigns">Campaigns</TabsTrigger>}
+            {canComms && <TabsTrigger value="queue">Scheduled & drafts</TabsTrigger>}
+            {canComms && <TabsTrigger value="log">Delivery log</TabsTrigger>}
+            {canAgm && <TabsTrigger value="agm">AGM process</TabsTrigger>}
           </TabsList>
         </div>
 
@@ -75,8 +89,11 @@ export function CommunicationsTab({ clubId }: { clubId: string }) {
             clubId={clubId}
             templates={templates}
             isLoading={isLoading}
-            onNew={() => { setTemplatePreview(false); setEditing({ ...EMPTY_TEMPLATE }); }}
-            onEdit={(t) => { setTemplatePreview(false); setEditing(t); }}
+            onNew={() => {
+              if (!canTemplates) { toast.error("Editing templates needs the 'Edit templates' permission"); return; }
+              setTemplatePreview(false); setEditing({ ...EMPTY_TEMPLATE });
+            }}
+            onEdit={(t) => { setTemplatePreview(!canTemplates); setEditing(t); }}
             onPreview={(t) => { setTemplatePreview(true); setEditing(t); }}
             onSend={openWizard}
           />

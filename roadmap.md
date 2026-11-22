@@ -204,3 +204,8 @@
 - [x] Copy constitutions clubs already uploaded for their Stitch application into "Constitution & amendments" (hidden from members until shared).
 
 - [x] Finance audit trail: deleted lines struck through with who/when, reversals flagged, admins/chairman/treasurer only
+
+## Finer permissions (22 Nov 2026)
+- [x] Split Finance, Bar/POS, Members, Tournaments, Communications into main areas with sub-permissions; add Documents, AGM, Bookings for others. Existing whole-area grants keep full access.
+- [x] Enforce sub-permissions in background checks (migration 0478) and on screens. Not yet tried with a real part-only login end to end.
+- [x] Who may hand out permissions: unchanged (admins + office bearers; chairman not own) — Willem confirmed.

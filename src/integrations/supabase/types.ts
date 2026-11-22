@@ -23678,12 +23678,24 @@ export type Database = {
         Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean
       }
+      can_comms_part: {
+        Args: { _club_id: string; _part: string; _user_id: string }
+        Returns: boolean
+      }
       can_grant: {
         Args: { _capability: string; _club_id: string; _user_id: string }
         Returns: boolean
       }
       can_host_at_club: {
         Args: { _club: string; _uid: string }
+        Returns: boolean
+      }
+      can_manage_agm: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_club_bookings: {
+        Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
       can_manage_club_comms: {
@@ -25110,6 +25122,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_club_finance_part_writer: {
+        Args: { _club_id: string; _parts: string[]; _user_id: string }
+        Returns: boolean
+      }
       is_club_finance_writer: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
@@ -26099,6 +26115,10 @@ export type Database = {
           _reason?: string
         }
         Returns: Json
+      }
+      perm_slug_granted: {
+        Args: { _held: string[]; _slug: string }
+        Returns: boolean
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }

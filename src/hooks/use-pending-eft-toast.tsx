@@ -86,7 +86,7 @@ function ApprovalCard({ tx, total, onApprove, onLater, onView }: {
 }
 
 export function usePendingEftApprovalToast(clubId?: string | null) {
-  const canSeeFinance = useHasPermission("finance");
+  const canSeeFinance = useHasPermission("finance.approve");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [snoozeTick, setSnoozeTick] = useState(0);

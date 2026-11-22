@@ -1,4 +1,5 @@
 import { computeJoinFee } from "@/lib/fee-proration";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useState, useRef, useEffect } from "react";
 import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
@@ -410,6 +411,9 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
 
 export function MembersTab({ clubId }: { clubId: string }) {
   const { format } = useClubCurrency();
+  // Finer Members permissions (a whole "Members" grant includes every part).
+  const canEditMembers = useHasPermission("members.edit");
+  const canApproveMembers = useHasPermission("members.approve");
   const { data: allMembersRaw = [], isLoading } = useClubMembers(clubId);
   // Exclude visitor-role entries — they live in the Visitors tab to avoid mixing them with real members.
   // Pending applicants live in the applications panel above until they are approved.
@@ -1027,6 +1031,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
           }}>
             <Download className="w-3.5 h-3.5 mr-1" />Export
           </Button>
+          {canEditMembers && (<>
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
             <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
@@ -1035,11 +1040,12 @@ export function MembersTab({ clubId }: { clubId: string }) {
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />
+          </>)}
         </div>
       </div>
 
-      <PendingApplicationsPanel clubId={clubId} />
-      <MemberActivationPanel clubId={clubId} members={allMembersRaw as any} />
+      {canApproveMembers && <PendingApplicationsPanel clubId={clubId} />}
+      {canEditMembers && <MemberActivationPanel clubId={clubId} members={allMembersRaw as any} />}
 
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
 

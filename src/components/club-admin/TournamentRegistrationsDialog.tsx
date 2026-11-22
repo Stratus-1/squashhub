@@ -1,4 +1,5 @@
 import { ChampFeesPanel } from "./ChampFeesPanel";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
 import { entryDueCents, entrantFeeText, tierSummary } from "@/lib/tournaments/entry-fee";
 import { useChampFeeTiers } from "@/hooks/use-champ-fee-tiers";
@@ -45,7 +46,13 @@ interface Props {
 }
 
 export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubId }: Props) {
-  const { canChange } = useFinancialAccess(clubId);
+  const { canChange: canChangeFinance } = useFinancialAccess(clubId);
+  // Paid / unpaid / waive marks need "Mark entries paid" (whole Tournaments includes it).
+  const permPaid = useHasPermission("champs.paid");
+  const permFees = useHasPermission("fees");
+  const permFinance = useHasPermission("finance");
+  const canMarkPaid = permPaid || permFees || permFinance;
+  const canChange = canChangeFinance && canMarkPaid;
   const qc = useQueryClient();
   const { data: members = [] } = useClubMembers(clubId);
   const [inviteOpen, setInviteOpen] = useState(false);

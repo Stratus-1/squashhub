@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useHasPermission } from "@/hooks/use-club-permissions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function SuspendedMembersPanel({ clubId }: { clubId: string }) {
   const { user } = useAuth();
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const canChangeStatus = useHasPermission("members.status");
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["suspended-members", clubId],
@@ -143,7 +145,7 @@ export function SuspendedMembersPanel({ clubId }: { clubId: string }) {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={busy === r.id}
+                    disabled={!canChangeStatus || busy === r.id}
                     onClick={() => setStatus(r, "clear")}
                     className="gap-1.5 h-7 text-xs"
                   >
@@ -153,7 +155,7 @@ export function SuspendedMembersPanel({ clubId }: { clubId: string }) {
                   <Button
                     size="sm"
                     variant="destructive"
-                    disabled={busy === r.id}
+                    disabled={!canChangeStatus || busy === r.id}
                     onClick={() => setStatus(r, "suspend")}
                     className="gap-1.5 h-7 text-xs"
                   >

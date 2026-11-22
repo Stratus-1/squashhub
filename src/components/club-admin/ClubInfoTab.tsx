@@ -15,6 +15,7 @@ import { CURRENCY_OPTIONS, getCurrencyOption } from "@/lib/currency";
 
 const FY_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 import { SetupSection } from "./setup/SetupSection";
+import { ClubQrShareCard } from "./ClubQrShareCard";
 import { SetupField } from "./setup/SetupField";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
@@ -207,6 +208,15 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
           </div>
         </SetupSection>
+      )}
+
+      {step === "identity" && (
+        <ClubQrShareCard
+          clubId={clubId}
+          clubName={club.name || "Club"}
+          subdomain={club.subdomain || ""}
+          logoUrl={club.logo_url}
+        />
       )}
 
       {step === "contact" && (

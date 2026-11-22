@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/friendly-error";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { coveredPayableIds } from "@/lib/finance/payable-schedule";
 
 interface Props { clubId: string }
 
@@ -28,6 +29,7 @@ interface PayableFee {
   payee_ref_id: string | null;
   basis: Basis;
   amount: number;
+  season_year: number;
 }
 interface EligibleMember {
   club_member_id: string;
@@ -65,7 +67,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
     queryKey: ["assoc-payable-fees", clubId],
     queryFn: async (): Promise<PayableFee[]> => {
       const { data, error } = await fromExt("club_fees_payable" as any)
-        .select("id, payee_name, payee_type, payee_ref_id, basis, amount, active")
+        .select("id, payee_name, payee_type, payee_ref_id, basis, amount, active, season_year")
         .eq("club_id", clubId)
         .eq("active", true)
         .order("payee_name");
@@ -77,6 +79,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         payee_ref_id: f.payee_ref_id,
         basis: f.basis,
         amount: Number(f.amount) || 0,
+        season_year: Number(f.season_year),
       }));
     },
     enabled: !!clubId,
@@ -180,41 +183,20 @@ export function AssociationPayablesPanel({ clubId }: Props) {
   const nationalUnit = (b: string) => (b === "per_court" ? "court" : b === "per_member" ? "member" : "club");
   const nationalTotal = nationalStatement.reduce((s, r) => s + Number(r.total || 0), 0);
 
-  const feeTenant = (f: PayableFee): string | null => {
-    if (f.payee_type === "league_association" && f.payee_ref_id) {
-      return assocRows.find((a) => a.id === f.payee_ref_id)?.tenant_association_id ?? null;
-    }
-    if (f.payee_type === "national_body" && f.payee_ref_id) {
-      const link = nbLinks.find((l) => l.national_body_fee_id === f.payee_ref_id);
-      const assoc = link ? assocRows.find((a) => a.id === link.league_association_id) : undefined;
-      return assoc?.tenant_association_id ?? null;
-    }
-    return null;
-  };
-
-  const basisMap: Record<Basis, string> = { per_member: "member", per_team: "league_team", per_club: "club" };
   const statementBasisLabel = (b: string) =>
     b === "member" ? "Per member" : b === "league_team" ? "Per team" : "Per club";
   const statementBasisUnit = (b: string) => (b === "member" ? "member" : b === "league_team" ? "team" : "club");
 
-  /** Local fee rows the association already bills automatically (same association + basis). */
-  const coveredFeeIds = useMemo(() => {
-    const set = new Set<string>();
-    fees.forEach((f) => {
-      const t = feeTenant(f);
-      if (!t) return;
-      if (statement.some((r) => r.association_tenant_id === t && r.basis === basisMap[f.basis])) set.add(f.id);
-    });
-    // A national body's own season schedule replaces the club's manual row for that body and basis.
-    fees.forEach((f) => {
-      if (f.payee_type !== "national_body") return;
-      const name = f.payee_name.toLowerCase();
-      if (nationalStatement.some((r) => r.basis === f.basis && name.startsWith(r.organisation_name.toLowerCase()))) set.add(f.id);
-    });
-    return set;
-  }, [fees, statement, nationalStatement, assocRows, nbLinks]);
+  /** The club's own payable rows for the selected season only; earlier seasons stay as the record. */
+  const seasonFees = useMemo(() => fees.filter((f) => f.season_year === season), [fees, season]);
 
-  const manualFees = fees.filter((f) => !coveredFeeIds.has(f.id));
+  /** Local fee rows the association or national body already bills for this season (same body + basis). */
+  const coveredFeeIds = useMemo(
+    () => coveredPayableIds(seasonFees, statement, nationalStatement, assocRows, nbLinks),
+    [seasonFees, statement, nationalStatement, assocRows, nbLinks],
+  );
+
+  const manualFees = seasonFees.filter((f) => !coveredFeeIds.has(f.id));
   const statementTotal = statement.reduce((s, r) => s + Number(r.total_submitted || 0), 0);
 
   return (
@@ -222,7 +204,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
       <div className="flex items-center gap-2">
         <Building2 className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold">Association Payables</h3>
-        <Badge variant="outline" className="text-[10px]">{fees.length} fee{fees.length === 1 ? "" : "s"} configured</Badge>
+        <Badge variant="outline" className="text-[10px]">{seasonFees.length} own fee{seasonFees.length === 1 ? "" : "s"} for {season}</Badge>
       </div>
       <p className="text-xs text-muted-foreground -mt-4">
         Fees billed by an association come straight from that association's own fee schedule and your submitted

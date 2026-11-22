@@ -22,6 +22,8 @@ import { FamilyPackageCard } from "./FamilyPackageCard";
 
 import { useClubCurrency } from "@/hooks/use-currency";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { defaultRateSeason, feeChangesInSeason, feeHistorySeasons, feeKindLabel, feesAsAtSeason, type FeeHistoryRow } from "@/lib/finance/fee-history";
+import { History, Lock } from "lucide-react";
 
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -80,6 +82,30 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const [addOpen, setAddOpen] = useState(false);
   const [tenantName, setTenantName] = useState<string>("");
   const [step, setStep] = useState("receivable");
+  const thisYear = new Date().getFullYear();
+  const [payableSeason, setPayableSeason] = useState(thisYear + 1);
+  const [feeSeasonChoice, setFeeSeasonChoice] = useState<number | null>(null);
+
+  // Year-by-year record of the fees the club charges (written by the database on every amount change).
+  const { data: feeHistory = [] } = useQuery({
+    queryKey: ["club-fee-rate-history", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_fee_rate_history" as any)
+        .select("fee_source, fee_id, fee_name, fee_kind, amount, previous_amount, season_year, change_kind, changed_by_name, changed_at")
+        .eq("club_id", clubId)
+        .order("changed_at");
+      if (error) return [] as FeeHistoryRow[];
+      return (data || []) as unknown as FeeHistoryRow[];
+    },
+  });
+  const historySeasons = feeHistorySeasons(feeHistory, thisYear);
+  const liveSeason = Math.max(historySeasons[0], thisYear);
+  const feeSeasonOptions = Array.from(new Set([liveSeason, ...historySeasons])).sort((a, b) => b - a);
+  const feeSeason = feeSeasonChoice ?? liveSeason;
+  const viewingPastFees = feeSeason !== liveSeason;
+  const pastFees = viewingPastFees ? feesAsAtSeason(feeHistory, feeSeason) : [];
+  const seasonChanges = feeChangesInSeason(feeHistory, feeSeason);
 
 
   // Fetch tenant (association) name to auto-fill league_affiliation fees
@@ -263,16 +289,59 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-semibold">Fees Receivable Schedule</h3>
-            <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
+            <h3 className="font-semibold">Fees Receivable Schedule — {feeSeason}</h3>
+            <p className="text-xs text-muted-foreground">
+              {viewingPastFees
+                ? `Record of the fees the club charged in ${feeSeason}. Read-only.`
+                : "Fees the club charges to members — all treated as club income"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button disabled={!canEditFees} size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
+            <Select value={String(feeSeason)} onValueChange={(v) => setFeeSeasonChoice(Number(v))}>
+              <SelectTrigger className="h-8 w-[130px] text-xs" aria-label="Fee year"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {feeSeasonOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y} fees{y === liveSeason ? " (current)" : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!viewingPastFees && <Button disabled={!canEditFees} size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>}
           </div>
         </div>
 
+        {viewingPastFees && (
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fee Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount ({currencySymbol})</TableHead>
+                  <TableHead>Amount set for</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastFees.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No fees recorded for {feeSeason}.</TableCell>
+                  </TableRow>
+                )}
+                {pastFees.map((f) => (
+                  <TableRow key={f.key}>
+                    <TableCell className="font-medium"><span className="inline-flex items-center gap-1.5"><Lock className="w-3 h-3 text-muted-foreground" />{f.name}</span></TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]">{feeKindLabel(f.kind)}</Badge></TableCell>
+                    <TableCell className="text-right tabular-nums">{money(f.amount)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{f.appliesFrom}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
 
 
+
+        {!viewingPastFees && (
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
@@ -349,6 +418,27 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             </TableBody>
           </Table>
         </Card>
+        )}
+
+        {seasonChanges.length > 0 && (
+          <Card className="p-3 mt-3 space-y-1.5">
+            <p className="text-xs font-semibold inline-flex items-center gap-1.5"><History className="w-3.5 h-3.5" />Fee changes for {feeSeason}</p>
+            {seasonChanges.map((c, i) => (
+              <div key={i} className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <span>
+                  <span className="font-medium">{c.fee_name || "Fee"}</span>{" "}
+                  {c.change_kind === "added" && <>added at {money(Number(c.amount ?? 0))}</>}
+                  {c.change_kind === "removed" && <>removed</>}
+                  {c.change_kind === "changed" && <>{money(Number(c.previous_amount ?? 0))} → {money(Number(c.amount ?? 0))}</>}
+                </span>
+                <span className="text-muted-foreground">
+                  {new Date(c.changed_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}
+                  {c.changed_by_name ? ` · ${c.changed_by_name}` : ""}
+                </span>
+              </div>
+            ))}
+          </Card>
+        )}
       </div>
 
       {!isAssociation && <FamilyPackageCard clubId={clubId} />}
@@ -367,8 +457,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
 
       {step === "payable" && (
         <div className="space-y-4">
-          {canChange && <AffiliationBillingCard clubId={clubId} />}
-          <FeesPayableSchedule clubId={clubId} />
+          {canChange && <AffiliationBillingCard clubId={clubId} season={payableSeason} onSeasonChange={setPayableSeason} />}
+          <FeesPayableSchedule clubId={clubId} season={payableSeason} onSeasonChange={setPayableSeason} />
         </div>
       )}
 
@@ -470,6 +560,11 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
 
   const hideNameForAffiliation = isAssociation && feeType === "league_affiliation";
 
+  const rateYear = new Date().getFullYear();
+  const [rateSeason, setRateSeason] = useState<number>(() => defaultRateSeason(new Date()));
+  const amountChanged = !isEdit || Number(amount) !== Number(existing?.amount ?? 0);
+  const rateFields = amountChanged ? { rate_season_year: rateSeason } : {};
+
   const handleSave = async () => {
     const finalName = hideNameForAffiliation ? (name.trim() || tenantName || "League Affiliation") : name;
     if (!finalName.trim()) { toast.error("Fee name is required"); return; }
@@ -489,7 +584,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : { debit_order_eligible: debitOrderEligible, debit_order_rail: debitOrderRail };
 
     if (table === "member_fee_categories") {
-      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, due_month: feeDueMonth, due_day: feeDueDay, billing_period: billingPeriod, ...debitFields };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, due_month: feeDueMonth, due_day: feeDueDay, billing_period: billingPeriod, ...debitFields, ...rateFields };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -498,7 +593,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_annual_ladies: ladiesAmount.trim() === "" ? null : Number(ladiesAmount), fee_invoice_timing: invoiceTiming, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_annual_ladies: ladiesAmount.trim() === "" ? null : Number(ladiesAmount), fee_invoice_timing: invoiceTiming, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, ...debitFields, ...rateFields };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -507,7 +602,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, fee_type: mapFeeTypeForDb(feeType), billing_period: billingPeriod, ...debitFields };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: billingPeriod === "monthly" ? false : proRate, fee_type: mapFeeTypeForDb(feeType), billing_period: billingPeriod, ...debitFields, ...rateFields };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -522,6 +617,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
     qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     qc.invalidateQueries({ queryKey: ["club-members"] });
     qc.invalidateQueries({ queryKey: ["club-member-fees"] });
+    qc.invalidateQueries({ queryKey: ["club-fee-rate-history", clubId] });
     onOpenChange(false);
   };
 
@@ -705,6 +801,22 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </Card>
           )}
 
+
+          {amountChanged && (
+            <div className="space-y-1">
+              <Label>{isEdit ? "New amount is the fee for" : "This fee starts in"}</Label>
+              <Select value={String(rateSeason)} onValueChange={(v) => setRateSeason(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(rateYear)}>{rateYear}</SelectItem>
+                  <SelectItem value={String(rateYear + 1)}>{rateYear + 1}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                Saved in the fee history so earlier years keep their old amounts. The new amount is used for billing from now on.
+              </p>
+            </div>
+          )}
 
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>

@@ -4845,3 +4845,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - `sportyhq-history-import` now records junior evidence via `_shared/sportyhq-junior.ts`; 70 earlier-reviewed players backfilled (72 memberships ticked, 1 review).
 - SportyHQ profile and ranking-group pages now return a Cloudflare challenge (403); results pages and player search still work.
 - 2026-11-20 Northern Junior Squash scan: 880 active members in 64 clubs; 99 had SportyHQ links, 617 more matched by exact name + club on SportyHQ search; 91 had junior events in the last 12 months → evidence recorded for 90 (one member has no person record), now ticked across 17 clubs (was 10); Jozelle Meyer stays in review. No new members created, no DOB/ID written.
+
+### 2026-11-22 Fees by year (audit trail)
+- Club Admin → Fees: year dropdown on "Fees payable to the club" (history from `club_fee_rate_history`, 2026 baseline, edit dialog asks which year a new amount is for) and on "Fees payable by the club" (one shared season for Affiliation billing + Fees Payable Schedule; association/national-body set rates shown read-only; copy previous season's rows). Existing payable rows backfilled to 2026. Migration 0471. No amounts or member charges changed.

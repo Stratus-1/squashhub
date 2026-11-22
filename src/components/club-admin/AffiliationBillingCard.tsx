@@ -58,18 +58,21 @@ const STATUS_STYLE: Record<string, string> = {
   disputed: "border-destructive text-destructive",
 };
 
-export function AffiliationBillingCard({ clubId }: { clubId: string }) {
+export function AffiliationBillingCard({ clubId, season: seasonProp, onSeasonChange }: { clubId: string; season?: number; onSeasonChange?: (y: number) => void }) {
   const qc = useQueryClient();
   const { format: money } = useClubCurrency();
   const thisYear = new Date().getFullYear();
-  const [season, setSeason] = useState<number>(thisYear + 1);
+  const [ownSeason, setOwnSeason] = useState<number>(thisYear + 1);
+  const season = seasonProp ?? ownSeason;
+  const setSeason = (y: number) => (onSeasonChange ? onSeasonChange(y) : setOwnSeason(y));
   const [payOpen, setPayOpen] = useState(false);
 
   const seasons = useMemo(() => {
     const list: number[] = [];
     for (let y = thisYear + 1; y >= thisYear - 3; y--) list.push(y);
-    return list;
-  }, [thisYear]);
+    if (!list.includes(season)) list.push(season);
+    return list.sort((a, b) => b - a);
+  }, [thisYear, season]);
 
   const { data: statement = [], isLoading } = useQuery({
     queryKey: ["club-association-statement", clubId, season],

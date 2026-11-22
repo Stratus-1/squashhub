@@ -6841,6 +6841,54 @@ export type Database = {
           },
         ]
       }
+      club_fee_rate_history: {
+        Row: {
+          amount: number | null
+          change_kind: string
+          changed_at: string
+          changed_by: string | null
+          changed_by_name: string | null
+          club_id: string
+          fee_id: string
+          fee_kind: string | null
+          fee_name: string | null
+          fee_source: string
+          id: string
+          previous_amount: number | null
+          season_year: number
+        }
+        Insert: {
+          amount?: number | null
+          change_kind: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          club_id: string
+          fee_id: string
+          fee_kind?: string | null
+          fee_name?: string | null
+          fee_source: string
+          id?: string
+          previous_amount?: number | null
+          season_year: number
+        }
+        Update: {
+          amount?: number | null
+          change_kind?: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          club_id?: string
+          fee_id?: string
+          fee_kind?: string | null
+          fee_name?: string | null
+          fee_source?: string
+          id?: string
+          previous_amount?: number | null
+          season_year?: number
+        }
+        Relationships: []
+      }
       club_fees_payable: {
         Row: {
           active: boolean
@@ -6855,6 +6903,7 @@ export type Database = {
           payee_name: string
           payee_ref_id: string | null
           payee_type: string
+          season_year: number
           updated_at: string
         }
         Insert: {
@@ -6870,6 +6919,7 @@ export type Database = {
           payee_name: string
           payee_ref_id?: string | null
           payee_type: string
+          season_year?: number
           updated_at?: string
         }
         Update: {
@@ -6885,6 +6935,7 @@ export type Database = {
           payee_name?: string
           payee_ref_id?: string | null
           payee_type?: string
+          season_year?: number
           updated_at?: string
         }
         Relationships: [
@@ -11470,6 +11521,7 @@ export type Database = {
           name: string
           platform_association_id: string | null
           pro_rate: boolean
+          rate_season_year: number | null
           require_mixed_pair: boolean
           scope: string
           tenant_association_id: string | null
@@ -11505,6 +11557,7 @@ export type Database = {
           name: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          rate_season_year?: number | null
           require_mixed_pair?: boolean
           scope?: string
           tenant_association_id?: string | null
@@ -11540,6 +11593,7 @@ export type Database = {
           name?: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          rate_season_year?: number | null
           require_mixed_pair?: boolean
           scope?: string
           tenant_association_id?: string | null
@@ -14519,6 +14573,7 @@ export type Database = {
           id: string
           name: string
           pro_rate: boolean
+          rate_season_year: number | null
           recurring_debit_day: number | null
           recurring_enabled: boolean
           recurring_rails: string[]
@@ -14547,6 +14602,7 @@ export type Database = {
           id?: string
           name: string
           pro_rate?: boolean
+          rate_season_year?: number | null
           recurring_debit_day?: number | null
           recurring_enabled?: boolean
           recurring_rails?: string[]
@@ -14575,6 +14631,7 @@ export type Database = {
           id?: string
           name?: string
           pro_rate?: boolean
+          rate_season_year?: number | null
           recurring_debit_day?: number | null
           recurring_enabled?: boolean
           recurring_rails?: string[]
@@ -15132,6 +15189,7 @@ export type Database = {
           fee_type: string
           id: string
           pro_rate: boolean
+          rate_season_year: number | null
           show_on_landing: boolean
           updated_at: string
         }
@@ -15153,6 +15211,7 @@ export type Database = {
           fee_type?: string
           id?: string
           pro_rate?: boolean
+          rate_season_year?: number | null
           show_on_landing?: boolean
           updated_at?: string
         }
@@ -15174,6 +15233,7 @@ export type Database = {
           fee_type?: string
           id?: string
           pro_rate?: boolean
+          rate_season_year?: number | null
           show_on_landing?: boolean
           updated_at?: string
         }

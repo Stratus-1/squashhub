@@ -4947,3 +4947,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Club Admin → Rules & Documents document rows squeezed the title/description into a one-word-wide column on mobile.
 - Cause: `flex-wrap` row with a `flex-1 min-w-0` text button never wrapped; the badge/switch/buttons took the width.
 - Fix: `ClubDocumentsLibrary.tsx` rows stack on phones (text full width, controls on a second line), side by side from `sm` up. No data changes.
+
+### 2026-11-22 — Resigned members still listed in Club Admin → Users
+- Symptom: after merging Ilana Kriel (CSI0075) into Ilana Carstens (CSI0032), the resigned Kriel record still appeared in CSIR's Users list.
+- Cause: `UsersTab.tsx` loaded every `club_members` row for the club regardless of status.
+- Fix: the Users query now excludes `status = 'resigned'` (null status kept). Member data unchanged; 118 active CSIR members remain listed.

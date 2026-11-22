@@ -30,6 +30,8 @@ export function UsersTab({ clubId }: UsersTabProps) {
       const { data, error } = await fromExt("club_members")
         .select("id, name, email, user_id, role, club_member_number, gender, joined_at")
         .eq("club_id", clubId)
+        // Resigned members (e.g. merged duplicates) have no place in the login list.
+        .or("status.is.null,status.neq.resigned")
         .order("name", { ascending: true });
       if (error) throw error;
       return data || [];

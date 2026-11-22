@@ -23729,6 +23729,7 @@ export type Database = {
         Returns: Json
       }
       booking_peak_late_status: { Args: { _booking_id: string }; Returns: Json }
+      booking_permission_slugs: { Args: never; Returns: string[] }
       booking_visitor_entitled: {
         Args: { p_club_id: string; p_club_member_id: string; p_user_id: string }
         Returns: boolean

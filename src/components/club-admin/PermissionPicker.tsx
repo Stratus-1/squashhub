@@ -2,6 +2,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PERMISSION_CHILDREN, normaliseSelection, parentOf } from "@/lib/permissions/fine-permissions";
 import type { ScopedSlug } from "@/lib/permission-scope";
 
+/** Court-booking permissions, shown together in their own box (same order as here). */
+const BOOKING_SLUGS = ["bookings_unlimited", "bookings_unlimited_non_peak", "ops_booking", "bookings_others"];
+
 interface Props {
   slugs: ScopedSlug[];
   selected: Set<string>;
@@ -58,7 +61,9 @@ export function PermissionPicker({ slugs, selected, onChange, disabled, allCheck
     onChange(next);
   };
 
-  const simple = slugs.filter((s) => !PERMISSION_CHILDREN[s.value]);
+  const isBooking = (v: string) => BOOKING_SLUGS.includes(v);
+  const simple = slugs.filter((s) => !PERMISSION_CHILDREN[s.value] && !isBooking(s.value));
+  const booking = BOOKING_SLUGS.map((v) => slugs.find((s) => s.value === v)).filter(Boolean) as ScopedSlug[];
   const areas = slugs.filter((s) => PERMISSION_CHILDREN[s.value]);
 
   const row = (slug: string, label: string, onToggle: () => void, extraClass = "") => {
@@ -90,6 +95,14 @@ export function PermissionPicker({ slugs, selected, onChange, disabled, allCheck
             </div>
           );
         })}
+        {booking.length > 0 && (
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="text-sm font-medium">Court bookings</div>
+            <div className="pl-6 grid grid-cols-1 gap-1.5">
+              {booking.map((s) => row(s.value, s.label, () => toggleArea(s.value)))}
+            </div>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
         {simple.map((s) => row(s.value, s.label, () => toggleArea(s.value)))}

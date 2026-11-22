@@ -3375,6 +3375,13 @@
       "when": 1795347023145,
       "tag": "0481_grant_office_role_helpers_service",
       "breakpoints": true
+    },
+    {
+      "idx": 482,
+      "version": "7",
+      "when": 1795347315136,
+      "tag": "0482_office_roles_keep_booking_permissions",
+      "breakpoints": true
     }
   ]
 }

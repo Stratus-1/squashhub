@@ -4926,3 +4926,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 2026-11-22 — Super Admin could not open a support ticket
 - Symptom: the email link `/admin/support?threadId=…` ignored `threadId`, and on a phone tapping a ticket only highlighted it while the conversation stayed off-screen below the list.
 - Fix: `AdminSupport.tsx` opens the ticket named in `threadId`, scrolls to the conversation on narrow screens, and the icon-only reply button has an accessible "Send reply" label.
+
+### 2026-11-22 — Support inbox: tapping a ticket on a phone did nothing
+- Symptom: on phones the first open ticket was already highlighted and its conversation sat below a long ticket list; tapping it appeared to do nothing.
+- Fix: `src/pages/AdminSupport.tsx` now shows the list and the conversation one at a time below the `lg` breakpoint — tapping a ticket opens its conversation with a "Back to tickets" button; desktop two-column layout unchanged. Email `?threadId=` links open straight into the conversation.

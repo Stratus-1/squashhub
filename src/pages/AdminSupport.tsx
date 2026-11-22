@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { Bug, Clipboard, LifeBuoy, Lightbulb, Mail, MessageCircle, Phone, Search, Send, TriangleAlert, XCircle } from "lucide-react";
+import { ArrowLeft, Bug, Clipboard, LifeBuoy, Lightbulb, Mail, MessageCircle, Phone, Search, Send, TriangleAlert, XCircle } from "lucide-react";
 
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,13 +91,15 @@ export default function AdminSupport() {
   const [selectedId, setSelectedId] = useState<string | null>(
     () => new URLSearchParams(window.location.search).get("threadId"),
   );
-  const conversationRef = useRef<HTMLDivElement | null>(null);
+  // On phones (below lg) the ticket list and the conversation are shown one at a time:
+  // tapping a ticket swaps the list for that conversation, with a Back button.
+  const [phoneConversationOpen, setPhoneConversationOpen] = useState<boolean>(
+    () => !!new URLSearchParams(window.location.search).get("threadId"),
+  );
   const openThread = (id: string) => {
     setSelectedId(id);
-    // On phones the conversation sits below the ticket list; bring it into view.
-    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches) {
-      requestAnimationFrame(() => conversationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    }
+    setPhoneConversationOpen(true);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
   const [reply, setReply] = useState("");
   const [query, setQuery] = useState("");
@@ -328,7 +330,7 @@ export default function AdminSupport() {
       </div>
 
       <div className="px-4 sm:px-6 lg:px-[5%] mb-24 grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-3">
-        <Card className="border-border/60">
+        <Card className={cn("border-border/60", phoneConversationOpen && "hidden lg:block")}>
           <CardContent className="p-2">
             <div className="p-2 space-y-2">
               <div className="relative">
@@ -437,8 +439,16 @@ export default function AdminSupport() {
           </CardContent>
         </Card>
 
-        <Card ref={conversationRef} className="border-border/60 scroll-mt-4">
+        <Card className={cn("border-border/60", !phoneConversationOpen && "hidden lg:block")}>
           <CardContent className="p-3 space-y-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden -ml-1 h-8 px-2"
+              onClick={() => setPhoneConversationOpen(false)}
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back to tickets
+            </Button>
             {!selectedThread ? (
               <div className="p-6 text-center text-muted-foreground">
                 <MessageCircle className="w-6 h-6 mx-auto mb-2 opacity-60" />

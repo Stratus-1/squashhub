@@ -186,7 +186,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{existing ? "Edit" : "Add"} Permission Role</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
@@ -202,9 +202,9 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
           </label>
           <div className="space-y-2" aria-disabled={isFullAdmin}>
             <Label className={isFullAdmin ? "text-muted-foreground" : ""}>Permissions</Label>
-            <div className={`grid grid-cols-2 gap-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
               {grantableSlugs.map(s => (
-                <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer lg:whitespace-nowrap">
                   <Checkbox checked={isFullAdmin || perms.has(s.value)} onCheckedChange={() => toggle(s.value)} disabled={isFullAdmin} />
                   {s.label}
                 </label>
@@ -602,7 +602,7 @@ function MemberPermDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Permissions — {memberName}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <label className="flex items-start gap-3 p-3 rounded-md border bg-muted/30 cursor-pointer">
@@ -644,9 +644,9 @@ function MemberPermDialog({
           <div className={`space-y-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
             <Label>Additional Custom Permissions</Label>
             <p className="text-[10px] text-muted-foreground">Grant extra permissions beyond the assigned role</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
               {grantableSlugs.map(s => (
-                <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer lg:whitespace-nowrap">
                   <Checkbox
                     checked={customPerms.has(s.value)}
                     onCheckedChange={() => toggle(s.value)}

@@ -45,5 +45,14 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
 /** "vice_chair" → "Vice chair"; "chairman, treasurer" → "Chairman, Treasurer". */
 export function officeLabel(office: string | null | undefined): string {
   if (!office) return "";
-  return office.split(",").map((o) => { const t = o.trim().replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); }).join(", ");
+  const names: Record<string, string> = {
+    chairman: "Chairman", vice_chair: "Vice-Chairman", secretary: "Secretary",
+    treasurer: "Treasurer", club_captain: "Club Captain", club_manager: "Club Manager",
+  };
+  return office.split(",").map((o) => {
+    const k = o.trim();
+    if (names[k]) return names[k];
+    const t = k.replace(/_/g, " ");
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }).join(", ");
 }

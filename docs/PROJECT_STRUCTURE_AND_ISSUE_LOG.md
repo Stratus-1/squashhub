@@ -4933,3 +4933,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-22 — Committee approval requests
 - New Club Admin > Approvals: office bearer creates a request (topic, description, amount, files, own signature), picks approving office bearers; each gets an in-app notice and an email (SquashHub sender) with a private link (`/approve/:token`, edge function `approval-link`) to view files and sign/decline without logging in. Saved signatures are reusable; each approval stores its own snapshot. Migration 0489. Rules tested in `src/lib/approvals.test.ts`.
+
+### 2026-11-22 Approvals: approver list missed committee members
+- Riverside's New request listed only Pieter van Wyk: eligibility read only `club_offices`, but positions are also kept on `clubs.*_member_id` and office permission roles (Chairman, Vice-Chairman, Secretary, Treasurer, Club Captain, Club Manager).
+- Migration 0490 adds `_approval_member_offices` (union of all three) used by eligibility, the approver list and request display; `officeLabel` shows proper position names.

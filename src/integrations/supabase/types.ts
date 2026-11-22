@@ -22383,6 +22383,10 @@ export type Database = {
         Args: { p_club: string; p_member: string }
         Returns: boolean
       }
+      _approval_member_offices: {
+        Args: { p_club: string; p_member: string }
+        Returns: string
+      }
       _approval_my_member: { Args: { p_club: string }; Returns: string }
       _approval_notify: {
         Args: {

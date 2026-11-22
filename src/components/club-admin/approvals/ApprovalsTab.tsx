@@ -21,7 +21,7 @@ import {
 import { SignaturePad, dataUrlToBlob, type SignatureValue } from "./SignaturePad";
 
 const BUCKET = "club-approvals";
-const rpc = supabase.rpc as any;
+const rpc = (fn: string, args: Record<string, unknown>) => (supabase as any).rpc(fn, args);
 
 function statusClass(s: RequestStatus) {
   if (s === "approved") return "bg-success/15 text-success border-success/30";

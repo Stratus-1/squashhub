@@ -205,7 +205,7 @@ export default function ClubAdmin() {
   // Office bearers (not only full admins) use committee approvals.
   const { data: canUseApprovals } = useQuery({
     queryKey: ["can-use-approvals", club?.id], enabled: !!club?.id,
-    queryFn: async () => !!(await (supabase.rpc as any)("can_use_club_approvals", { p_club: club!.id })).data,
+    queryFn: async () => !!(await (supabase as any).rpc("can_use_club_approvals", { p_club: club!.id })).data,
   });
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get

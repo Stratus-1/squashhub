@@ -4863,3 +4863,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Members: `/club-documents` page + "Club Documents" home tile (only once something is shared).
 - Edge function `club-documents-import-stitch` copied the Stitch-application constitution into "Constitution & amendments" (hidden) for Nelspruit, CSIR, Highveld, Uitsig and Riverside; idempotent via `club_documents.source_ref`.
 - Observed, not changed: the older "Club members read own club documents" storage policy compares the folder to `club_members.name` (unqualified `name`), so that member clause never matches.
+
+### 2026-11-22 Finance audit trail (deleted / reversed / edited transactions)
+- Request (Willem): every deletion, reversal or change by the treasurer or anyone must be logged with who did it; deleted transactions stay visible struck through with a note; visible to admins, chairman and treasurer, not on the member's own statement.
+- Before: only `admin_delete_journal_group`/`admin_reverse_journal_group` and some RPCs wrote `ledger_audit_log`; direct deletes (Members fee removal, opening balances, bank import, fee resync) left no trace, and nothing was shown on screen.
+- Fix: migration 0476 — `club_journal_entries.created_by`, trigger `journal_entry_audit` → append-only `club_journal_entry_changes`, backfilled 313 earlier deletions from `ledger_audit_log`; `club_ledger_audit_trail` RPC (finance readers only). Club Finance → All GL Entries and Member Statement show "Deleted by … (struck through, not counted)", "Reversed by …", "Reversal posted by …", "Edited by … (was R…)", with a Show / Hide / Only-changes selector; CSV/PDF export adds an Audit column and totals exclude deleted lines. My Account unchanged. No amounts or balances changed.

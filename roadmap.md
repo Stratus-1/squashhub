@@ -202,3 +202,5 @@
 ## Club documents (22 Nov 2026)
 - [x] Rename "Rules & Constitution" to "Rules & Documents"; document categories (standard: Constitution & amendments, AGM documents, Financial reports; clubs add own) with member-visibility switches per category and per document; chairman and secretary can upload/share.
 - [x] Copy constitutions clubs already uploaded for their Stitch application into "Constitution & amendments" (hidden from members until shared).
+
+- [x] Finance audit trail: deleted lines struck through with who/when, reversals flagged, admins/chairman/treasurer only

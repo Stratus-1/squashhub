@@ -50,6 +50,7 @@ import { trialBalanceReport } from "@/lib/finance/report-export";
 import { ReportDownloadMenu } from "./finance/ReportDownloadMenu";
 import { JournalEntryDialog } from "./finance/JournalEntryDialog";
 import { CreditTransfersPanel } from "./finance/CreditTransfersPanel";
+import { mergeLedgerAudit, applyAuditView, countable, isDeleted, auditLabel, type AuditView, type AuditedEntry, type LedgerAuditRow } from "@/lib/finance/ledger-audit";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -353,6 +354,22 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     enabled: !!clubId,
   });
 
+  // Audit trail: deleted, edited and reversed lines (admins, chairman and Finance only — never members).
+  // Key sits under "club-journal-entries" so every existing invalidation refreshes it too.
+  const { data: auditRows = [] } = useQuery({
+    queryKey: ["club-journal-entries", clubId, "audit-trail"],
+    queryFn: async (): Promise<LedgerAuditRow[]> => {
+      const { data, error } = await rpcExt("club_ledger_audit_trail", { p_club_id: clubId });
+      if (error) { console.warn("Audit trail unavailable", error.message); return []; }
+      return (data || []) as LedgerAuditRow[];
+    },
+    enabled: !!clubId,
+  });
+  const [auditView, setAuditView] = useState<AuditView>("with_changes");
+  const ledgerRows: AuditedEntry[] = mergeLedgerAudit(journalEntries || [], auditRows)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || String(a.id).localeCompare(String(b.id)));
+  const auditWhen = (iso: string) => format(new Date(iso), "dd MMM yyyy HH:mm");
+
   // Fetch pending EFT payments
   const { data: pendingTransactions, isLoading: pendingLoading } = useQuery({
     queryKey: ["pending-member-transactions", clubId],
@@ -438,7 +455,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     else if (p === "this_month") { setGlFrom(f(new Date(now.getFullYear(), now.getMonth(), 1))); setGlTo(f(new Date(now.getFullYear(), now.getMonth() + 1, 0))); }
     else if (p === "last_month") { setGlFrom(f(new Date(now.getFullYear(), now.getMonth() - 1, 1))); setGlTo(f(new Date(now.getFullYear(), now.getMonth(), 0))); }
   };
-  const glShown: any[] = (journalEntries || []).filter((e: any) => {
+  const glShown: any[] = applyAuditView(ledgerRows, auditView).filter((e: any) => {
     const d = format(new Date(e.created_at), "yyyy-MM-dd");
     if (glFrom && d < glFrom) return false;
     if (glTo && d > glTo) return false;
@@ -446,7 +463,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     if (!q) return true;
     const memberName = e.club_member_id ? getMemberName(e.club_member_id) : "";
     const parts = [e.description, getAccountLabel(e.custom_account_id ? `custom:${e.custom_account_id}` : e.account), e.account, memberName,
-      format(new Date(e.created_at), "dd MMM yyyy HH:mm"),
+      format(new Date(e.created_at), "dd MMM yyyy HH:mm"), auditLabel(e.audit, auditWhen),
       Number(e.debit || 0) > 0 ? Number(e.debit).toFixed(2) : "", Number(e.credit || 0) > 0 ? Number(e.credit).toFixed(2) : ""];
     return parts.some(p => String(p || "").toLowerCase().includes(q));
   });
@@ -457,14 +474,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       getAccountLabel(e.custom_account_id ? `custom:${e.custom_account_id}` : e.account),
       e.club_member_id ? getMemberName(e.club_member_id) : "",
       Number(e.debit || 0).toFixed(2), Number(e.credit || 0).toFixed(2),
+      auditLabel(e.audit, auditWhen),
     ]);
-    const totD = glShown.reduce((s, e: any) => s + Number(e.debit || 0), 0);
-    const totC = glShown.reduce((s, e: any) => s + Number(e.credit || 0), 0);
+    // Deleted lines are listed for the audit trail but never counted.
+    const totD = countable(glShown).reduce((s, e: any) => s + Number(e.debit || 0), 0);
+    const totC = countable(glShown).reduce((s, e: any) => s + Number(e.credit || 0), 0);
     const period = glFrom || glTo ? `${glFrom || "start"} to ${glTo || "today"}` : "All dates";
-    const head = ["Date", "Description", "Account", "Member", "Debit", "Credit"];
+    const head = ["Date", "Description", "Account", "Member", "Debit", "Credit", "Audit"];
     if (kind === "csv") {
       const esc = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-      const csv = [head, ...rows, ["", "Total", "", "", totD.toFixed(2), totC.toFixed(2)]].map(r => r.map(esc).join(",")).join("\n");
+      const csv = [head, ...rows, ["", "Total (excl. deleted)", "", "", totD.toFixed(2), totC.toFixed(2), ""]].map(r => r.map(esc).join(",")).join("\n");
       const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
       const a = document.createElement("a"); a.href = url; a.download = `gl-entries-${glFrom || "all"}-${glTo || "today"}.csv`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
@@ -473,7 +492,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     const h = (v: string) => v.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<html><head><title>General Ledger</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:4px;text-align:left}td.n,th.n{text-align:right}tfoot td{font-weight:bold;border-top:2px solid #000}@page{size:A4 landscape;margin:12mm}</style></head><body><h2>${h(club?.name || "")} — General Ledger</h2><p>${h(period)} · ${rows.length} entries</p><table><thead><tr>${head.map((x, i) => `<th class="${i > 3 ? "n" : ""}">${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((x, i) => `<td class="${i > 3 ? "n" : ""}">${h(x)}</td>`).join("")}</tr>`).join("")}</tbody><tfoot><tr><td></td><td>Total</td><td></td><td></td><td class="n">${totD.toFixed(2)}</td><td class="n">${totC.toFixed(2)}</td></tr></tfoot></table><script>window.onload=()=>window.print()</script></body></html>`);
+    w.document.write(`<html><head><title>General Ledger</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#000}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:4px;text-align:left}td.n,th.n{text-align:right}tfoot td{font-weight:bold;border-top:2px solid #000}tr.del td{text-decoration:line-through;color:#900}tr.del td:last-child{text-decoration:none}@page{size:A4 landscape;margin:12mm}</style></head><body><h2>${h(club?.name || "")} — General Ledger</h2><p>${h(period)} · ${rows.length} entries</p><table><thead><tr>${head.map((x, i) => `<th class="${i > 3 && i < 6 ? "n" : ""}">${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr class="${r[6].startsWith("Deleted") ? "del" : ""}">${r.map((x, i) => `<td class="${i > 3 && i < 6 ? "n" : ""}">${h(x)}</td>`).join("")}</tr>`).join("")}</tbody><tfoot><tr><td></td><td>Total (excl. deleted)</td><td></td><td></td><td class="n">${totD.toFixed(2)}</td><td class="n">${totC.toFixed(2)}</td><td></td></tr></tfoot></table><script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
   };
 
@@ -698,6 +717,21 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
     } finally {
       setRowActionBusy(false);
     }
+  };
+
+  /* Audit flag under a row: who deleted / reversed / edited it and when */
+  const AuditNote = ({ entry }: { entry: AuditedEntry }) => {
+    const a = entry.audit;
+    if (!a) return null;
+    const tone = a.status === "deleted" ? "text-destructive" : a.status === "edited" ? "text-muted-foreground" : "text-amber-600";
+    return (
+      <p className={cn("text-[10px] font-semibold leading-snug whitespace-normal", tone)}>
+        {auditLabel(a, auditWhen)}
+        {a.status === "edited" && (Number(a.was.debit) !== Number(entry.debit) || Number(a.was.credit) !== Number(entry.credit)) && (
+          <span className="font-normal"> (was {money(Number(a.was.debit) || Number(a.was.credit))})</span>
+        )}
+      </p>
+    );
   };
 
   /* Action menu reused on journal & statement rows */
@@ -1072,6 +1106,14 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <Input type="date" value={glFrom} onChange={e => { setGlFrom(e.target.value); setGlPreset("custom"); }} className="h-8 text-xs w-[140px]" />
               <Label className="text-[10px] text-muted-foreground">To</Label>
               <Input type="date" value={glTo} onChange={e => { setGlTo(e.target.value); setGlPreset("custom"); }} className="h-8 text-xs w-[140px]" />
+              <Select value={auditView} onValueChange={v => setAuditView(v as AuditView)}>
+                <SelectTrigger className="w-[210px] h-8 text-xs" aria-label="Deleted and reversed entries"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="with_changes">Show deleted &amp; reversed</SelectItem>
+                  <SelectItem value="live_only">Hide deleted entries</SelectItem>
+                  <SelectItem value="changes_only">Only deleted, reversed &amp; edited</SelectItem>
+                </SelectContent>
+              </Select>
               <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => exportGl("csv")}><Download className="w-3.5 h-3.5" /> CSV / Excel</Button>
               <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => exportGl("print")}><FileText className="w-3.5 h-3.5" /> Print / PDF</Button>
             </div>
@@ -1097,27 +1139,28 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                     {shown.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-3">No entries match "{journalSearch}".</p>
                     ) : shown.map((entry: any) => (
-                      <div key={entry.id} className="grid grid-cols-[110px_1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
+                      <div key={entry.id} className={cn("grid grid-cols-[110px_1fr_120px_80px_80px_32px] gap-1 px-3 py-2 text-xs items-center", isDeleted(entry) && "bg-destructive/5")}>
                         <div className="text-[11px] tabular-nums text-muted-foreground">
                           <div>{format(new Date(entry.created_at), "dd MMM yyyy")}</div>
                           <div className="text-[10px]">{format(new Date(entry.created_at), "HH:mm")}</div>
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium">{entry.description}</p>
+                          <p className={cn("truncate font-medium", isDeleted(entry) && "line-through text-muted-foreground")}>{entry.description}</p>
                           {entry.club_member_id && (
                             <p className="text-[10px] text-muted-foreground truncate">{getMemberName(entry.club_member_id)}</p>
                           )}
+                          <AuditNote entry={entry} />
                         </div>
-                        <Badge variant="outline" className="text-[10px] w-fit">
+                        <Badge variant="outline" className={cn("text-[10px] w-fit", isDeleted(entry) && "line-through opacity-60")}>
                           {getLabel(entry.account)}
                         </Badge>
-                        <span className={cn("text-right tabular-nums", Number(entry.debit) > 0 && "text-green-600 font-medium")}>
+                        <span className={cn("text-right tabular-nums", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.debit) > 0 && "text-green-600 font-medium")}>
                           {Number(entry.debit) > 0 ? money(Number(entry.debit)) : ""}
                         </span>
-                        <span className={cn("text-right tabular-nums", Number(entry.credit) > 0 && "text-destructive font-medium")}>
+                        <span className={cn("text-right tabular-nums", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.credit) > 0 && "text-destructive font-medium")}>
                           {Number(entry.credit) > 0 ? money(Number(entry.credit)) : ""}
                         </span>
-                        <RowActionMenu entry={entry} />
+                        {isDeleted(entry) ? <span /> : <RowActionMenu entry={entry} />}
                       </div>
                     ))}
                   </div>
@@ -1735,12 +1778,12 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
               <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3 pr-1">
                 {party === "member" && <MemberCreditControl clubId={clubId} memberId={statementMemberId} />}
                 {(() => {
-                  const controlAccountEntries = (journalEntries || [])
+                  const controlAccountEntries = applyAuditView(ledgerRows, auditView)
                     .filter((e: any) => e.club_member_id === statementMemberId && ["debtors", "member_credits"].includes(e.account));
 
                   const internalSettlementRefs = new Set(
                     Object.entries(
-                      controlAccountEntries.reduce((acc: Record<string, any[]>, e: any) => {
+                      countable(controlAccountEntries).reduce((acc: Record<string, any[]>, e: any) => {
                         const ref = String(e.journal_ref || e.id);
                         acc[ref] = acc[ref] || [];
                         acc[ref].push(e);
@@ -1778,13 +1821,17 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       if (t !== 0) return t;
                       return String(a.id).localeCompare(String(b.id));
                     });
-                  const toMemberAmount = (e: any) => Number(e.debit || 0) - Number(e.credit || 0);
+                  // Deleted lines stay visible (struck through) but never count.
+                  const toMemberAmount = (e: any) => isDeleted(e) ? 0 : Number(e.debit || 0) - Number(e.credit || 0);
                   const billed = memberEntries.reduce((s: number, e: any) => s + Math.max(toMemberAmount(e), 0), 0);
                   const paid = memberEntries.reduce((s: number, e: any) => s + Math.max(-toMemberAmount(e), 0), 0);
                   const outstanding = billed - paid;
                   let running = 0;
                   const rowsDesc = memberEntries
                     .map((e: any) => {
+                      if (isDeleted(e)) {
+                        return { ...e, memberDebit: Number(e.debit || 0), memberCredit: Number(e.credit || 0), running: null };
+                      }
                       const memberAmount = toMemberAmount(e);
                       running += memberAmount;
                       return { ...e, memberDebit: Math.max(memberAmount, 0), memberCredit: Math.max(-memberAmount, 0), running };
@@ -1816,6 +1863,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         </Card>
                       </div>
 
+                      <div className="flex justify-end">
+                        <Select value={auditView} onValueChange={v => setAuditView(v as AuditView)}>
+                          <SelectTrigger className="w-[230px] h-8 text-xs" aria-label="Deleted and reversed entries on statement"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="with_changes">Show deleted &amp; reversed</SelectItem>
+                            <SelectItem value="live_only">Hide deleted entries</SelectItem>
+                            <SelectItem value="changes_only">Only deleted, reversed &amp; edited</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {memberEntries.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No transactions for this member.</p>
                       ) : (
@@ -1831,35 +1888,36 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           </div>
                           <div className="sm:hidden divide-y">
                             {rowsDesc.map((entry: any) => (
-                              <div key={entry.id} className="p-3 space-y-2 text-xs min-w-0">
+                              <div key={entry.id} className={cn("p-3 space-y-2 text-xs min-w-0", isDeleted(entry) && "bg-destructive/5")}>
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-[11px] text-muted-foreground tabular-nums">
                                     {format(new Date(entry.created_at), "dd MMM yy")}
                                   </span>
-                                  {!entry.directBar && <RowActionMenu entry={entry} />}
+                                  {!entry.directBar && !isDeleted(entry) && <RowActionMenu entry={entry} />}
                                 </div>
-                                <p className="font-medium break-words">{entry.description}</p>
+                                <p className={cn("font-medium break-words", isDeleted(entry) && "line-through text-muted-foreground")}>{entry.description}</p>
+                                <AuditNote entry={entry} />
                                 <Badge variant="outline" className={cn("text-[10px] max-w-full whitespace-normal text-left", entry.paidLabel && "text-green-600 border-green-600/40")}>
                                   {entry.directBar ? (entry.paidLabel || "Bar purchase") : getLabel(entry.account)}
                                 </Badge>
                                 <div className="grid grid-cols-2 gap-2 border-t pt-2">
                                   <div className="min-w-0">
                                     <p className="text-[10px] text-muted-foreground">Debit</p>
-                                    <p className={cn("tabular-nums font-semibold break-all", Number(entry.memberDebit) > 0 && "text-destructive")}>
+                                    <p className={cn("tabular-nums font-semibold break-all", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.memberDebit) > 0 && "text-destructive")}>
                                       {Number(entry.memberDebit) > 0 ? money(Number(entry.memberDebit)) : "—"}
                                     </p>
                                   </div>
                                   <div className="min-w-0 text-right">
                                     <p className="text-[10px] text-muted-foreground">Credit</p>
-                                    <p className={cn("tabular-nums font-semibold break-all", Number(entry.memberCredit) > 0 && "text-green-600")}>
+                                    <p className={cn("tabular-nums font-semibold break-all", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.memberCredit) > 0 && "text-green-600")}>
                                       {Number(entry.memberCredit) > 0 ? money(Number(entry.memberCredit)) : "—"}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex justify-between gap-2 border-t pt-2">
                                   <span className="text-[10px] text-muted-foreground">Balance</span>
-                                  <span className={cn("tabular-nums font-semibold text-right break-all", entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")}>
-                                    {money(entry.running)} {entry.running < -0.01 ? "Cr" : ""}
+                                  <span className={cn("tabular-nums font-semibold text-right break-all", entry.running == null ? "text-muted-foreground" : entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                                    {entry.running == null ? "Not counted" : <>{money(entry.running)} {entry.running < -0.01 ? "Cr" : ""}</>}
                                   </span>
                                 </div>
                               </div>
@@ -1867,26 +1925,29 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           </div>
                           <div className="hidden sm:block divide-y">
                             {rowsDesc.map((entry: any) => (
-                              <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
+                              <div key={entry.id} className={cn("grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center", isDeleted(entry) && "bg-destructive/5")}>
                                 <span className="text-[10px] text-muted-foreground tabular-nums">
                                   {format(new Date(entry.created_at), "dd MMM yy")}
                                 </span>
-                                <p className="truncate font-medium">{entry.description}</p>
+                                <div className="min-w-0">
+                                  <p className={cn("truncate font-medium", isDeleted(entry) && "line-through text-muted-foreground")}>{entry.description}</p>
+                                  <AuditNote entry={entry} />
+                                </div>
                                 <Badge variant="outline" className={cn("text-[10px] w-fit", entry.paidLabel && "text-green-600 border-green-600/40")}>
                                   {entry.directBar ? (entry.paidLabel || "Bar purchase") : getLabel(entry.account)}
                                 </Badge>
-                                <span className={cn("text-right tabular-nums", Number(entry.memberDebit) > 0 && "text-destructive font-medium")}>
+                                <span className={cn("text-right tabular-nums", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.memberDebit) > 0 && "text-destructive font-medium")}>
                                   {Number(entry.memberDebit) > 0 ? money(Number(entry.memberDebit)) : ""}
                                 </span>
-                                <span className={cn("text-right tabular-nums", Number(entry.memberCredit) > 0 && "text-green-600 font-medium")}>
+                                <span className={cn("text-right tabular-nums", isDeleted(entry) ? "line-through text-muted-foreground" : Number(entry.memberCredit) > 0 && "text-green-600 font-medium")}>
                                   {Number(entry.memberCredit) > 0 ? money(Number(entry.memberCredit)) : ""}
                                 </span>
                                 <span className={cn("text-right tabular-nums font-medium",
-                                  entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
+                                  entry.running == null ? "text-muted-foreground" : entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground"
                                 )}>
-                                  {money(entry.running)}
+                                  {entry.running == null ? "—" : money(entry.running)}
                                 </span>
-                                {entry.directBar ? <span /> : <RowActionMenu entry={entry} />}
+                                {entry.directBar || isDeleted(entry) ? <span /> : <RowActionMenu entry={entry} />}
                               </div>
                             ))}
                           </div>
@@ -1894,6 +1955,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                       )}
                       <p className="text-[10px] text-muted-foreground">
                         Use the ⋯ menu on any row to <strong>Reverse</strong> (audit-safe) or <strong>Delete</strong> the transaction. Both the debit and credit legs are updated together so the books stay balanced.
+                        {" "}Deleted transactions stay listed, struck through, with who deleted them; they are not counted. This audit view is for admins, the chairman and Finance — the member's own statement does not show it.
                       </p>
                       {party === "member" && <MemberBarPurchases clubId={clubId} memberId={statementMemberId} />}
 

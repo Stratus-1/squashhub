@@ -7251,6 +7251,7 @@ export type Database = {
           club_id: string
           club_member_id: string | null
           created_at: string
+          created_by: string | null
           credit: number
           custom_account_id: string | null
           debit: number
@@ -7266,6 +7267,7 @@ export type Database = {
           club_id: string
           club_member_id?: string | null
           created_at?: string
+          created_by?: string | null
           credit?: number
           custom_account_id?: string | null
           debit?: number
@@ -7281,6 +7283,7 @@ export type Database = {
           club_id?: string
           club_member_id?: string | null
           created_at?: string
+          created_by?: string | null
           credit?: number
           custom_account_id?: string | null
           debit?: number
@@ -7328,6 +7331,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      club_journal_entry_changes: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          changed_at: string
+          club_id: string
+          club_member_id: string | null
+          entry_id: string
+          id: string
+          journal_ref: string | null
+          new_row: Json | null
+          note: string | null
+          old_row: Json
+          source: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          changed_at?: string
+          club_id: string
+          club_member_id?: string | null
+          entry_id: string
+          id?: string
+          journal_ref?: string | null
+          new_row?: Json | null
+          note?: string | null
+          old_row: Json
+          source?: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          changed_at?: string
+          club_id?: string
+          club_member_id?: string | null
+          entry_id?: string
+          id?: string
+          journal_ref?: string | null
+          new_row?: Json | null
+          note?: string | null
+          old_row?: Json
+          source?: string
+        }
+        Relationships: []
       }
       club_member_credit_defaults: {
         Row: {
@@ -22195,6 +22243,10 @@ export type Database = {
         }
         Returns: string
       }
+      _ledger_actor_name: {
+        Args: { p_club: string; p_user: string }
+        Returns: string
+      }
       _match_rollups_for_member: {
         Args: { target_member_id: string }
         Returns: {
@@ -24167,6 +24219,20 @@ export type Database = {
         Returns: boolean
       }
       club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
+      club_ledger_audit_trail: {
+        Args: { p_club_id: string }
+        Returns: {
+          actor_name: string
+          changed_at: string
+          club_member_id: string
+          entry_id: string
+          journal_ref: string
+          kind: string
+          new_data: Json
+          note: string
+          row_data: Json
+        }[]
+      }
       club_member_email_id_conflict: {
         Args: {
           _club_id: string

@@ -4899,3 +4899,6 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 
 ### 2026-11-22 — Uitsig moved from Full Admin to office roles (owner sign-off)
 - Reinhardt Falk Chairman, Zelda Coetzee Vice-Chairman, Deon Groenewald Treasurer + full Bar, Gerhard Fourie Club Captain + messages/events; Brett Cousins and Duane Rossouw no office (admin removed). Johann du Rand, Kaylee Hunt, Kayla Randall unchanged. Pre-change snapshot saved.
+
+### 2026-11-22 — Office-role rollout, remaining clubs (part 1)
+- Snapshots saved for Highveld, St John's, Gordons Bay, Durbanville, Nelspruit. Chairmen from club records moved to Chairman: Brad Botha (GB), Gerrit Oosthuizen (HSC), Susan Crafford (NSC, keeps federation/ops_booking), Brendan Reilly (St John's). Treasurers: Aam Coetzee (GB), Lamont Lloyd (HSC), Rachel Gates (NSC, keeps Bar). Remaining full admins and Durbanville await owner answers.

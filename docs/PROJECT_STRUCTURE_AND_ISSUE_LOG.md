@@ -4952,3 +4952,9 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: after merging Ilana Kriel (CSI0075) into Ilana Carstens (CSI0032), the resigned Kriel record still appeared in CSIR's Users list.
 - Cause: `UsersTab.tsx` loaded every `club_members` row for the club regardless of status.
 - Fix: the Users query now excludes `status = 'resigned'` (null status kept). Member data unchanged; 118 active CSIR members remain listed.
+
+### 2026-11-23 — Junior association registration links and leaders
+- New for junior bodies (Northerns zone, the four provinces, Mpumalanga West regional): workspace sections **Junior registrations** (Club list confirmed switch, one shareable `/j/:token` link with copy/WhatsApp/QR/switch off, review inbox) and **Association leaders** (add/remove leaders for the same or lower junior bodies; new people get a SquashHub-sent activation email via `junior-leader-invite`; optional home club adds a pending member there).
+- Public `JuniorJoin.tsx`: choose a club from that body's list, find the player (masked names), claim (NSA match links at once, otherwise review), or register a new/unlisted junior (DOB required, parent name/cell/consent under 18), or report a missing club. Migrations 0492–0493.
+- Found while testing: linking the registering login after insert put juniors at the bottom of the club ladder (`force_ladder_bottom_on_claim`); 0493 inserts the row already linked so pending juniors stay off the ladder.
+- Verified with rolled-back database trials (register, claim, approve, leader add) and phone-size screenshots of both workspace sections. No club list confirmed and no link created on live data.

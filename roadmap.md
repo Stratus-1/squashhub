@@ -237,8 +237,10 @@
 - [x] Approver list: every committee member except the requester must be selectable
 
 ## Junior association registration links (approved 23 Nov)
-- [ ] Club list confirmed switch per junior body; links only after confirmation.
-- [ ] Association leaders: zone/provincial admins add leaders to bodies below them (existing person or new with optional home club, one person record).
-- [ ] Junior registration link per body (create/copy/share/QR/switch off).
-- [ ] Public /j/:token page: club pick (body's clubs only), masked name search, existing/claim/new junior paths, missing-club request.
-- [ ] Junior registrations inbox (club admins or association leaders approve; DOB required; parent details + consent for under-18s).
+- [x] Club list confirmed switch per junior body; links only after confirmation.
+- [x] Association leaders: zone/provincial admins add leaders to bodies below them (existing person or new with optional home club, one person record).
+- [x] Junior registration link per body (create/copy/share/QR/switch off).
+- [x] Public /j/:token page: club pick (body's clubs only), masked name search, existing/claim/new junior paths, missing-club request.
+- [x] Junior registrations inbox (club admins or association leaders approve; DOB required; parent details + consent for under-18s).
+- [ ] Live use waits on Vian: confirm each body's club list, add leaders, create links. Mpumalanga West has only 1 club and no club-list editor for regional bodies yet.
+- [ ] PAUSED by Willem (23 Nov): review association office bearers and resulting permissions; suggestions only.

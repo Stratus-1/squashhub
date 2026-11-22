@@ -3445,6 +3445,20 @@
       "when": 1795370998572,
       "tag": "0491_committee_feature_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 492,
+      "version": "7",
+      "when": 1795386339257,
+      "tag": "0492_junior_registration_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 493,
+      "version": "7",
+      "when": 1795386730978,
+      "tag": "0493_junior_register_no_ladder",
+      "breakpoints": true
     }
   ]
 }

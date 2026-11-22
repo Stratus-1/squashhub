@@ -11411,6 +11411,38 @@ export type Database = {
         }
         Relationships: []
       }
+      junior_body_settings: {
+        Row: {
+          is_regional: boolean
+          list_confirmed_at: string | null
+          list_confirmed_by: string | null
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          is_regional?: boolean
+          list_confirmed_at?: string | null
+          list_confirmed_by?: string | null
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          is_regional?: boolean
+          list_confirmed_at?: string | null
+          list_confirmed_by?: string | null
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_body_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       junior_dob_links: {
         Row: {
           club_id: string
@@ -11652,6 +11684,160 @@ export type Database = {
           {
             foreignKeyName: "junior_province_choices_provincial_org_id_fkey"
             columns: ["provincial_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      junior_reg_links: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_reg_links_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      junior_reg_requests: {
+        Row: {
+          club_id: string | null
+          club_member_id: string | null
+          consent_at: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          date_of_birth: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decline_reason: string | null
+          gender: string | null
+          id: string
+          junior_name: string | null
+          kind: string
+          link_id: string | null
+          missing_club_name: string | null
+          missing_club_town: string | null
+          nsa_number: string | null
+          org_id: string
+          parent_email: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          requester_user_id: string | null
+          status: string
+        }
+        Insert: {
+          club_id?: string | null
+          club_member_id?: string | null
+          consent_at?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decline_reason?: string | null
+          gender?: string | null
+          id?: string
+          junior_name?: string | null
+          kind: string
+          link_id?: string | null
+          missing_club_name?: string | null
+          missing_club_town?: string | null
+          nsa_number?: string | null
+          org_id: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          requester_user_id?: string | null
+          status?: string
+        }
+        Update: {
+          club_id?: string | null
+          club_member_id?: string | null
+          consent_at?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decline_reason?: string | null
+          gender?: string | null
+          id?: string
+          junior_name?: string | null
+          kind?: string
+          link_id?: string | null
+          missing_club_name?: string | null
+          missing_club_town?: string | null
+          nsa_number?: string | null
+          org_id?: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          requester_user_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "junior_reg_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_reg_requests_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_reg_requests_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "junior_reg_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "junior_reg_requests_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -22597,8 +22783,47 @@ export type Database = {
       }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
+      _junior_age_group: { Args: { _dob: string }; Returns: string }
       _junior_band_n: { Args: { _g: string }; Returns: number }
+      _junior_body: { Args: { _org: string }; Returns: boolean }
+      _junior_body_clubs: {
+        Args: { _org: string }
+        Returns: {
+          club_id: string
+          club_name: string
+        }[]
+      }
+      _junior_body_leader_users: {
+        Args: { _org: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
+      _junior_can_lead: {
+        Args: { _org: string; _uid: string }
+        Returns: boolean
+      }
+      _junior_can_review: {
+        Args: { _req: string; _uid: string }
+        Returns: boolean
+      }
+      _junior_check_details: {
+        Args: {
+          p_consent: boolean
+          p_dob: string
+          p_parent_name: string
+          p_parent_phone: string
+        }
+        Returns: undefined
+      }
       _junior_gender_group: { Args: { _g: string }; Returns: string }
+      _junior_link_org: { Args: { _token: string }; Returns: string }
+      _junior_mark_player: {
+        Args: { _actor: string; _person: string }
+        Returns: undefined
+      }
+      _junior_mask_name: { Args: { _name: string }; Returns: string }
+      _junior_notify_request: { Args: { p_req: string }; Returns: undefined }
       _junior_player_eval: {
         Args: {
           _admin_set_at: string
@@ -22608,6 +22833,10 @@ export type Database = {
           _last_on: string
         }
         Returns: Record<string, unknown>
+      }
+      _junior_save_dob: {
+        Args: { _dob: string; _person: string }
+        Returns: undefined
       }
       _junior_squads_can_manage: {
         Args: { _club_id: string; _org_id: string; _uid: string }
@@ -25645,6 +25874,10 @@ export type Database = {
       }
       join_club_request: { Args: { p_club_id: string }; Returns: string }
       journal_read_club_ids: { Args: never; Returns: string[] }
+      junior_body_confirm_list: {
+        Args: { p_confirmed: boolean; p_org: string }
+        Returns: undefined
+      }
       junior_create_club: {
         Args: { _name: string; _provincial_id: string; _town?: string }
         Returns: string
@@ -25680,10 +25913,79 @@ export type Database = {
         Args: { _dob: string; _token: string }
         Returns: string
       }
+      junior_join_claim: {
+        Args: {
+          p_consent?: boolean
+          p_dob: string
+          p_member_id: string
+          p_nsa_number: string
+          p_parent_email?: string
+          p_parent_name?: string
+          p_parent_phone?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      junior_join_context: { Args: { p_token: string }; Returns: Json }
+      junior_join_find_member: {
+        Args: { p_club_id: string; p_query: string; p_token: string }
+        Returns: Json
+      }
+      junior_join_missing_club: {
+        Args: {
+          p_club_name: string
+          p_contact_email?: string
+          p_contact_name: string
+          p_contact_phone: string
+          p_token: string
+          p_town: string
+        }
+        Returns: Json
+      }
+      junior_join_register: {
+        Args: {
+          p_club_id: string
+          p_consent?: boolean
+          p_dob: string
+          p_email?: string
+          p_gender: string
+          p_kind: string
+          p_name: string
+          p_nsa_number?: string
+          p_parent_email?: string
+          p_parent_name?: string
+          p_parent_phone?: string
+          p_phone?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      junior_leader_add: {
+        Args: {
+          p_email: string
+          p_home_club_id?: string
+          p_name?: string
+          p_org: string
+          p_phone?: string
+        }
+        Returns: Json
+      }
+      junior_leader_remove: {
+        Args: { p_member_id: string; p_org: string }
+        Returns: undefined
+      }
+      junior_leaders_list: { Args: { p_org: string }; Returns: Json }
+      junior_link_create: { Args: { p_org: string }; Returns: string }
+      junior_link_revoke: { Args: { p_org: string }; Returns: undefined }
       junior_move_org: {
         Args: { _child_org_id: string; _to_provincial_id: string }
         Returns: undefined
       }
+      junior_reg_decide: {
+        Args: { p_approve: boolean; p_reason?: string; p_request_id: string }
+        Returns: Json
+      }
+      junior_reg_list: { Args: { p_org: string }; Returns: Json }
       junior_remove_org: {
         Args: { _child_org_id: string; _provincial_id: string }
         Returns: undefined
@@ -25707,6 +26009,7 @@ export type Database = {
           name: string
         }[]
       }
+      junior_workspace_body: { Args: { p_club_id: string }; Returns: Json }
       ladder_move_apply_now: {
         Args: {
           _club_id: string

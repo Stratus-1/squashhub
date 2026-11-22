@@ -235,3 +235,10 @@
 - [x] Private email link per approver: view request, files, sign/approve or decline without logging in
 - [x] One-time committee pop-up (Approvals + Club documents) for active/trial clubs, then publish
 - [x] Approver list: every committee member except the requester must be selectable
+
+## Junior association registration links (approved 23 Nov)
+- [ ] Club list confirmed switch per junior body; links only after confirmation.
+- [ ] Association leaders: zone/provincial admins add leaders to bodies below them (existing person or new with optional home club, one person record).
+- [ ] Junior registration link per body (create/copy/share/QR/switch off).
+- [ ] Public /j/:token page: club pick (body's clubs only), masked name search, existing/claim/new junior paths, missing-club request.
+- [ ] Junior registrations inbox (club admins or association leaders approve; DOB required; parent details + consent for under-18s).

@@ -28,9 +28,14 @@ const PENDING_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 const RETURN_KEY = "sh.join_return";
 const pendingKey = (champId: string) => `sh.join_pending.${champId}`;
 
-/** Only a tournament join path may be used as the post-sign-in return target. */
+/** Only a tournament join path or a junior registration link may be used as the post-sign-in return target. */
 export function isSafeJoinPath(path: string | null | undefined): path is string {
-  return !!path && /^\/(c\/[a-z0-9-]+\/)?t\/[0-9a-f-]{36}\/join$/i.test(path);
+  return !!path && (/^\/(c\/[a-z0-9-]+\/)?t\/[0-9a-f-]{36}\/join$/i.test(path) || /^\/j\/[0-9a-f]{24}$/i.test(path));
+}
+
+/** Remember where to come back after confirming an email (junior links use their own pending store). */
+export function rememberJoinReturn(path: string, savedAt = Date.now(), store: Storage = localStorage): void {
+  if (isSafeJoinPath(path)) store.setItem(RETURN_KEY, JSON.stringify({ path, savedAt }));
 }
 
 export function joinPath(champId: string, subdomain?: string | null): string {

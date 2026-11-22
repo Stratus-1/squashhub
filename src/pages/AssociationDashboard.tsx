@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FederationJuniorTab } from "@/components/admin/FederationJuniorTab";
 import { JuniorSquadsBoard } from "@/components/juniors/JuniorSquadsBoard";
+import { JuniorRegistrationsTab } from "@/components/juniors/JuniorRegistrationsTab";
+import { JuniorLeadersTab } from "@/components/juniors/JuniorLeadersTab";
+import { useJuniorBody } from "@/components/juniors/useJuniorBody";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
@@ -14,6 +17,7 @@ import { ClubAdminNavigation, type AdminNavigationItem } from "@/components/club
 import {
   Building2, Network, Trophy, Medal, Users, UserCheck, Settings, Banknote, Landmark,
   ShieldCheck, MessageCircle, BarChart3, Wallet, LifeBuoy, Receipt, Mail, SlidersHorizontal, ChevronsUpDown, MapPinned,
+  UserPlus, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -76,6 +80,9 @@ const ICON_COLORS: Record<string, string> = {
 
 // Zone / provincial junior workspaces manage their club list in the junior structure tree instead of Affiliated Clubs.
 const JUNIOR_TAB: TabDef = { value: "junior", label: "Junior clubs", description: "Clubs in your junior structure — bring in, move or create clubs", icon: MapPinned, color: "emerald", group: "operations", permission: "club" };
+// Junior bodies (zone, province, regional): registration link + inbox and leaders, shown only to junior leaders (checked server-side).
+const JUNIOR_REG_TAB: TabDef = { value: "junior-registrations", label: "Junior registrations", description: "Confirm the club list, share the junior link and review registrations", icon: UserPlus, color: "teal", group: "operations" };
+const JUNIOR_LEADERS_TAB: TabDef = { value: "junior-leaders", label: "Association leaders", description: "Leaders of this junior body and the bodies below it", icon: Crown, color: "amber", group: "operations" };
 const JUNIOR_SQUADS_TAB: TabDef = { value: "junior-squads", label: "Junior squads", description: "Boys & girls by age group — drag to move", icon: Users, color: "indigo", group: "operations", permission: "leagues" };
 
 // Section ids and permissions are unchanged — only presentation (left menu) changed.
@@ -128,11 +135,16 @@ export default function AssociationDashboard() {
       return (data as { id: string; kind: string } | null) ?? null;
     },
   });
-  const tabs = juniorOrg ? [JUNIOR_TAB, JUNIOR_SQUADS_TAB, ...ADMIN_TABS.filter(t => t.value !== "affiliated")] : ADMIN_TABS;
+  const { data: juniorBody } = useJuniorBody(association?.id);
+  const juniorLeadTabs = juniorBody?.can_lead ? [JUNIOR_REG_TAB, JUNIOR_LEADERS_TAB] : [];
+  const tabs = juniorOrg
+    ? [JUNIOR_TAB, ...juniorLeadTabs, JUNIOR_SQUADS_TAB, ...ADMIN_TABS.filter(t => t.value !== "affiliated")]
+    : [...juniorLeadTabs, ...ADMIN_TABS];
   const firstTab = juniorOrg ? "junior" : "affiliated";
 
   const visibleAdminTabs = tabs.filter(tab => {
     if (isPlatformAdmin) return true;
+    if (juniorLeadTabs.includes(tab)) return true;
     if (tab.adminOnly) return isClubAdmin || isAssociationAdmin;
     if (!tab.permission) return isClubAdmin || isAssociationAdmin;
     return isClubAdmin || isAssociationAdmin || myPermissions.has(tab.permission);
@@ -167,6 +179,8 @@ export default function AssociationDashboard() {
       case "setup": return <AssociationSetupTab clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "junior": return juniorOrg ? <FederationJuniorTab rootOrgId={juniorOrg.id} /> : null;
+      case "junior-registrations": return <JuniorRegistrationsTab clubId={association.id} />;
+      case "junior-leaders": return <JuniorLeadersTab clubId={association.id} />;
       case "junior-squads": return juniorOrg ? <JuniorSquadsBoard orgId={juniorOrg.id} /> : null;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
       case "champs": return <TournamentPlanner mode="club" clubId={association.id} />;

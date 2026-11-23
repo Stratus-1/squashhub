@@ -25,7 +25,12 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     requireVisitor: !!(club as any).require_visitor_for_member_booking,
     allowSolo: (club as any).allow_solo_bookings ?? true,
     freeVisits: Number((club as any).free_visitor_bookings_per_year ?? 0),
+    prepay: !!(club as any).visitor_fee_prepay_required,
   });
+  // Card prepayment of the visitor fee currently runs through Stitch only.
+  const hasStitch =
+    (club as any).payment_gateway === "stitch" ||
+    ((club as any).payment_gateways || []).includes("stitch");
 
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial()), [
@@ -34,6 +39,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
     (club as any).free_visitor_bookings_per_year,
+    (club as any).visitor_fee_prepay_required,
 
   ]);
   const lock = useEditLock(() => setForm(initial()));
@@ -47,6 +53,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
 
         allow_solo_bookings: form.allowSolo,
         free_visitor_bookings_per_year: Math.max(0, Math.floor(form.freeVisits || 0)),
+        visitor_fee_prepay_required: form.prepay,
       } as any);
       toast.success("Visitor booking rules saved");
       onDone?.();
@@ -155,11 +162,31 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
               onCheckedChange={(v) => setForm((p) => ({ ...p, requireVisitor: v }))}
             />
           </div>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <div>
+              <Label className="text-xs font-semibold">Visitor fee payable immediately when credit is short</Label>
+              <p className="text-[11px] text-muted-foreground">
+                If the member's account doesn't have enough credit for the visitor fee, they pay the fee by card
+                first and the booking is made straight after. Older amounts owing don't block the booking. If they
+                cancel, the payment stays on their account for later use.
+              </p>
+              {!hasStitch && (
+                <p className="text-[11px] text-destructive pt-0.5">
+                  Needs Stitch as a payment method — set it up under Banking first.
+                </p>
+              )}
+            </div>
+            <Switch
+              checked={form.prepay}
+              disabled={!hasStitch && !form.prepay}
+              onCheckedChange={(v) => setForm((p) => ({ ...p, prepay: v }))}
+            />
+          </div>
         </div>
 
         <p className="text-[10px] text-muted-foreground leading-snug">
           The guest fee is added to the member's account after the booking time has passed, so a cancelled
-          booking is never charged.
+          booking is never charged. A fee paid upfront by card stays on the account to cover it.
         </p>
       </EditLock>
     </Card>

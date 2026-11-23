@@ -247,3 +247,9 @@
 - [x] Junior link: automatic confirmation, full member details, parent consent on the form or via a private no-login email link (0494).
 - [x] Junior consent channel: email only (Willem confirmed 23 Nov); no WhatsApp consent link.
 - [ ] Association office-bearer roles/permissions review — paused by Willem.
+
+## Visitor fee payable immediately (23 Nov)
+- [x] Club switch (default off, Nelspruit on): visitor fee paid by card before booking when account credit is short.
+- [x] Server rule on every booking writer; Stitch visitor-fee payment kept for that fee, not swept onto old fees.
+- [x] Cancelled prepaid booking: money stays on the member account for later (Willem confirmed).
+- [x] Booking screen pay prompt + resume after payment; admin switch; tests.

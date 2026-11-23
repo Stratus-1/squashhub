@@ -49,6 +49,19 @@ export async function finalisePayment(admin: any, session: any) {
     if (error && (error as any).code !== "23505") console.error("credit_tx insert:", error);
   }
 
+  // Visitor fee paid by card before booking: the money stays on the member
+  // account for that visitor fee (never swept onto older fees) and the
+  // prepayment is marked paid so the booking can go through.
+  if (session.purpose === "visitor_fee") {
+    const prepaymentId = (session as any).metadata?.visitor_prepayment_id;
+    if (prepaymentId) {
+      const { error: ppErr } = await admin.rpc("visitor_fee_prepayment_settle", {
+        _id: prepaymentId, _session_id: session.id, _reference: session.stitch_request_id ?? null,
+      });
+      if (ppErr) console.error("visitor_fee_prepayment_settle failed", ppErr);
+    }
+  }
+
   // Wallet top-ups automatically settle outstanding club fees (oldest first)
   // so a member who has paid is not left showing unpaid fees / nudges.
   if (session.purpose === "topup" && session.club_member_id) {

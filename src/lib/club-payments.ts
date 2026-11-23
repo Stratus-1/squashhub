@@ -70,7 +70,9 @@ export interface StartCheckoutOpts {
   clubId: string;
   clubMemberId: string;
   amount: number;
-  purpose: "fee" | "topup" | "tournament";
+  purpose: "fee" | "topup" | "tournament" | "visitor_fee";
+  /** Stitch only: server-created visitor fee prepayment this payment settles. */
+  visitor_prepayment_id?: string | null;
   fee_ids?: string[];
   champ_registration_id?: string | null;
   description?: string;
@@ -81,6 +83,7 @@ export interface StartCheckoutOpts {
 }
 
 export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutOpts) {
+  if (opts.purpose === "visitor_fee" && gateway !== "stitch") throw new Error("Paying a visitor fee by card is only available with Stitch payments at the moment.");
   if (opts.pay_scope && gateway !== "stitch") throw new Error("Paying for a partner is only available with Stitch payments at the moment.");
   if (gateway === "yoco") {
     const return_url = buildYocoReturnUrl(opts.returnPath);
@@ -114,6 +117,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
         champ_registration_id: opts.champ_registration_id ?? null,
         description: opts.description, return_url,
         ...(opts.pay_scope ? { pay_scope: opts.pay_scope } : {}),
+        ...(opts.visitor_prepayment_id ? { visitor_prepayment_id: opts.visitor_prepayment_id } : {}),
       },
     });
     throwCheckoutError(data, error, "Could not start Stitch checkout");

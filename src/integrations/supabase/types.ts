@@ -9696,6 +9696,7 @@ export type Database = {
           variance_threshold_pct: number | null
           vice_chairman_member_id: string | null
           visitor_booking_fee: number
+          visitor_fee_prepay_required: boolean
           visitor_home_clubs_enabled: boolean
           visitor_pass_requires_approval: boolean
           visitor_self_booking_fee: number
@@ -9863,6 +9864,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           vice_chairman_member_id?: string | null
           visitor_booking_fee?: number
+          visitor_fee_prepay_required?: boolean
           visitor_home_clubs_enabled?: boolean
           visitor_pass_requires_approval?: boolean
           visitor_self_booking_fee?: number
@@ -10030,6 +10032,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           vice_chairman_member_id?: string | null
           visitor_booking_fee?: number
+          visitor_fee_prepay_required?: boolean
           visitor_home_clubs_enabled?: boolean
           visitor_pass_requires_approval?: boolean
           visitor_self_booking_fee?: number
@@ -21878,6 +21881,84 @@ export type Database = {
         }
         Relationships: []
       }
+      visitor_fee_prepayments: {
+        Row: {
+          amount: number
+          booking_date: string | null
+          booking_id: string
+          club_id: string
+          club_member_id: string
+          court_id: number | null
+          created_at: string
+          guest_name: string | null
+          id: string
+          paid_at: string | null
+          payment_reference: string | null
+          start_time: string | null
+          status: string
+          stitch_session_id: string | null
+          updated_at: string
+          used_at: string | null
+          used_booking_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          booking_date?: string | null
+          booking_id: string
+          club_id: string
+          club_member_id: string
+          court_id?: number | null
+          created_at?: string
+          guest_name?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          start_time?: string | null
+          status?: string
+          stitch_session_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_booking_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_date?: string | null
+          booking_id?: string
+          club_id?: string
+          club_member_id?: string
+          court_id?: number | null
+          created_at?: string
+          guest_name?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          start_time?: string | null
+          status?: string
+          stitch_session_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_booking_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitor_fee_prepayments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitor_fee_prepayments_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_interactions: {
         Row: {
           club_id: string
@@ -22880,6 +22961,19 @@ export type Database = {
       }
       _invite_amount_cents: { Args: { p_reg_id: string }; Returns: number }
       _invite_reg_id: { Args: { p_token: string }; Returns: string }
+      _is_visitor_guest_booking: {
+        Args: {
+          _event: string
+          _guest: string
+          _member: string
+          _opp: string
+          _opp_member: string
+          _source: string
+          _status: string
+          _type: string
+        }
+        Returns: boolean
+      }
       _junior_age_group: { Args: { _dob: string }; Returns: string }
       _junior_auto_confirm: { Args: { p_req: string }; Returns: undefined }
       _junior_band_n: { Args: { _g: string }; Returns: number }
@@ -23033,6 +23127,24 @@ export type Database = {
         Returns: string
       }
       _tournament_join_open: { Args: { p_champ_id: string }; Returns: boolean }
+      _visitor_fee_credit_covers: {
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _exclude_booking: string
+          _fee: number
+        }
+        Returns: boolean
+      }
+      _visitor_fee_unused_prepayment: {
+        Args: {
+          _booking_id: string
+          _club_id: string
+          _club_member_id: string
+          _fee: number
+        }
+        Returns: string
+      }
       accept_tournament_invite: {
         Args: {
           p_accept: boolean
@@ -28120,6 +28232,46 @@ export type Database = {
       visitor_charge_court_fee: {
         Args: { p_booking_id: string }
         Returns: boolean
+      }
+      visitor_fee_booking_check: {
+        Args: {
+          _booking_id: string
+          _club_id: string
+          _club_member_id: string
+          _date: string
+          _start_time: string
+        }
+        Returns: Json
+      }
+      visitor_fee_due: {
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _date: string
+          _exclude_booking: string
+          _start_time: string
+        }
+        Returns: number
+      }
+      visitor_fee_prepay_active: {
+        Args: { _club_id: string }
+        Returns: boolean
+      }
+      visitor_fee_prepayment_settle: {
+        Args: { _id: string; _reference: string; _session_id: string }
+        Returns: boolean
+      }
+      visitor_fee_prepayment_start: {
+        Args: {
+          _booking_id: string
+          _club_id: string
+          _club_member_id: string
+          _court_id: number
+          _date: string
+          _guest_name: string
+          _start_time: string
+        }
+        Returns: Json
       }
       visitor_pass_duration: { Args: { p_kind: string }; Returns: string }
       visitor_pass_sync: {

@@ -2,7 +2,8 @@ import { bookingsForGridRow, champsGridLayout, championshipGridMinutes } from "@
 import { isPeakSlot as isPeakSlotShared } from "@/lib/peak-hours";
 import { PeakTimeIndicator } from "@/components/PeakTimeIndicator";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { startClubCheckout, readReturnSession, pollStitchPayment, clearPendingClubSession, clearReturnParams } from "@/lib/club-payments";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { GoBookBalance } from "@/components/GoBookBalance";
@@ -82,6 +83,7 @@ import { Wrench } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { checkBookingBalance } from "@/lib/booking-balance-gate";
+import { visitorFeeCheckApplies } from "@/lib/visitor-fee-prepay";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
@@ -374,6 +376,13 @@ export default function Bookings() {
     planAllowedDebt: number;
     requiredBuffer: number;
   }>({ open: false, shortfall: 0, currentOwing: 0, planAllowedDebt: 0, requiredBuffer: 0 });
+  // Visitor fee payable immediately (club switch): the member pays the fee by
+  // card before the booking is made when their account credit is short.
+  const [visitorFeePrompt, setVisitorFeePrompt] = useState<{ open: boolean; amount: number; bookingId: string; starting: boolean }>({
+    open: false, amount: 0, bookingId: "", starting: false,
+  });
+  const visitorFeePaidRef = useRef(false);
+  const [visitorFeePaidTick, setVisitorFeePaidTick] = useState(0);
   const [shareDialog, setShareDialog] = useState<{
     open: boolean;
     bookingId: string;
@@ -618,11 +627,40 @@ export default function Bookings() {
       const parsed = new Date(`${p.dateStr}T00:00:00`);
       if (!isNaN(parsed.getTime())) setSelectedDate(parsed);
       setBookingDialog(p.dialog);
-      toast.info("Welcome back — tap Confirm Booking to finish reserving your slot.");
+      if (!p?.visitorFee) toast.info("Welcome back — tap Confirm Booking to finish reserving your slot.");
     } catch {
       /* ignore malformed intent */
     }
   }, [myClub?.id, activeMember?.id]);
+
+  // ── Back from paying a visitor fee by card: confirm the payment, then make
+  // the booking that was waiting for it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const visitorReturnHandledRef = useRef(false);
+  useEffect(() => {
+    if (visitorReturnHandledRef.current) return;
+    const ret = readReturnSession(searchParams, "/bookings");
+    if (!ret || ret.gateway !== "stitch") return;
+    visitorReturnHandledRef.current = true;
+    setSearchParams(clearReturnParams(searchParams), { replace: true });
+    (async () => {
+      const loadingId = toast.loading("Checking your visitor fee payment…");
+      const status = await pollStitchPayment(ret.sid, { timeoutMs: 90_000 });
+      toast.dismiss(loadingId);
+      if (status) clearPendingClubSession("stitch", ret.sid);
+      if (status === "completed") {
+        toast.success("Visitor fee paid — making your booking…");
+        queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+        visitorFeePaidRef.current = true;
+        setVisitorFeePaidTick((t) => t + 1);
+      } else if (["failed", "cancelled", "expired"].includes(status)) {
+        toast.error("The visitor fee payment didn't go through, so no booking was made. Please try again.");
+      } else {
+        toast.info("Your payment is still processing. Once it reflects, tap Confirm Booking to finish.");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const { data: clubData } = useMyClub();
   const bookingClubId = clubData?.club?.id;
@@ -1324,6 +1362,43 @@ export default function Bookings() {
       }
     }
 
+    // 4. Visitor fee payable immediately — when the club requires it and the
+    //    member's credit doesn't cover the fee, they pay it by card first.
+    //    The server enforces the same rule on the booking itself.
+    const visitorFeeCheck = visitorFeeCheckApplies({
+      isVisitorRole,
+      playerMode: bookingDialog.playerMode,
+      guestName: bookingDialog.guestName,
+      opponentId: bookingDialog.opponentId,
+      prepayRequired: (myClub as any)?.visitor_fee_prepay_required,
+      visitorFee,
+    });
+    if (visitorFeeCheck && activeMember?.id && myClub?.id) {
+      const { data: vf, error: vfErr } = await (supabase as any).rpc("visitor_fee_booking_check", {
+        _club_id: myClub.id,
+        _club_member_id: activeMember.id,
+        _date: dateStr,
+        _start_time: bookingDialog.time + ":00",
+        _booking_id: bookingId,
+      });
+      if (vfErr) {
+        toast.error("Could not check the visitor fee. Please try again.");
+        return;
+      }
+      if ((vf as any)?.required) {
+        try {
+          localStorage.setItem(
+            PENDING_BOOKING_KEY,
+            JSON.stringify({ clubId: myClub.id, memberId: activeMember.id, dateStr, dialog: bookingDialog, savedAt: Date.now(), visitorFee: true }),
+          );
+        } catch {
+          /* storage unavailable — prompt still shows */
+        }
+        setVisitorFeePrompt({ open: true, amount: Number((vf as any).fee) || visitorFee, bookingId, starting: false });
+        return;
+      }
+    }
+
 
 
 
@@ -1634,7 +1709,9 @@ export default function Bookings() {
 
       // A visitor without a live pass is blocked by the server rule. Show the
       // plain-language reason and a way to fix it, never the raw rule text.
-      if (/active pass|visitor_entitled/i.test(String(err?.message || ""))) {
+      if (/VISITOR_FEE_PREPAY/.test(String(err?.message || ""))) {
+        toast.error(String(err.message).replace(/^.*VISITOR_FEE_PREPAY:\s*/, ""));
+      } else if (/active pass|visitor_entitled/i.test(String(err?.message || ""))) {
         toast.error("Your visitor pass isn't active yet — pay for it and you can book on your own.", {
           action: { label: "Go to My Account", onClick: () => navigate("/my-account") },
         });
@@ -1709,6 +1786,51 @@ export default function Bookings() {
         }
       }
       setSubmittingBooking(false);
+    }
+  };
+
+  // Latest handleBook for the "visitor fee paid → make the booking" step.
+  const handleBookRef = useRef(handleBook);
+  handleBookRef.current = handleBook;
+  useEffect(() => {
+    if (!visitorFeePaidRef.current || !bookingDialog || submittingBooking) return;
+    visitorFeePaidRef.current = false;
+    void handleBookRef.current();
+  }, [visitorFeePaidTick, bookingDialog, submittingBooking]);
+
+  const payVisitorFee = async () => {
+    if (!bookingDialog || !myClub?.id || !activeMember?.id) return;
+    setVisitorFeePrompt((s) => ({ ...s, starting: true }));
+    try {
+      const { data, error } = await (supabase as any).rpc("visitor_fee_prepayment_start", {
+        _club_id: myClub.id,
+        _club_member_id: activeMember.id,
+        _booking_id: visitorFeePrompt.bookingId || crypto.randomUUID(),
+        _date: dateStr,
+        _start_time: bookingDialog.time + ":00",
+        _court_id: bookingDialog.courtId,
+        _guest_name: bookingDialog.guestName.trim(),
+      });
+      if (error) throw error;
+      if (!(data as any)?.required) {
+        // Credit or an earlier card payment now covers it — book straight away.
+        try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch { /* noop */ }
+        setVisitorFeePrompt((s) => ({ ...s, open: false, starting: false }));
+        void handleBookRef.current();
+        return;
+      }
+      await startClubCheckout("stitch", {
+        clubId: myClub.id,
+        clubMemberId: activeMember.id,
+        amount: Number((data as any).amount),
+        purpose: "visitor_fee",
+        visitor_prepayment_id: (data as any).id,
+        description: `Visitor fee – ${bookingDialog.guestName.trim()}`,
+        returnPath: "/bookings",
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Could not start the payment. Please try again.");
+      setVisitorFeePrompt((s) => ({ ...s, starting: false }));
     }
   };
 
@@ -3089,6 +3211,8 @@ export default function Bookings() {
                       <p className="text-[11px] text-muted-foreground leading-snug">
                         A visitor fee of {money(visitorFee)} will be charged to your account for letting this
                         visitor play. It's added after the booking time has passed.
+                        {(myClub as any)?.visitor_fee_prepay_required &&
+                          " If your account doesn't have enough credit, you'll pay the fee by card first and the booking is made straight after."}
                       </p>
                     )}
                   </>
@@ -3189,6 +3313,47 @@ export default function Bookings() {
               {submittingBooking || createBooking.isPending || createChallenge.isPending
                 ? ((myClub as any)?.uses_gobook ? "Submitting to GoBook…" : "Booking…")
                 : "Confirm Booking"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visitor fee payable now */}
+      <Dialog
+        open={visitorFeePrompt.open}
+        onOpenChange={(open) => { if (!visitorFeePrompt.starting) setVisitorFeePrompt((s) => ({ ...s, open })); }}
+      >
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Pay the visitor fee now</DialogTitle>
+            <DialogDescription>
+              Your account doesn't have enough credit for the visitor fee, so the club asks for it upfront.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-1 text-sm">
+            <div className="rounded-lg border p-3 bg-muted/40 flex justify-between">
+              <span className="text-muted-foreground">Visitor fee{bookingDialog?.guestName ? ` – ${bookingDialog.guestName.trim()}` : ""}</span>
+              <span className="font-bold">{money(visitorFeePrompt.amount)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your slot is <span className="font-medium">not booked yet</span>. Pay by card and your booking is made
+              straight after. The payment goes onto your member account to cover this visitor fee. If you cancel
+              the booking later, the money stays on your account for later use.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              disabled={visitorFeePrompt.starting}
+              onClick={() => {
+                try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch { /* noop */ }
+                setVisitorFeePrompt((s) => ({ ...s, open: false }));
+              }}
+            >
+              Not now
+            </Button>
+            <Button onClick={payVisitorFee} disabled={visitorFeePrompt.starting}>
+              {visitorFeePrompt.starting ? "Opening payment…" : `Pay ${money(visitorFeePrompt.amount)} now`}
             </Button>
           </DialogFooter>
         </DialogContent>

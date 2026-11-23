@@ -97,10 +97,30 @@ Deno.serve(async (req) => {
       userId = userData.user.id;
     }
 
+    // Visitor fee paid by card before a booking: the amount and the booking it
+    // belongs to come only from the server-created prepayment row.
+    let visitorDescription: string | null = null;
+    let visitorPrepaymentId: string | null = null;
+    if (purpose === "visitor_fee") {
+      const prepaymentId = String((body as any)?.visitor_prepayment_id || "");
+      if (!prepaymentId) return json({ error: "Missing visitor fee details" }, 200);
+      const { data: pp } = await admin.from("visitor_fee_prepayments")
+        .select("id, club_id, club_member_id, amount, status, guest_name, booking_date, start_time")
+        .eq("id", prepaymentId).maybeSingle();
+      if (!pp || pp.club_id !== club_id || pp.club_member_id !== club_member_id) {
+        return json({ error: "Visitor fee not found" }, 200);
+      }
+      if (pp.status !== "pending") return json({ error: "This visitor fee is already paid.", already_settled: true }, 200);
+      amount = pp.amount;
+      visitorPrepaymentId = pp.id;
+      visitorDescription = `Visitor fee – ${pp.guest_name || "visitor"} on ${pp.booking_date} ${String(pp.start_time || "").slice(0, 5)}`.trim();
+      sessionMeta = { visitor_prepayment_id: pp.id };
+    }
+
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
       return json({ error: "Missing required fields" }, 200);
     }
-    if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
+    if (!["fee", "topup", "tournament", "visitor_fee"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
     if (purpose === "tournament" && champ_registration_id && !(pay_scope === "partner")) {
       // No payment for an invitation that has no category chosen yet: the entry
       // could not be marked paid and the money would not reach the entry.
@@ -163,7 +183,8 @@ Deno.serve(async (req) => {
     // 1. Insert local session
     const defaultDesc =
       purpose === "topup" ? "Wallet top-up" :
-      purpose === "tournament" ? "Tournament entry fee" : "Fee payment";
+      purpose === "tournament" ? "Tournament entry fee" :
+      purpose === "visitor_fee" ? "Visitor fee" : "Fee payment";
     const refPrefix = (creds.merchant_payer_reference || (club.name || "Club"))
       .slice(0, 12).replace(/[^A-Za-z0-9 ]/g, "");
 
@@ -172,13 +193,18 @@ Deno.serve(async (req) => {
         club_id, club_member_id, user_id: userId,
         amount: amt, purpose, method,
         fee_ids, champ_registration_id,
-        description: (sessionMeta ? inviteContext?.description : description) || inviteContext?.description || defaultDesc,
+        description: visitorDescription || (sessionMeta ? inviteContext?.description : description) || inviteContext?.description || defaultDesc,
         payer_reference: refPrefix,
         status: "created",
         is_test: testMode,
         ...(sessionMeta ? { metadata: sessionMeta } : {}),
       }).select("id").single();
     if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
+    if (visitorPrepaymentId) {
+      await admin.from("visitor_fee_prepayments")
+        .update({ stitch_session_id: session.id, updated_at: new Date().toISOString() })
+        .eq("id", visitorPrepaymentId).eq("status", "pending");
+    }
 
     const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);

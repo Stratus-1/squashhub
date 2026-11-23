@@ -3473,6 +3473,13 @@
       "when": 1795420341042,
       "tag": "0495_shop_garment_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 496,
+      "version": "7",
+      "when": 1795427544808,
+      "tag": "0496_visitor_fee_prepay",
+      "breakpoints": true
     }
   ]
 }

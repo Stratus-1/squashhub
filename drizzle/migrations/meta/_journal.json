@@ -3466,6 +3466,13 @@
       "when": 1795387844292,
       "tag": "0494_junior_auto_confirm_parent_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 495,
+      "version": "7",
+      "when": 1795420341042,
+      "tag": "0495_shop_garment_orders",
+      "breakpoints": true
     }
   ]
 }

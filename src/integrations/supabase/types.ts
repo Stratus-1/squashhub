@@ -1808,6 +1808,7 @@ export type Database = {
           item_kind: string
           low_stock_threshold: number
           name: string
+          order_options: Json | null
           price: number
           product_group: string | null
           sellable: boolean
@@ -1844,6 +1845,7 @@ export type Database = {
           item_kind?: string
           low_stock_threshold?: number
           name: string
+          order_options?: Json | null
           price?: number
           product_group?: string | null
           sellable?: boolean
@@ -1880,6 +1882,7 @@ export type Database = {
           item_kind?: string
           low_stock_threshold?: number
           name?: string
+          order_options?: Json | null
           price?: number
           product_group?: string | null
           sellable?: boolean
@@ -18917,6 +18920,79 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_orders: {
+        Row: {
+          back_name: string
+          bar_item_id: string
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fit: string
+          id: string
+          request_id: string
+          size: string
+          status: string
+          unit_cost: number
+          unit_price: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          back_name: string
+          bar_item_id: string
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          fit: string
+          id?: string
+          request_id: string
+          size: string
+          status?: string
+          unit_cost?: number
+          unit_price: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          back_name?: string
+          bar_item_id?: string
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          fit?: string
+          id?: string
+          request_id?: string
+          size?: string
+          status?: string
+          unit_cost?: number
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_orders_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       smart_tournament_drafts: {
         Row: {
           conversation: Json
@@ -27568,6 +27644,19 @@ export type Database = {
         Returns: Json
       }
       shares_club_with: { Args: { _target_user_id: string }; Returns: boolean }
+      shop_place_order: {
+        Args: {
+          _bar_item_id: string
+          _club_member_id: string
+          _lines: Json
+          _request_id: string
+        }
+        Returns: number
+      }
+      shop_set_order_status: {
+        Args: { _order_id: string; _status: string }
+        Returns: undefined
+      }
       snapshot_all_club_rankings: { Args: never; Returns: number }
       snapshot_club_permissions: {
         Args: { p_club_id: string; p_reason?: string }

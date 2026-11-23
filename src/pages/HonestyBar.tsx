@@ -200,6 +200,9 @@ export default function HonestyBar() {
   // Product taps only change the local selection; saving requires explicit confirmation.
   const addLineToTab = (itemId: string) => {
     if (submitting) return;
+    const picked = items.find(i => i.id === itemId) as (BarItem & { order_options?: unknown }) | undefined;
+    // Made-to-order garments need a fit, size and back name first.
+    if (picked?.order_options) { navigate(`/shop?item=${encodeURIComponent(itemId)}`); return; }
     updateCart(itemId, 1);
   };
 

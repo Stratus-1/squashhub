@@ -126,6 +126,7 @@ const SuperAdminOutreachCampaigns = lazy(() => import("./pages/admin/SuperAdminO
 const SuperAdminOutreachCampaignEditor = lazy(() => import("./pages/admin/SuperAdminOutreachCampaignEditor"));
 const MyAccount = lazy(() => import("./pages/MyAccount"));
 const HonestyBar = lazy(() => import("./pages/HonestyBar"));
+const ShopOrder = lazy(() => import("./pages/ShopOrder"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { useMyRoles } from "@/hooks/use-data";
@@ -608,6 +609,7 @@ function AppRoutes() {
         } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/family-request/:id" element={<ProtectedRoute><FamilyRequestReview /></ProtectedRoute>} />
+        <Route path="/shop" element={<ProtectedRoute><CapabilityRoute capability="bar"><ShopOrder /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><CapabilityRoute capability="bar"><HonestyBar /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/beta-tournament/:champId" element={<ProtectedRoute><BetaTournamentOperate /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><ClubChampsView /></CapabilityRoute></ProtectedRoute>} />

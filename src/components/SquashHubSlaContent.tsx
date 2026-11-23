@@ -3,8 +3,8 @@
  * Update SLA_VERSION whenever the terms change materially so existing
  * acceptances can be flagged as needing re-acceptance.
  */
-export const SLA_VERSION = "1.5";
-export const SLA_EFFECTIVE_DATE = "14 August 2026";
+export const SLA_VERSION = "1.6";
+export const SLA_EFFECTIVE_DATE = "23 November 2026";
 
 
 export function SquashHubSlaContent() {
@@ -185,19 +185,57 @@ export function SquashHubSlaContent() {
         incidental, special or consequential damages.
       </p>
 
-      <h2>11. Acceptable Use</h2>
+      <h2>11. Payment Gateways (Stitch)</h2>
+      <ul>
+        <li>
+          The Provider only assists the Club to apply for, and connect to the Service, the Stitch
+          payment gateway (&quot;<strong>Stitch</strong>&quot;), for example by preparing the
+          application and supplying the Club&apos;s documents with the Club&apos;s consent.
+        </li>
+        <li>
+          Any agreement for payment services is solely between the Club and Stitch, on Stitch&apos;s
+          own terms, including the{" "}
+          <a href="https://stitch.money/express-legal/terms-and-conditions" target="_blank" rel="noopener noreferrer" className="underline text-primary">Stitch Express Terms and Conditions</a>{" "}
+          and the <a href="https://stitch.money/legal/terms-of-use" target="_blank" rel="noopener noreferrer" className="underline text-primary">Stitch Terms of Use</a>. The Provider
+          is not a party to that agreement and does not act as Stitch&apos;s agent, reseller or
+          representative.
+        </li>
+        <li>
+          The Provider has <strong>no financial or other interest in Stitch</strong>. It receives no
+          commission, referral fee, rebate or any other payment or back payment from Stitch for the
+          Club&apos;s application or transactions.
+        </li>
+        <li>
+          Any bulk or volume fee discounts the Provider negotiates with Stitch are
+          <strong> passed on in full to the Club</strong>.
+        </li>
+        <li>
+          The Provider is not responsible for Stitch&apos;s services, including approval or refusal
+          of applications, verification checks, transaction fees, settlements and payouts, refunds,
+          chargebacks, account suspension or service interruptions. These are matters between the
+          Club and Stitch. The Provider will still help with any problem in the SquashHub side of
+          the connection.
+        </li>
+        <li>
+          The Club may choose not to use Stitch, or to use another payment method the Service
+          supports. The same principles apply to any other third-party payment provider the Club
+          connects.
+        </li>
+      </ul>
+
+      <h2>12. Acceptable Use</h2>
       <p>
         The Club agrees not to use the Service to store or transmit unlawful content, to interfere
         with platform security, or to misrepresent member numbers in order to reduce billable fees.
       </p>
 
-      <h2>12. Changes to this SLA</h2>
+      <h2>13. Changes to this SLA</h2>
       <p>
         Material changes to this SLA will be communicated at least 30 days in advance. Continued use
         of the Service after the effective date constitutes acceptance of the revised SLA.
       </p>
 
-      <h2>13. Governing Law</h2>
+      <h2>14. Governing Law</h2>
       <p>
         This SLA is governed by the laws of the Republic of South Africa. Disputes will be resolved
         in the courts of competent jurisdiction in South Africa.

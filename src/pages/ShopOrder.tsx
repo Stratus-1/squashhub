@@ -150,10 +150,11 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
   const chart = opts.fits.find(f => f.key === chartFit);
   return (
     <div className="space-y-3">
-      {item.image_url && <img src={item.image_url} alt={`${item.name}, front and back`} className="w-full rounded-lg" />}
       <Card className="p-4 flex gap-4 items-center">
-        {!item.image_url && <div className="w-24 h-24 rounded-md bg-muted flex items-center justify-center"><Shirt className="w-10 h-10 text-muted-foreground" /></div>}
-        <div>
+        {item.image_url
+          ? <img src={item.image_url} alt={`${item.name}, front`} className="w-24 h-24 shrink-0 rounded-md bg-muted object-cover object-left" />
+          : <div className="w-24 h-24 shrink-0 rounded-md bg-muted flex items-center justify-center"><Shirt className="w-10 h-10 text-muted-foreground" /></div>}
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold">{item.name}</h2>
           <p className="text-primary font-semibold">{money(Number(item.price))} each</p>
           {opts.note && <p className="text-sm text-muted-foreground">{opts.note}</p>}
@@ -173,6 +174,9 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
               <span className="font-medium">Shirt {i + 1}</span>
               {lines.length > 1 && <Button size="icon" variant="ghost" aria-label={`Remove shirt ${i + 1}`} onClick={() => setLines(p => p.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></Button>}
             </div>
+            <div className={item.image_url ? "grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start" : ""}>
+            {item.image_url && <img src={item.image_url} alt={`${item.name}, front and back`} className="w-full rounded-md bg-muted" loading="lazy" />}
+            <div className="space-y-3 min-w-0">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Fit</Label>
@@ -201,6 +205,8 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
                 Yes, this is exactly the name I want on the back
               </label>
               {errors[i] && <p className="text-xs text-destructive">{errors[i]}</p>}
+            </div>
+            </div>
             </div>
           </Card>
         );

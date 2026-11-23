@@ -508,7 +508,7 @@ export default function HonestyBar() {
                         >
                           <div className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
                             {first.image_url ? (
-                              <img src={first.image_url} alt={entry.title} className="w-full h-full object-cover" loading="lazy" />
+                              <img src={first.image_url} alt={entry.title} className={`w-full h-full object-cover ${(first as { order_options?: unknown }).order_options ? "object-left" : ""}`} loading="lazy" />
                             ) : (
                                <span className="text-2xl xl:text-lg">{barProductEmoji({ ...first, item_kind: entry.isSpecial ? "special" : first.item_kind })}</span>
                             )}

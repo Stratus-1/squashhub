@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
       const { data: tab } = await db.from("bar_guest_tabs")
         .select("id, token, status")
         .eq("id", body.tabId).eq("club_id", body.clubId)
-        .eq("club_member_id", body.memberId).eq("opened_source", "in_app")
+        .eq("club_member_id", body.memberId)
         .in("status", ["open", "closing"]).maybeSingle();
       if (!tab) return json(404, { error: "Your open club tab was not found" });
       if (tab.status !== "open") return json(409, { error: "This tab already has a payment being processed" });
@@ -459,7 +459,7 @@ Deno.serve(async (req) => {
         const { data: tab } = await db.from("bar_guest_tabs")
           .select("id, token, status")
           .eq("id", body.tabId).eq("club_id", body.clubId)
-          .eq("club_member_id", body.memberId).eq("opened_source", "in_app")
+          .eq("club_member_id", body.memberId)
           .in("status", ["open", "closing"]).maybeSingle();
         if (!tab) return json(404, { error: "Your open club tab was not found" });
         if (tab.status !== "open") return json(409, { error: "This tab already has a payment being processed" });

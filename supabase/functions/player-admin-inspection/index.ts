@@ -300,8 +300,9 @@ Deno.serve(async (req) => {
       const { data: tab } = await db.from("bar_guest_tabs")
         .select("id, status, opened_at")
         .eq("club_id", body.clubId).eq("club_member_id", body.memberId)
-        .eq("opened_source", "in_app").in("status", ["open", "closing"])
-        .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+        // Any open tab of this member, incl. one the barman opened at the counter.
+        .in("status", ["open", "closing"])
+        .order("opened_at", { ascending: true }).limit(1).maybeSingle();
       let activeTab = null;
       if (tab) {
         const { data: sales } = await db.from("bar_visitor_sales")

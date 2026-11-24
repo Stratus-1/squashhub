@@ -3529,6 +3529,13 @@
       "when": 1795524997441,
       "tag": "0503_junior_list_member_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 504,
+      "version": "7",
+      "when": 1795525316758,
+      "tag": "0504_junior_leaders_auto_league_tournament_perms",
+      "breakpoints": true
     }
   ]
 }

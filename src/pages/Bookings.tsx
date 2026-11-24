@@ -2235,6 +2235,15 @@ export default function Bookings() {
                   hasn't been switched on. Please book your court through your club's usual channel for now —
                   ask a club admin if you're not sure where to book.
                 </p>
+                <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 p-2.5 text-[12px] leading-relaxed">
+                  <p className="font-semibold text-foreground">💡 Imagine booking a court and the lights switching on by themselves</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    With smart <span className="font-medium text-foreground">Shelly Wi-Fi and Bluetooth devices</span>, clubs
+                    bring court bookings, lights and access control together in one place — lights turn on only for booked
+                    games, switch off automatically, and members pay as they play. It's the simplest way for a club to move to
+                    new technology. Ask your committee to chat to SquashHub about switching on smart courts.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

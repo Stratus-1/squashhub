@@ -21,6 +21,14 @@ export function JuniorMembersTab({ orgId }: { orgId: string }) {
       return (data || []) as SquadRow[];
     },
   });
+  const { data: contacts = new Map<string, any>() } = useQuery({
+    queryKey: ["junior-contacts", orgId],
+    queryFn: async () => {
+      const { data, error } = await db.rpc("junior_contacts_for", { _org_id: orgId });
+      if (error) throw error;
+      return new Map(((data || []) as any[]).map(c => [String(c.member_id), c]));
+    },
+  });
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
     return [...data]
@@ -56,6 +64,13 @@ export function JuniorMembersTab({ orgId }: { orgId: string }) {
                     <Badge variant="outline">{genderLabel(r.gender_group ?? "unknown")}</Badge>
                     <Badge variant="outline">{r.age_group ?? "Age not set"}</Badge>
                     {!r.junior_player && <Badge variant="secondary">Not playing</Badge>}
+                    {(() => { const c = contacts.get(String(r.member_id)); if (!c) return null; return (
+                      <div className="basis-full text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5">
+                        {c.phone && <a href={`tel:${c.phone}`} className="hover:underline">Cell: {c.phone}</a>}
+                        {c.email && <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a>}
+                        {(c.parent_name || c.parent_phone || c.parent_email) && <span>Parent: {[c.parent_name, c.parent_phone, c.parent_email].filter(Boolean).join(" · ")}</span>}
+                        {!c.phone && !c.email && !c.parent_phone && !c.parent_email && <span>No contact details at the club yet</span>}
+                      </div>); })()}
                   </div>
                 ))}
               </div>

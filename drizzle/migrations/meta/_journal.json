@@ -3578,6 +3578,13 @@
       "when": 1795554150796,
       "tag": "0510_restore_tournament_update_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 511,
+      "version": "7",
+      "when": 1795557157074,
+      "tag": "0511_junior_contacts_for",
+      "breakpoints": true
     }
   ]
 }

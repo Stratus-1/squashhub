@@ -26113,6 +26113,17 @@ export type Database = {
       }
       junior_consent_resend: { Args: { p_request_id: string }; Returns: Json }
       junior_consent_view: { Args: { p_token: string }; Returns: Json }
+      junior_contacts_for: {
+        Args: { _org_id: string }
+        Returns: {
+          email: string
+          member_id: string
+          parent_email: string
+          parent_name: string
+          parent_phone: string
+          phone: string
+        }[]
+      }
       junior_create_club: {
         Args: { _name: string; _provincial_id: string; _town?: string }
         Returns: string

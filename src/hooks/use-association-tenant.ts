@@ -60,6 +60,16 @@ export function useAssociationTenant(clubId: string | null | undefined): Associa
         orgId = associationOrgForTenant(leagueIds, (orgs || []) as { id: string; kind: string; league_association_id: string | null }[]);
       }
 
+      // Junior bodies (zones/provincials) have no league association: their workspace is linked by organisations.club_id.
+      if (!orgId) {
+        const { data: linked } = await fromExt("organisations")
+          .select("id, kind")
+          .eq("active", true)
+          .eq("club_id", clubId as string);
+        const rows = (linked || []) as { id: string; kind: string }[];
+        orgId = (rows.find((o) => o.kind === "zone" || o.kind === "provincial") ?? rows.find((o) => o.kind !== "club") ?? rows[0])?.id ?? null;
+      }
+
       return {
         isAssociation: true,
         name: (club as any).name ?? null,

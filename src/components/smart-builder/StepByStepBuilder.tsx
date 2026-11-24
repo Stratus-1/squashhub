@@ -1,3 +1,4 @@
+import type { SquadRow } from "@/lib/juniors/squads";
 import { reconcileFixedStages, scheduleTimedRounds } from "@/lib/tournaments/formal-stage-schedule";
 import { crossoverLabel, samePositionLabel } from "@/lib/smart-builder/playoff-chain";
 import { swissConfirmIssues, swissProgression, knockoutRoundsFor, knockoutConfirmIssues, roundsBreakdown } from "@/lib/smart-builder/swiss-progression";
@@ -518,6 +519,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [leaguesByMember, setLeaguesByMember] = useState<Map<string, string[]>>(new Map());
   const [genderByMember, setGenderByMember] = useState<Map<string, string | null>>(new Map());
+  /** Junior bodies have management, not members: their pick list is the junior squad of every club under them (null = normal club members). */
+  const [juniorPool, setJuniorPool] = useState<{ id: string; name: string; ladder?: number | null; points?: number | null }[] | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [contacts, setContacts] = useState<Map<string, { email: string | null; phone: string | null }>>(new Map());
   const [importReport, setImportReport] = useState<{ added: number; problems: string[] } | null>(null);
@@ -556,7 +559,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         const { data } = await (supabase as any).from("member_league_registrations").select("club_member_id, league_id").in("club_member_id", ids.slice(i, i + 200));
         ((data ?? []) as any[]).forEach((r) => { if (!r.league_id) return; const l = lm.get(r.club_member_id) ?? []; l.push(String(r.league_id)); lm.set(r.club_member_id, l); });
       }
-      if (!cancelled) { setLeaguesByMember(lm); setGenderByMember(genders); }
+      if (!cancelled) { setLeaguesByMember((p) => new Map([...p, ...lm])); setGenderByMember((p) => new Map([...p, ...genders])); }
     })();
     supabase.from("leagues").select("id, name").eq("club_id", clubId).is("archived_at", null).order("name")
       .then(({ data }) => setLeagues(((data ?? []) as any[]).map((l) => ({ id: String(l.id), name: l.name }))));
@@ -592,8 +595,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }, [a.includeVisitors, clubId]);
   const visitorIdSet = useMemo(() => new Set(visitorMembers.map((v) => v.id)), [visitorMembers]);
   const memberPool = useMemo(
-    () => (a.includeVisitors ? [...members, ...visitorMembers.filter((v) => !members.some((m) => m.id === v.id))] : members),
-    [a.includeVisitors, members, visitorMembers],
+    () => juniorPool ?? (a.includeVisitors ? [...members, ...visitorMembers.filter((v) => !members.some((m) => m.id === v.id))] : members),
+    [a.includeVisitors, members, visitorMembers, juniorPool],
   );
 
   const [phoneCh, setPhoneCh] = useState<{ whatsapp: boolean; sms: boolean }>({ whatsapp: false, sms: false });
@@ -622,6 +625,25 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     const self = hierarchy.orgs.find((o) => o.id === ownOrgId);
     return self?.kind === "zone" || self?.kind === "provincial" || !!ownZone;
   }, [hierarchy, ownOrgId, ownZone]);
+  // Junior bodies pick from the junior squads (same list as the Junior squash board), never the body's management.
+  useEffect(() => {
+    if (!isJuniorBody || !ownOrgId) { setJuniorPool(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await (supabase as any).rpc("junior_squads_for", { _club_id: null, _org_id: ownOrgId });
+      if (error || cancelled) return;
+      const rows = ((data ?? []) as SquadRow[]).filter((r) => r.junior_player !== false);
+      setJuniorPool(rows.map((r) => ({ id: String(r.member_id), name: `${r.name || "Player"}${r.club_name ? ` (${r.club_name})` : ""}`, ladder: null, points: null })));
+      setGenderByMember((p) => { const n = new Map(p); rows.forEach((r) => n.set(String(r.member_id), r.gender_group === "boys" ? "male" : r.gender_group === "girls" ? "female" : null)); return n; });
+      const ids = rows.map((r) => String(r.member_id)); const lm = new Map<string, string[]>();
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data: regs } = await (supabase as any).from("member_league_registrations").select("club_member_id, league_id").in("club_member_id", ids.slice(i, i + 200));
+        ((regs ?? []) as any[]).forEach((r) => { if (!r.league_id) return; const l = lm.get(r.club_member_id) ?? []; l.push(String(r.league_id)); lm.set(r.club_member_id, l); });
+      }
+      if (!cancelled) setLeaguesByMember((p) => new Map([...p, ...lm]));
+    })();
+    return () => { cancelled = true; };
+  }, [isJuniorBody, ownOrgId]);
   const derivedOwner: string | null = useMemo(() => {
     if (!a.scope) return null;
     if (a.scope === "club") return clubName || hierarchy?.clubNames.get(clubId) || null;
@@ -1942,23 +1964,23 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                   <Button size="sm" disabled={!playersUnsaved || savingPlayers} onClick={() => void savePlayers()}>{savingPlayers ? "Saving…" : "Save players"}</Button>
                 </div>
               )}
-              <Q t={pairMode ? "Select & pair your players" : !showPick ? "Allocate your players" : "Pick / allocate your players"} h={pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
+              <Q t={pairMode ? "Select & pair your players" : !showPick ? "Allocate your players" : "Pick / allocate your players"} h={isJuniorBody ? "Tap a junior player to add them, then choose where each one plays." : pairMode ? "Tap a member to add them and choose where they play. In doubles groups where you assign partners, pair them up right here." : "Tap a member to add them, then choose where each one plays."} />
               {knownField && <div className="rounded-lg border border-primary/40 bg-primary/10 p-2 text-xs">You've picked {pickIds.length} player{pickIds.length === 1 ? "" : "s"}{pairMode ? ` (${entryCount} entr${entryCount === 1 ? "y" : "ies"} — each pair counts as one)` : ""}. Because the field is known, SquashHub will plan with this exact number instead of your estimate.</div>}
               {!showPick && <div className="text-xs text-muted-foreground">Players enter themselves. Everyone who has entered appears here, so you can allocate them to categories and set the seeding.</div>}
-              {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible members can still enter themselves, so the total stays provisional until entries close.</div>}
+              {a.source === "both" && <div className="text-xs text-muted-foreground">Other eligible {isJuniorBody ? "junior players" : "members"} can still enter themselves, so the total stays provisional until entries close.</div>}
               {units.some((u) => u.disc === "doubles" && !adminPairKeys.has(u.key)) && <div className="text-xs text-muted-foreground">{pairMode ? "In doubles groups where players choose their own partner, picked players are paired by the players themselves." : "Doubles groups take players who will be paired up — partners are matched later."} A player placed in a Singles group is not counted as a doubles entry.</div>}
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2.5 py-1.5 font-medium hover:bg-muted">
                   <UserPlus className="h-3.5 w-3.5" /> Import players from file (CSV)
                   <input type="file" accept=".csv,text/csv,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importEntries(f); e.target.value = ""; }} />
                 </label>
-                <span className="text-muted-foreground">Matches club members by name, email and cell. Nothing is sent.</span>
+                <span className="text-muted-foreground">Matches {isJuniorBody ? "junior players" : "club members"} by name, email and cell. Nothing is sent.</span>
               </div>
               {importReport && <div className="rounded-lg border border-border p-2 text-xs" aria-label="Import result">
                 <div className="font-medium">Imported {importReport.added} new player{importReport.added === 1 ? "" : "s"}{importReport.problems.length ? ` · ${importReport.problems.length} need attention` : ""}</div>
                 {importReport.problems.length > 0 && <ul className="mt-1 list-disc pl-4 text-muted-foreground">{importReport.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>}
               </div>}
-              <Input placeholder="Search members" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+              <Input placeholder={isJuniorBody ? "Search junior players" : "Search members"} value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
               {(() => {
                 // Organiser may add ANY member; those outside every event's scope are listed after, flagged.
                 const q = memberSearch.trim().toLowerCase();

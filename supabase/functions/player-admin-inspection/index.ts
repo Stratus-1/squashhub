@@ -438,6 +438,11 @@ Deno.serve(async (req) => {
       }
       const requestId = typeof body.requestId === "string" && body.requestId.trim().length <= 100
         ? body.requestId.trim() : crypto.randomUUID();
+      // Optional collect/deliver choice and note, same as the web order dialog; older apps default to collect.
+      const orderFulfilment = body.fulfilment === "deliver" ? "deliver" : "collect";
+      const orderLocation = typeof body.location === "string" ? body.location.trim().slice(0, 60) : "";
+      const orderNote = typeof body.note === "string" ? body.note.trim().slice(0, 200) : "";
+      if (orderFulfilment === "deliver" && !orderLocation) return json(400, { error: "Where should we bring it? e.g. Court 1" });
       const { data: tab, error: tabError } = await db.rpc("open_my_bar_tab", {
         _club_id: body.clubId, _club_member_id: body.memberId, _sync_secret: secret,
       });
@@ -447,7 +452,7 @@ Deno.serve(async (req) => {
       const operation = orderProcess
         ? await db.rpc("bar_submit_guest_order", {
           _tab_id: tab.tab_id, _token: tab.token,
-          _lines: cleanLines, _fulfilment: "collect", _location: "", _note: "", _idempotency_key: requestId,
+          _lines: cleanLines, _fulfilment: orderFulfilment, _location: orderLocation, _note: orderNote, _idempotency_key: requestId,
         })
         : await db.rpc("add_to_bar_guest_tab", { _tab_id: tab.tab_id, _token: tab.token, _lines: cleanLines });
       if (operation.error) return json(400, { error: operation.error.message || "Could not add your order" });

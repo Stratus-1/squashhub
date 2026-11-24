@@ -406,3 +406,6 @@ notifications   filter: user_id=eq.<userId>   → bell badge
 Build the 4 quick-action screens first (Booking grid, Challenge,
 Add Result, My League). Everything else is read-only widgets that
 hit the queries above.
+
+### player_bar_order: optional order options (24 Nov 2026)
+`player_bar_order` accepts optional `fulfilment` ("collect" | "deliver"), `location` (required for deliver, max 60) and `note` (max 200), matching the web order dialog. Omitted = collect, no note.

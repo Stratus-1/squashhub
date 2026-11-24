@@ -63,8 +63,8 @@ export function inferCategory(label?: string | null): CompetitionCategory | null
   if (!t) return null;
   if (/^(mixed)\b/.test(t) || /\bmixed\b/.test(t)) return "mixed";
   if (/^(open)\b/.test(t) || /\bopen\b/.test(t)) return "open";
-  if (/\b(ladies|women|women's|womens)\b/.test(t)) return "ladies";
-  if (/\b(men|men's|mens)\b/.test(t)) return "mens";
+  if (/\b(ladies|women|women's|womens|girls?)\b/.test(t)) return "ladies";
+  if (/\b(men|men's|mens|boys?)\b/.test(t)) return "mens";
   return null;
 }
 

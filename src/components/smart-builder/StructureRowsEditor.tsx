@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { COMPETITION_CATEGORIES } from "@/lib/leagues/category";
-import { DIVISION_PRESETS, STRUCTURE_HELP, STRUCTURE_ELIGIBILITY_LABELS, applyStructurePreset, structureEligibility, structureEligibilityAdvisory, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
+import { STRUCTURE_HELP, applyStructurePreset, divisionPresets, structureEligibility, structureEligibilityAdvisory, structureEligibilityLabels, duplicateStructureRow, renameStructureKey, rowStages, writeRowStages, structureUnits, structureRowIssues, poolSizesFor, selectedStructureEntries } from "@/lib/smart-builder/structure-rows";
 import { newStageId, validateStagePlan, type StageKind, type StagePlanItem } from "@/lib/smart-builder/stage-plan";
 import { evaluateStructures, type GuideAnswers } from "@/lib/smart-builder/structure-guide";
 import { categoryEstimate, setEstimate } from "@/lib/smart-builder/expected-entries";
@@ -31,7 +31,9 @@ function EditableName({ value, label, disabled, onCommit }: { value: string; lab
   return <Input aria-label={label} className="h-8 min-w-36 text-xs" value={text} disabled={disabled} onChange={(e) => setText(e.target.value)} onBlur={() => { onCommit(text); if (!text.trim()) setText(value); }} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />;
 }
 
-export function StructureRowsEditor({ answers, onSave, onDirtyChange, visualEnabled = false }: { answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void; visualEnabled?: boolean }) {
+export function StructureRowsEditor({ answers, onSave, onDirtyChange, visualEnabled = false, junior = false }: { answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void; visualEnabled?: boolean; junior?: boolean }) {
+  const eligibilityLabels = structureEligibilityLabels(junior);
+  const presets = divisionPresets(junior);
   const [view, setView] = useState<"table" | "canvas">("table");
   const [canvasPending, setCanvasPending] = useState(false);
   const canUseCanvas = visualEnabled && !answers.createdTournamentId && Object.keys(answers.picks).length === 0;

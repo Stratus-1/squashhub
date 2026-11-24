@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { StepAnswers } from "./StepByStepBuilder";
 import { addCardDivision, addCardSubdivision, cardStructureIssues, patchCardStage, saveCardStructure } from "@/lib/smart-builder/card-structure";
-import { DIVISION_PRESETS, STRUCTURE_ELIGIBILITY_LABELS, applyStructurePreset, duplicateStructureRow, renameStructureKey, rowStages, structureEligibility, structureEligibilityAdvisory, structureUnits } from "@/lib/smart-builder/structure-rows";
+import { DIVISION_PRESETS, STRUCTURE_ELIGIBILITY_LABELS, applyStructurePreset, divisionPresets, duplicateStructureRow, renameStructureKey, rowStages, structureEligibility, structureEligibilityAdvisory, structureEligibilityLabels, structureUnits } from "@/lib/smart-builder/structure-rows";
 import { FORMAT_HELP, baseFormatOf, formatHelpHidden, type BaseFormat } from "@/lib/smart-builder/format-help";
 import { stageMatches } from "@/lib/smart-builder/structure-capacity";
 import { monradPlan } from "@/lib/smart-builder/monrad";
@@ -46,7 +46,9 @@ function NameField({ value, label, disabled, onCommit }: { value: string; label:
   return <Input className={control} aria-label={label} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} onBlur={() => { onCommit(name); if (!name.trim() || name.includes("::")) setName(value); }} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />;
 }
 
-export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: { clubId?: string; answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void }) {
+export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange, junior = false }: { clubId?: string; answers: StepAnswers; onSave: (a: StepAnswers) => void; onDirtyChange?: (dirty: boolean) => void; junior?: boolean }) {
+  const eligibilityLabels = structureEligibilityLabels(junior);
+  const presets = divisionPresets(junior);
   const [draft, setDraft] = useState(answers);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [help, setHelp] = useState(true);
@@ -98,12 +100,12 @@ export function CardStructureEditor({ clubId, answers, onSave, onDirtyChange }: 
       {isOpen && <div className="space-y-3 p-3">
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1"><span>{sub ? "Subdivision name" : "Division name"}</span><NameField label={`${key} name`} value={name} disabled={locked(key)} onCommit={(v) => update((a) => renameStructureKey(a, key, v))} /></label>
-          {!sub && <label className="space-y-1"><span>Preset (optional)</span><select className={control} aria-label={`${cat} preset`} value="" disabled={locked(cat)} onChange={(e) => update((a) => applyStructurePreset(a, cat, e.target.value))}><option value="">Custom / choose preset</option>{DIVISION_PRESETS.map((p) => <option key={p.name} disabled={p.name !== cat && draft.categories.includes(p.name)}>{p.name}</option>)}</select></label>}
+          {!sub && <label className="space-y-1"><span>Preset (optional)</span><select className={control} aria-label={`${cat} preset`} value="" disabled={locked(cat)} onChange={(e) => update((a) => applyStructurePreset(a, cat, e.target.value, junior))}><option value="">Custom / choose preset</option>{presets.map((p) => <option key={p.name} disabled={p.name !== cat && draft.categories.includes(p.name)}>{p.name}</option>)}</select></label>}
           <label className="space-y-1"><span>Match type</span><select className={control} aria-label={`${key} discipline`} value={draft.disc[key] ?? draft.disc[cat] ?? "singles"} onChange={(e) => update((a) => ({ ...a, disc: { ...a.disc, [key]: e.target.value as "singles" | "doubles" } }))}><option value="singles">Singles</option><option value="doubles">Doubles</option></select></label>
-          {!sub ? <label className="space-y-1"><span>Participant eligibility</span><select className={control} aria-label={`${cat} eligibility`} value={structureEligibility(draft, cat) ?? ""} onChange={(e) => update((a) => ({ ...a, categoryTypes: { ...a.categoryTypes, [cat]: e.target.value as NonNullable<StepAnswers["categoryTypes"]>[string] } }))}><option value="" disabled>Choose eligibility</option>{Object.entries(STRUCTURE_ELIGIBILITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label> : <div className="space-y-1"><span>Participant eligibility</span><p className="py-2 text-muted-foreground">{STRUCTURE_ELIGIBILITY_LABELS[structureEligibility(draft, cat) ?? "open"]} · inherited</p></div>}
+          {!sub ? <label className="space-y-1"><span>Participant eligibility</span><select className={control} aria-label={`${cat} eligibility`} value={structureEligibility(draft, cat) ?? ""} onChange={(e) => update((a) => ({ ...a, categoryTypes: { ...a.categoryTypes, [cat]: e.target.value as NonNullable<StepAnswers["categoryTypes"]>[string] } }))}><option value="" disabled>Choose eligibility</option>{Object.entries(eligibilityLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label> : <div className="space-y-1"><span>Participant eligibility</span><p className="py-2 text-muted-foreground">{eligibilityLabels[structureEligibility(draft, cat) ?? "open"]} · inherited</p></div>}
           {parent ? <div>Expected: <b>{categoryEstimate(draft, cat)}</b> total</div> : <label className="space-y-1"><span>Expected {draft.disc[key] === "doubles" ? "pairs" : "players"}</span><Input type="number" min={2} className={control} aria-label={`${key} expected entries`} value={draft.unitEntries[key] ?? ""} onChange={(e) => update((a) => ({ ...a, unitEntries: { ...a.unitEntries, [key]: e.target.value } }))} /></label>}
         </div>
-        {structureEligibilityAdvisory(draft, key) && <p className="text-muted-foreground" role="note">{structureEligibilityAdvisory(draft, key)}</p>}
+        {structureEligibilityAdvisory(draft, key, junior) && <p className="text-muted-foreground" role="note">{structureEligibilityAdvisory(draft, key, junior)}</p>}
         {!parent && <>
           <div className="space-y-2 border-t border-border pt-3">
             <div className="font-semibold">Draw format</div><div className="grid grid-cols-2 gap-1 sm:grid-cols-4" role="group" aria-label={`${key} draw format`}>{formats.map((f) => <Button key={f} size="sm" variant={kind === f ? "default" : "outline"} className="h-auto min-h-8 whitespace-normal px-2 text-xs" aria-pressed={kind === f} onClick={() => setFormat(key, f)}>{f === "monrad" ? "Monrad" : FORMAT_HELP[f].title}</Button>)}</div>

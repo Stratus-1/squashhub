@@ -8,6 +8,11 @@ export const STRUCTURE_ELIGIBILITY_LABELS: Record<CompetitionCategory, string> =
   open: "Open", mens: "Men only", ladies: "Ladies only", mixed: "Mixed",
 };
 
+/** Junior bodies say Boys/Girls; the stored eligibility values stay mens/ladies so matching, invites and partners are untouched. */
+export function structureEligibilityLabels(junior?: boolean): Record<CompetitionCategory, string> {
+  return junior ? { ...STRUCTURE_ELIGIBILITY_LABELS, mens: "Boys only", ladies: "Girls only" } : STRUCTURE_ELIGIBILITY_LABELS;
+}
+
 /** Explicit gender eligibility is independent of names; subdivisions inherit it. */
 export function structureEligibility(a: StepAnswers, key: string): CompetitionCategory | null {
   const parent = key.split("::")[0];
@@ -16,16 +21,17 @@ export function structureEligibility(a: StepAnswers, key: string): CompetitionCa
     ?? null;
 }
 
-export function structureEligibilityAdvisory(a: StepAnswers, key: string): string | null {
+export function structureEligibilityAdvisory(a: StepAnswers, key: string, junior?: boolean): string | null {
   const eligibility = structureEligibility(a, key);
   const inferred = inferCategory(key.split("::")[0]);
+  const labels = structureEligibilityLabels(junior);
   return eligibility && inferred && eligibility !== inferred
-    ? `Name suggests ${STRUCTURE_ELIGIBILITY_LABELS[inferred]}; eligibility is ${STRUCTURE_ELIGIBILITY_LABELS[eligibility]}. Your selection applies.` : null;
+    ? `Name suggests ${labels[inferred]}; eligibility is ${labels[eligibility]}. Your selection applies.` : null;
 }
 
 /** Presets prefill missing eligibility only, never replace an explicit selection. */
-export function applyStructurePreset(a: StepAnswers, cat: string, name: string): StepAnswers {
-  const p = DIVISION_PRESETS.find((x) => x.name === name);
+export function applyStructurePreset(a: StepAnswers, cat: string, name: string, junior?: boolean): StepAnswers {
+  const p = divisionPresets(junior).find((x) => x.name === name);
   if (!p || p.name !== cat && a.categories.includes(p.name)) return a;
   const eligibility = structureEligibility(a, cat) ?? p.type;
   const next = renameStructureKey(a, cat, p.name);
@@ -41,6 +47,19 @@ export const DIVISION_PRESETS = [
   { name: "Mixed Doubles", type: "mixed", discipline: "doubles" },
   { name: "Open", type: "open", discipline: "singles" },
 ] as const;
+
+/** Junior bodies run Boys/Girls categories; values stay mens/ladies underneath. */
+export function divisionPresets(junior?: boolean) {
+  if (!junior) return DIVISION_PRESETS;
+  return [
+    { name: "Boys Singles", type: "mens", discipline: "singles" },
+    { name: "Girls Singles", type: "ladies", discipline: "singles" },
+    { name: "Boys Doubles", type: "mens", discipline: "doubles" },
+    { name: "Girls Doubles", type: "ladies", discipline: "doubles" },
+    { name: "Mixed Doubles", type: "mixed", discipline: "doubles" },
+    { name: "Open", type: "open", discipline: "singles" },
+  ] as const;
+}
 
 export const STRUCTURE_HELP = {
   round_robin: "Within: everyone plays everyone else in the same group. Between: everyone plays everyone in selected other groups. Custom: only the group meetings you select, with optional within-group play.",

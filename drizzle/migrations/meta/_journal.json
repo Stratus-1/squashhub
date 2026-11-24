@@ -3522,6 +3522,13 @@
       "when": 1795524749477,
       "tag": "0502_default_on_competition_finance_caps",
       "breakpoints": true
+    },
+    {
+      "idx": 503,
+      "version": "7",
+      "when": 1795524997441,
+      "tag": "0503_junior_list_member_actions",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,19 @@ export function JuniorSquadsBoard({ clubId, orgId }: { clubId?: string; orgId?: 
     onError: (e: any) => toast.error(e.message || "Could not move this player"),
   });
 
+  const setState = useMutation({
+    mutationFn: async ({ row, state }: { row: SquadRow; state: "playing" | "not_playing" | "removed" }) => {
+      const { error } = await db.rpc("set_junior_list_state", { _member_id: row.member_id, _state: state, _org_id: orgId ?? null });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["junior-squads"] });
+      const n = v.row.name ?? "Player";
+      toast.success(v.state === "playing" ? `${n} marked as playing junior squash` : v.state === "not_playing" ? `${n} marked as not playing` : `${n} removed from the juniors list (still a club member)`);
+    },
+    onError: (e: any) => toast.error(e.message || "Could not change this player"),
+  });
+
   const rows = data ?? [];
   const clubs = useMemo(() => {
     const m = new Map<string, string>();
@@ -79,7 +93,7 @@ export function JuniorSquadsBoard({ clubId, orgId }: { clubId?: string; orgId?: 
   const genders: GenderKey[] = ["boys", "girls", ...(Object.values(grid.unknown).some((l) => l.length) ? ["unknown" as const] : [])];
 
   const chip = (r: SquadRow) => {
-    const sporty = r.junior_player && r.junior_source === "sportyhq";
+    const sporty = !!r.junior_player;
     return (
       <div
         key={r.member_id}
@@ -91,6 +105,7 @@ export function JuniorSquadsBoard({ clubId, orgId }: { clubId?: string; orgId?: 
           "group rounded border px-1.5 py-1 text-[12px] leading-tight bg-card",
           r.has_person && "cursor-grab active:cursor-grabbing",
           sporty && "border-success/50 bg-success/10",
+          !r.junior_player && "opacity-60 text-muted-foreground",
           dragId === r.member_id && "opacity-40",
         )}
       >
@@ -103,6 +118,19 @@ export function JuniorSquadsBoard({ clubId, orgId }: { clubId?: string; orgId?: 
               <RotateCcw className="w-3 h-3" />
             </button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label={`Options for ${r.name ?? "player"}`} className="text-muted-foreground hover:text-foreground" disabled={!r.has_person}>
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="text-[12px]">
+              <DropdownMenuItem disabled={!!r.junior_player} onClick={() => setState.mutate({ row: r, state: "playing" })}>Playing junior squash</DropdownMenuItem>
+              <DropdownMenuItem disabled={!r.junior_player} onClick={() => setState.mutate({ row: r, state: "not_playing" })}>Not playing junior squash</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm(`Remove ${r.name ?? "this player"} from the juniors list? They stay a club member.`)) setState.mutate({ row: r, state: "removed" }); }}>Remove from juniors list</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex flex-wrap items-center gap-1 mt-0.5 text-[10px] text-muted-foreground">
           {r.age != null && r.age < 19 ? <span>Age {r.age}</span> : r.age_source === "sportyhq" ? <span>Estimated (SportyHQ)</span> : <span>Age not known</span>}
@@ -173,7 +201,7 @@ export function JuniorSquadsBoard({ clubId, orgId }: { clubId?: string; orgId?: 
       <p className="text-[11px] text-muted-foreground">
         Players are placed by their current age; without a birth date, by their latest SportyHQ junior event.
         Drag a player to another group (on a phone, use “Move to”). Moving changes only their playing group, not their birth date or gender.
-        <span className="ml-1 inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm border border-success/50 bg-success/10" /> SportyHQ junior league player</span>
+        <span className="ml-1 inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm border border-success/50 bg-success/10" /> Playing junior squash; grey = not playing. Use the ⋮ menu to change or remove from the list.</span>
       </p>
       {rows.length === 0 ? (
         <p className="rounded-md border bg-card p-6 text-center text-muted-foreground">No juniors yet. Juniors appear here once their birth date or ID is on their profile, or they play SportyHQ junior events.</p>

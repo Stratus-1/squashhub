@@ -29,6 +29,7 @@ import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
 import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialog";
 import { ResolveDuplicateDialog } from "./ResolveDuplicateDialog";
+import { JuniorPlayerControl } from "@/components/juniors/JuniorPlayerControl";
 import { MemberCreditControl } from "./MemberCreditControl";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { useFinancialAccess } from "@/hooks/use-financial-access";
@@ -1997,6 +1998,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
+          <JuniorPlayerControl memberId={member.id} />
           <div className="flex items-start gap-2 rounded-md border border-border p-2.5">
             <input
               type="checkbox"

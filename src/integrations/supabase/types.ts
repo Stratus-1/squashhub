@@ -11598,6 +11598,7 @@ export type Database = {
           evidence_checked_at: string | null
           last_junior_event_on: string | null
           person_id: string
+          removed_from_list: boolean
           sportyhq_age_group: string | null
           sportyhq_event: string | null
           sportyhq_section: string | null
@@ -11610,6 +11611,7 @@ export type Database = {
           evidence_checked_at?: string | null
           last_junior_event_on?: string | null
           person_id: string
+          removed_from_list?: boolean
           sportyhq_age_group?: string | null
           sportyhq_event?: string | null
           sportyhq_section?: string | null
@@ -11622,6 +11624,7 @@ export type Database = {
           evidence_checked_at?: string | null
           last_junior_event_on?: string | null
           person_id?: string
+          removed_from_list?: boolean
           sportyhq_age_group?: string | null
           sportyhq_event?: string | null
           sportyhq_section?: string | null
@@ -26248,6 +26251,16 @@ export type Database = {
           name: string
         }[]
       }
+      junior_state_for_member: {
+        Args: { _member_id: string }
+        Returns: {
+          admin_state: string
+          has_person: boolean
+          is_on: boolean
+          removed: boolean
+          source: string
+        }[]
+      }
       junior_workspace_body: { Args: { p_club_id: string }; Returns: Json }
       ladder_move_apply_now: {
         Args: {
@@ -27732,6 +27745,10 @@ export type Database = {
           _member_id: string
           _org_id?: string
         }
+        Returns: undefined
+      }
+      set_junior_list_state: {
+        Args: { _member_id: string; _org_id?: string; _state: string }
         Returns: undefined
       }
       set_junior_player: {

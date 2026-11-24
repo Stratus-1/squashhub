@@ -146,3 +146,48 @@ export function GuestOrderProgress({ tab }: { tab: { tab_id: string; token: stri
     </div>
   );
 }
+
+export type OrderOptions = { fulfilment: "collect" | "deliver"; location: string; note: string };
+
+/** Member Bar page: choose collect/deliver and a note before the order is sent. */
+export function OrderOptionsDialog({ open, onOpenChange, busy, onConfirm }: {
+  open: boolean; onOpenChange: (v: boolean) => void; busy: boolean; onConfirm: (o: OrderOptions) => void;
+}) {
+  const [fulfilment, setFulfilment] = useState<"collect" | "deliver">("deliver");
+  const [location, setLocation] = useState("");
+  const [note, setNote] = useState("");
+  const confirm = () => {
+    if (fulfilment === "deliver" && !location.trim()) return toast.error("Where should we bring it? e.g. Court 1");
+    onConfirm({ fulfilment, location: fulfilment === "deliver" ? location.trim() : "", note: note.trim() });
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Place your order</DialogTitle>
+          <DialogDescription>It goes onto your open tab and to the bar staff.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant={fulfilment === "deliver" ? "default" : "outline"} onClick={() => setFulfilment("deliver")}>Deliver to me</Button>
+            <Button variant={fulfilment === "collect" ? "default" : "outline"} onClick={() => setFulfilment("collect")}>Collect at bar</Button>
+          </div>
+          {fulfilment === "deliver" && (
+            <div className="space-y-1">
+              <Label htmlFor="member-order-location" className="text-xs">Where are you?</Label>
+              <Input id="member-order-location" placeholder="e.g. Court 1, table by the window" maxLength={60}
+                value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label htmlFor="member-order-note" className="text-xs">Note (optional)</Label>
+            <Input id="member-order-note" placeholder="e.g. no ice" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={busy} onClick={confirm}>
+            {busy && <Loader2 className="w-4 h-4 animate-spin mr-1" />} Place order
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

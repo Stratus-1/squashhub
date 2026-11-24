@@ -21,6 +21,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
+import { OrderOptionsDialog, type OrderOptions } from "@/components/bar/GuestOrderDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { openMemberCounterTab, placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
@@ -219,8 +220,11 @@ export default function HonestyBar() {
 
 
   /** Send an unpaid order first; settlement stays on the shared tab. */
-  const submitCart = async () => {
+  const [orderOptionsOpen, setOrderOptionsOpen] = useState(false);
+  const submitCart = async (options?: OrderOptions) => {
     if (cartCount === 0 || submitting) return;
+    // Staffed order queue: ask collect/deliver and a note first, like the web bar menu.
+    if (orderProcess && !options) { setOrderOptionsOpen(true); return; }
     if (!memberId || !clubId) {
       toast.error("We couldn't find your club membership — please reload and try again.");
       return;
@@ -240,7 +244,8 @@ export default function HonestyBar() {
       if (accountRequest.current?.signature !== signature) {
         accountRequest.current = { signature, id: crypto.randomUUID() };
       }
-      const destination = await placeMemberCounterOrder(clubId, memberId, cart, accountRequest.current.id);
+      const destination = await placeMemberCounterOrder(clubId, memberId, cart, accountRequest.current.id, options);
+      setOrderOptionsOpen(false);
       toast.success(orderProcess ? "Order sent to the bar" : "Your tab is ready");
       accountRequest.current = null;
       setCart({});
@@ -555,7 +560,7 @@ export default function HonestyBar() {
             })}
 
             {cartCount > 0 && (
-              <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+              <Button className="w-full h-11 text-sm gap-2" onClick={() => submitCart()} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
               <ShoppingCart className="w-4 h-4" /> {submitting ? "Adding…" : orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
               </Button>
             )}
@@ -605,7 +610,7 @@ export default function HonestyBar() {
                       </div>
                     ))}
                   </div>
-                    <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
+                    <Button className="w-full h-11 text-sm gap-2" onClick={() => submitCart()} disabled={submitting || !memberId || orderModeLoading || orderModeError || typeof orderProcess !== "boolean"}>
                       <ShoppingCart className="w-4 h-4" /> {submitting ? "Adding…" : orderProcess ? "Place order" : "Add to my tab"} · {money(cartTotal)}
                     </Button>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-muted-foreground" onClick={() => setCart({})} disabled={submitting}>
@@ -718,6 +723,7 @@ export default function HonestyBar() {
 
 
       <BackToDashboard />
+      <OrderOptionsDialog open={orderOptionsOpen} onOpenChange={setOrderOptionsOpen} busy={submitting} onConfirm={(o) => submitCart(o)} />
     </div>
   );
 }

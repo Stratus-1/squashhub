@@ -39,7 +39,7 @@ it("opening My Tab does not save selections; explicit confirmation saves once", 
   expect(mocks.handoff).not.toHaveBeenCalled();
   fireEvent.click(await screen.findByRole("button", { name: /Add to my tab/ }));
   await screen.findByText("Payment checkout");
-  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String)));
+  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String), undefined));
 });
 it("removes the last selected item without saving anything", async () => {
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><HonestyBar /></MemoryRouter></QueryClientProvider>);
@@ -58,5 +58,18 @@ it("lets a member subtract an accidental duplicate before confirming", async () 
   fireEvent.mouseDown(screen.getByRole("tab", { name: "My Tab, 1 item open" }), { button: 0, ctrlKey: false });
   fireEvent.click(await screen.findByRole("button", { name: /Add to my tab/ }));
   await screen.findByText("Payment checkout");
-  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String)));
+  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String), undefined));
+});
+it("order mode asks deliver/collect and a note before sending the order", async () => {
+  mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "bar_order_process_status" ? true : [], error: null }));
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Routes><Route path="/" element={<HonestyBar />} /><Route path="/s/menu" element={<div>Payment checkout</div>} /></Routes></MemoryRouter></QueryClientProvider>);
+  fireEvent.click(await screen.findByText("Test beer"));
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "My Tab, 1 item open" }), { button: 0, ctrlKey: false });
+  fireEvent.click(await screen.findByRole("button", { name: /Place order/ }));
+  expect(mocks.handoff).not.toHaveBeenCalled();
+  fireEvent.change(await screen.findByLabelText("Where are you?"), { target: { value: "Court 1" } });
+  fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "no ice" } });
+  const buttons = screen.getAllByRole("button", { name: /Place order/ });
+  fireEvent.click(buttons[buttons.length - 1]);
+  await waitFor(() => expect(mocks.handoff).toHaveBeenCalledWith("club1", "member1", { beer: 1 }, expect.any(String), { fulfilment: "deliver", location: "Court 1", note: "no ice" }));
 });

@@ -2,7 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const draftKey = (code: string, tabId: string) => `sh.bar.member-draft.${code}.${tabId}`;
 
-export async function placeMemberCounterOrder(clubId: string, memberId: string, cart: Record<string, number>, requestId: string) {
+export async function placeMemberCounterOrder(clubId: string, memberId: string, cart: Record<string, number>, requestId: string,
+  options: { fulfilment: "collect" | "deliver"; location: string; note: string } = { fulfilment: "collect", location: "", note: "" }) {
   // Read the club's current mode before opening anything. Self-service clubs
   // continue through the existing tab checkout, not the staffed order queue.
   const { data: orderProcess, error: modeError } = await supabase.rpc("bar_order_process_status", { _club_id: clubId });
@@ -25,7 +26,7 @@ export async function placeMemberCounterOrder(clubId: string, memberId: string, 
     _tab_id: tab.tab_id,
     _token: tab.token,
     _lines: Object.entries(cart).filter(([, quantity]) => quantity > 0).map(([bar_item_id, quantity]) => ({ bar_item_id, quantity })),
-    _fulfilment: "collect", _location: "", _note: "", _idempotency_key: requestId,
+    _fulfilment: options.fulfilment, _location: options.location, _note: options.note, _idempotency_key: requestId,
   });
   if (orderError) throw orderError;
   localStorage.setItem(`sh.scanpay.tab.${tab.code}`, JSON.stringify({ tab_id: tab.tab_id, token: tab.token }));

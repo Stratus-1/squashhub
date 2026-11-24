@@ -617,6 +617,11 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (a.scope && (a.ownerName ?? "") !== (derivedOwner ?? "")) setA((prev) => ({ ...prev, ownerName: derivedOwner ?? "" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [derivedOwner, a.scope]);
+  // Association/junior-body workspaces run events for their clubs and beyond — "Club" level is meaningless there.
+  useEffect(() => {
+    if (assocTenant.isAssociation && a.scope === "club") setA((prev) => ({ ...prev, scope: null, ownerName: "" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assocTenant.isAssociation, a.scope]);
   const chAvail = (c: Channel) => c === "in_app" || c === "email" || phoneCh[c];
   const msg: MsgCfg = { ...DEFAULT_MSG, ...(a.msg ?? {}) };
   const setMsg = (p: Partial<MsgCfg>) => setA({ ...a, msg: { ...msg, ...p } });
@@ -2708,7 +2713,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-1">
                 <Label>Event level</Label>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(Object.keys(SCOPE_LABEL) as Scope[]).map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={SCOPE_LABEL[s]} desc={SCOPE_DESC[s]} />)}
+                  {(Object.keys(SCOPE_LABEL) as Scope[]).filter((s) => !(assocTenant.isAssociation && s === "club")).map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={SCOPE_LABEL[s]} desc={SCOPE_DESC[s]} />)}
                 </div>
               </div>
               {a.scope && <div className="max-w-[460px] space-y-1 rounded-md border border-border bg-muted/40 p-3">
@@ -2716,7 +2721,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <p className="text-xs text-muted-foreground">
                   {derivedOwner
                     ? a.scope === "club" ? "Your club. Only this club's members fall under this level."
-                      : a.scope === "regional" ? "The association your club belongs to, taken from the SquashHub federation tree. Clubs and members under it fall under this level."
+                      : a.scope === "regional" ? (assocTenant.isAssociation ? "This body. Clubs and members under it fall under this level." : "The association your club belongs to, taken from the SquashHub federation tree. Clubs and members under it fall under this level.")
                       : "The national federation at the top of the SquashHub federation tree."
                     : ownerLoading ? "Reading the SquashHub federation tree…"
                       : a.scope === "regional" ? "Your club isn't linked to an association in the SquashHub federation tree yet. A super admin must link it before a regional event can be owned." : "No national federation is set up in the SquashHub federation tree yet."}

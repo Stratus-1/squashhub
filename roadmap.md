@@ -255,3 +255,7 @@
 - [x] Server rule on every booking writer; Stitch visitor-fee payment kept for that fee, not swept onto old fees.
 - [x] Cancelled prepaid booking: money stays on the member account for later (Willem confirmed).
 - [x] Booking screen pay prompt + resume after payment; admin switch; tests.
+
+## Uitsig bar pictures (24 Nov)
+- [x] Buddy item shows the small single-serve Coke container; brandy-plus-Buddy specials keep their existing pictures.
+- [x] Checked for a Secunda Squash Club: none on the platform (nearest: Highveld Squash Club Witbank, Mpumalanga Highveld Squash Association).

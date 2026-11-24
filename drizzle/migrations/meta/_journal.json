@@ -3494,6 +3494,13 @@
       "when": 1795517048059,
       "tag": "0498_banking_permission_club_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 499,
+      "version": "7",
+      "when": 1795517327108,
+      "tag": "0499_member_tab_reuse_counter_tab",
+      "breakpoints": true
     }
   ]
 }

@@ -67,7 +67,7 @@ export function MyStatsCard({ memberId }: Props) {
   const computedAt = summary?.computedAt ?? null;
   const { data: clubData } = useMyClub();
   const club = clubData?.club;
-  const statsActivated = !!club?.sla_accepted_at;
+  const statsActivated = !!club?.sla_accepted_at || (club as any)?.tenant_type === "association";
 
   const total = stats?.total;
 

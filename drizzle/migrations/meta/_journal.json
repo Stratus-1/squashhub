@@ -3543,6 +3543,13 @@
       "when": 1795525995240,
       "tag": "0505_junior_provincial_leaders_zone_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 506,
+      "version": "7",
+      "when": 1795526206706,
+      "tag": "0506_associations_always_active",
+      "breakpoints": true
     }
   ]
 }

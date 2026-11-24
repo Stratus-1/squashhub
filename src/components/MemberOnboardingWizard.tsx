@@ -359,7 +359,7 @@ export function MemberOnboardingWizard({
         // applicant (once-off registration fee applies), unless joining fees
         // were already raised on it (resume / re-login never charges twice).
         let freshApplicant = false;
-        if (member.user_id === user.id && isSelfApplication(member, (user as any)?.created_at)) {
+        if (member.user_id === user.id && !member.billing_exempt && isSelfApplication(member, (user as any)?.created_at)) {
           const { count } = await fromExt("club_member_fee_payments")
             .select("id", { count: "exact", head: true })
             .eq("club_member_id", member.id)
@@ -806,7 +806,7 @@ export function MemberOnboardingWizard({
       let isPreExistingMember = !!existingMember;
       if (existingMember) {
         const { data: rowInfo } = await fromExt("club_members")
-          .select("is_pending_approval, joined_at, user_id")
+          .select("is_pending_approval, joined_at, user_id, billing_exempt")
           .eq("id", existingMember.id)
           .maybeSingle();
         // Judge the ROW, not whoever is saving: an admin completing the steps in
@@ -830,7 +830,7 @@ export function MemberOnboardingWizard({
           !!rowInfo?.user_id &&
           (rowInfo?.is_pending_approval === true ||
             (Number.isFinite(ownerCreated) && Number.isFinite(joined) && Math.abs(joined - ownerCreated) < 10 * 60 * 1000));
-        if (createdBySignup) {
+        if (createdBySignup && !rowInfo?.billing_exempt) {
           const { count } = await fromExt("club_member_fee_payments")
             .select("id", { count: "exact", head: true })
             .eq("club_member_id", existingMember.id)

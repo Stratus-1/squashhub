@@ -229,6 +229,9 @@ export function PendingApplicationsPanel({ clubId }: Props) {
                 </span>
               </span>
             )}
+            {p.join_source === "club_signup" && p.join_kind === "existing_unlisted" && (
+              <Badge variant="secondary" className="text-[10px]">Existing member (not listed) · no joining fee</Badge>
+            )}
             {p.join_source === "tournament_link" && (
               <Badge variant="secondary" className="text-[10px]">
                 {p.join_kind === "existing_unlisted" ? "Joined via tournament · existing member (not listed) · no joining fee"

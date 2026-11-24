@@ -79,6 +79,7 @@ export default function ClubAuth() {
   >([]);
   const [chosenMemberId, setChosenMemberId] = useState<string>("");
   const [existingStatus, setExistingStatus] = useState<null | "already_linked" | "verification_mismatch" | "not_found">(null);
+  const [unlistedName, setUnlistedName] = useState("");
 
   // League-number signup (CSIR & similar imported-member clubs)
   const [leagueNumber, setLeagueNumber] = useState("");
@@ -495,6 +496,38 @@ export default function ClubAuth() {
     } else {
       setSignupDone(true, email);
     }
+    setLoading(false);
+  };
+
+  // Clubs without an agreement/trial: an existing member who is not on the
+  // club's list may still register; the club must confirm them (no fees).
+  const handleUnlistedExistingSignup = async () => {
+    const email = existingEmail.trim();
+    const phone = existingPhone.trim();
+    const fullName = unlistedName.trim();
+    if (!club?.id) return;
+    if (!fullName || !fullName.includes(" ")) { toast.error("Please enter your full name and surname"); return; }
+    if (!email) { toast.error("Please enter your email"); return; }
+    if (!phone) { toast.error("Please enter your cell phone number"); return; }
+    if (existingPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (existingPassword !== existingConfirm) { toast.error("Passwords do not match"); return; }
+    if (!existingAcceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
+    setLoading(true);
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); setLoading(false); return; }
+    const nowIso = new Date().toISOString();
+    const { error } = await signUp(
+      email, existingPassword, fullName, phone,
+      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
+      { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member", joinKind: "existing_unlisted" },
+    );
+    if (error) handleSignupError(error, email);
+    else setSignupDone(true, email);
     setLoading(false);
   };
 
@@ -1423,6 +1456,15 @@ export default function ClubAuth() {
                         <Button type="button" className="flex-1" onClick={() => { setLoginEmail(existingEmail.trim()); setActiveTab("login"); }}>Sign in</Button>
                         <Button type="button" variant="outline" className="flex-1" onClick={() => { setResetEmail(existingEmail.trim()); setShowReset(true); }}>Reset password</Button>
                       </div>
+                    </div>
+                  )}
+                  {existingStatus === "not_found" && !membership.allowed && !isAssociation && (
+                    <div role="status" data-testid="unlisted-existing-panel" className="mb-4 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                      <p className="text-[13px] font-semibold">Not on {clubName}'s list yet?</p>
+                      <p className="text-[12px] text-muted-foreground">If you're already a member of {clubName}, enter your full name and complete the email, cell phone and password below. The club will confirm your membership. No joining fees are charged.</p>
+                      <Label htmlFor="unlisted-name">Full name and surname <span className="text-destructive">*</span></Label>
+                      <Input id="unlisted-name" value={unlistedName} onChange={(e) => setUnlistedName(e.target.value)} maxLength={100} placeholder="e.g. Jan van der Merwe" />
+                      <Button type="button" className="w-full" disabled={loading} onClick={handleUnlistedExistingSignup}>Register as an existing member</Button>
                     </div>
                   )}
                   <form onSubmit={handleExistingMemberSignup} className="space-y-3">

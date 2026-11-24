@@ -13,7 +13,7 @@ interface AuthContextType {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string; joinKind?: "existing_unlisted" }
   ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string; joinKind?: "existing_unlisted" }
   ) => {
     const metadata: Record<string, string> = { name };
     if (phone) metadata.phone = phone;
@@ -130,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (club?.homeClubId) metadata.home_club_id = club.homeClubId;
     if (club?.homeClubName) metadata.home_club_name = club.homeClubName;
     if (club?.homeClubSubdomain) metadata.home_club_subdomain = club.homeClubSubdomain;
+    if (club?.joinKind) metadata.club_join_kind = club.joinKind;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

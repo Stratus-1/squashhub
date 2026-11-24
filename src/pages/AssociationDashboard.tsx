@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FederationJuniorTab } from "@/components/admin/FederationJuniorTab";
 import { JuniorSquadsBoard } from "@/components/juniors/JuniorSquadsBoard";
+import { JuniorMembersTab } from "@/components/juniors/JuniorMembersTab";
 import { JuniorRegistrationsTab } from "@/components/juniors/JuniorRegistrationsTab";
 import { JuniorLeadersTab } from "@/components/juniors/JuniorLeadersTab";
 import { useJuniorBody } from "@/components/juniors/useJuniorBody";
@@ -84,7 +85,8 @@ const JUNIOR_TAB: TabDef = { value: "junior", label: "Junior clubs", description
 // Junior bodies (zone, province, regional): registration link + inbox and leaders, shown only to junior leaders (checked server-side).
 const JUNIOR_REG_TAB: TabDef = { value: "junior-registrations", label: "Junior registrations", description: "Confirm the club list, share the junior link and review registrations", icon: UserPlus, color: "teal", group: "operations" };
 const JUNIOR_LEADERS_TAB: TabDef = { value: "junior-leaders", label: "Association leaders", description: "Leaders of this junior body and the bodies below it", icon: Crown, color: "amber", group: "operations" };
-const JUNIOR_SQUADS_TAB: TabDef = { value: "junior-squads", label: "Junior squads", description: "Boys & girls by age group — drag to move", icon: Users, color: "indigo", group: "operations", permission: "leagues" };
+// Junior bodies: Members = junior players synced from clubs (list + age-group board); management lives in Association leaders.
+const JUNIOR_MEMBERS_TAB: TabDef = { value: "members", label: "Members", description: "Junior players from your clubs — synced automatically", icon: Users, color: "indigo", group: "operations", permission: "leagues" };
 
 // Section ids and permissions are unchanged — only presentation (left menu) changed.
 const ADMIN_TABS: TabDef[] = [
@@ -139,7 +141,7 @@ export default function AssociationDashboard() {
   const { data: juniorBody } = useJuniorBody(association?.id);
   const juniorLeadTabs = juniorBody?.can_lead ? [JUNIOR_REG_TAB, JUNIOR_LEADERS_TAB] : [];
   const tabs = juniorOrg
-    ? [JUNIOR_TAB, ...juniorLeadTabs, JUNIOR_SQUADS_TAB, ...ADMIN_TABS.filter(t => t.value !== "affiliated")]
+    ? [JUNIOR_TAB, ...juniorLeadTabs, JUNIOR_MEMBERS_TAB, ...ADMIN_TABS.filter(t => t.value !== "affiliated" && t.value !== "members")]
     : [...juniorLeadTabs, ...ADMIN_TABS];
   const firstTab = juniorOrg ? "junior" : "affiliated";
 
@@ -168,7 +170,8 @@ export default function AssociationDashboard() {
 
   // Deep-link via ?tab=members etc.
   useEffect(() => {
-    const tab = new URLSearchParams(location.search).get("tab");
+    const raw = new URLSearchParams(location.search).get("tab");
+    const tab = raw === "junior-squads" ? "members" : raw;
     if (tab && visibleAdminTabs.some(t => t.value === tab)) setAdminTab(tab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, visibleAdminTabs.length]);
@@ -187,7 +190,7 @@ export default function AssociationDashboard() {
       case "champs": return <ClubTournamentBeta clubId={association.id} clubName={(association as any)?.name}
         renderList={(manage) => <TournamentPlanner mode="club" clubId={association.id} hideCreateButton onManageBeta={manage} />} />;
       case "rankings": return <AssociationRankingsTab clubId={association.id} />;
-      case "members": return <AssociationMembersTab clubId={association.id} />;
+      case "members": return juniorOrg ? <JuniorMembersTab orgId={juniorOrg.id} /> : <AssociationMembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;
       case "fees": return <AssociationFeesTab clubId={association.id} />;
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;

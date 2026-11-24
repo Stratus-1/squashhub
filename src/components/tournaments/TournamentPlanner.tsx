@@ -10,7 +10,7 @@ import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
-import { orgDescendants } from "@/lib/tournaments/eligibility";
+import { orgDescendants, groupingClubIds } from "@/lib/tournaments/eligibility";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { TeamLeagueManager } from "@/components/tournaments/TeamLeagueManager";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,7 @@ export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton
   const [extraClubIds, setExtraClubIds] = useState<Set<string>>(new Set());
   const [showVenues, setShowVenues] = useState(mode === "platform");
   const [search, setSearch] = useState("");
+  const [showAllClubs, setShowAllClubs] = useState(false);
 
   useEffect(() => {
     if (mode === "club" && clubId) setHostClubId(clubId);
@@ -85,6 +86,11 @@ export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton
         out.push({ id: o.club_id, name: hierarchy.clubNames.get(o.club_id) || o.name });
       }
     });
+    // Junior zones/provincial bodies hold their clubs in org_groupings, not the senior tree.
+    const seen = new Set(out.map((c) => c.id));
+    groupingClubIds(activeOwner, hierarchy.orgs, hierarchy.rels, hierarchy.groupings ?? []).forEach((id) => {
+      if (!seen.has(id)) { seen.add(id); out.push({ id, name: hierarchy.clubNames.get(id) || "Club" }); }
+    });
     return out;
   }, [hierarchy, activeOwner]);
 
@@ -92,8 +98,12 @@ export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton
   // affiliation must not make an unrelated club a venue or player source.
   const venueChoices = useMemo(() => {
     if (mode === "platform" && !activeOwner) return [];
-    return [...treeClubs].sort((a, b) => a.name.localeCompare(b.name));
-  }, [treeClubs, mode, activeOwner]);
+    const own = [...treeClubs].sort((a, b) => a.name.localeCompare(b.name));
+    if (!showAllClubs) return own;
+    // Own clubs first, then any other club on the platform (venue only; entry eligibility is separate).
+    const ownIds = new Set(own.map((c) => c.id));
+    return [...own, ...clubs.filter((c) => !ownIds.has(c.id)).map((c) => ({ id: c.id, name: c.name }))];
+  }, [treeClubs, mode, activeOwner, showAllClubs, clubs]);
 
   const effectiveHostClubId = mode === "platform" && !venueChoices.some((c) => c.id === hostClubId)
     ? ""
@@ -226,6 +236,10 @@ export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton
               </Button>
               {showVenues && (
                 <div className="mt-2 space-y-2">
+                  <label className={cn("flex items-center gap-2 text-xs", dark ? "text-white/80" : "text-foreground")}>
+                    <Checkbox checked={showAllClubs} onCheckedChange={(v) => setShowAllClubs(v === true)} />
+                    Show all clubs (use courts at a club outside this body)
+                  </label>
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -241,7 +255,7 @@ export function TournamentPlanner({ mode, clubId, dark = false, hideCreateButton
                           <span className="truncate">{c.name}</span>
                         </label>
                       ))}
-                     {filteredClubs.length === 0 && <p className={cn("text-xs col-span-full", label)}>No clubs in this body's Federation tree. Add a club in Federation before choosing its courts.</p>}
+                     {filteredClubs.length === 0 && <p className={cn("text-xs col-span-full", label)}>{showAllClubs ? "No clubs match your search." : "No clubs linked to this body yet. Tick \"Show all clubs\" to pick any club."}</p>}
                   </div>
                   <p className={cn("text-[11px]", label)}>
                     {assoc.isAssociation

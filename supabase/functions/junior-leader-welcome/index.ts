@@ -33,7 +33,61 @@ Deno.serve(async (req) => {
   const { data: ok } = await admin.rpc('is_platform_admin', { _user_id: auth.user.id });
   if (!ok) return json({ error: 'Super Admin only' }, 403);
   const body = await req.json().catch(() => ({}));
-  if (body?.mode !== 'test') return json({ error: 'Only test mode is enabled' }, 400);
+
+  if (body?.mode === 'live') {
+    // One-time send: real activation links for the three Potchefstroom junior
+    // leaders, with an information copy to Vian Crafford (the managed email API
+    // has no CC field, so the copy is a separate send).
+    const RECIPIENTS = [
+      { memberId: '3aa14e12-56bc-4c27-8387-ef45e64fa891', name: 'Charlie Fourie', role: 'Chairman', email: 'bakkiesfourie@yahoo.com' },
+      { memberId: '99ea9827-fa6d-46b4-8451-52a70cc33ca8', name: 'Alwyn Venter', role: 'Vice-Chairman', email: 'avtraining13@gmail.com' },
+      { memberId: 'fc7f6eb1-eb77-4e3e-af50-4401c7e1f00f', name: 'Cara Fourie', role: 'Secretary', email: 'carawilloughby@yahoo.com' },
+    ];
+    const VIAN = 'craffordv@gmail.com';
+    const results: Record<string, unknown>[] = [];
+    for (const r of RECIPIENTS) {
+      const { count } = await admin.from('member_activation_invites').select('id', { count: 'exact', head: true })
+        .eq('club_member_id', r.memberId).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      if (count) { results.push({ name: r.name, skipped: 'activation already sent in the last 24h' }); continue; }
+      const { data: token, error: tErr } = await admin.rpc('issue_member_activation_token', {
+        _club_member_id: r.memberId, _campaign_id: null, _issued_by: auth.user.id, _days: 14,
+      });
+      if (tErr || !token) { results.push({ name: r.name, error: tErr?.message || 'no token' }); continue; }
+      const link = `https://squashhub.co.za/activate?t=${encodeURIComponent(String(token))}&next=${encodeURIComponent('/')}`;
+      const first = r.name.split(' ')[0];
+      const base = {
+        clubName: 'SquashHub',
+        url: link,
+        ctaLabel: 'Activate my account',
+        clubLogoUrl: STRATUS_LOGO_URL,
+        signatureHtml: platformSignature('Kind regards,'),
+      };
+      const sent = await sendAppEmail({
+        templateName: 'club-notification',
+        recipientEmail: r.email,
+        idempotencyKey: `junior-leader-welcome-${r.memberId}`,
+        templateData: {
+          ...base,
+          title: 'Welcome to SquashHub – activate your Potchefstroom account',
+          messageBody: letter(first, r.role, r.email),
+        },
+      });
+      const copy = await sendAppEmail({
+        templateName: 'club-notification',
+        recipientEmail: VIAN,
+        idempotencyKey: `junior-leader-welcome-cc-${r.memberId}`,
+        templateData: {
+          ...base,
+          title: `Copy: Welcome to SquashHub – ${r.name}`,
+          messageBody: `Copy for your information — this activation email was sent to ${r.name} (${r.email}).\n\n` + letter(first, r.role, r.email),
+        },
+      });
+      results.push({ name: r.name, sent: sent.ok, cc: copy.ok });
+    }
+    return json({ results });
+  }
+
+  if (body?.mode !== 'test') return json({ error: 'Unknown mode' }, 400);
   const to = auth.user.email!;
   const r = await sendAppEmail({
     templateName: 'club-notification',

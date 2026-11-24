@@ -1,3 +1,9 @@
+## 2026-11-24 — Clear bar member-account insufficient-credit warning
+- Symptom: Deon's R126 tab offered member-account payment then showed raw ACCOUNT_LIMIT code below the tip prompt.
+- Finding: ScanPay bypassed the shared preview and displayed raw errors; its tip prompt had no inline payment error.
+- Fix: use the existing read-only basket preview to disable unavailable account payment with an inline insufficient-funds notice; include tips in the preview and show server refusals inside the prompt and as readable persistent messages.
+- Guard: existing account limits, club/member authorization, stock and settlement writers remain unchanged; no member balances adjusted.
+
 ## 2026-11-05 — Clear once-off payment sign-in rejection
 - Replace Unauthorized/HTTP 401 checkout errors with a request to log in again in the shared once-off payment dispatcher. Ownership, provider and other failures remain distinct; no auth settings, automatic retries, recurring mandate handlers or financial writes changed.
 

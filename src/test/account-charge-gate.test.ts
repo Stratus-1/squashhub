@@ -30,6 +30,9 @@ describe("bar/shop account charge gate", () => {
 
 import { previewBasketCharge as pb } from "@/lib/account-charge-gate";
 describe("early basket warning", () => {
+  it("Deon's R126 tab is blocked when credit covers only R98.40", () => {
+    expect(pb({ preview: { bar_gated: true, shop_gated: false, current_owing: -98.40, allowance: 0 }, lines: [{ division: "bar", total: 126 }] })).toEqual({ blocked: true, shortfall: 27.6 });
+  });
   const p = (o: any) => ({ bar_gated: true, shop_gated: false, current_owing: 0, allowance: 0, ...o });
   it("R0 balance warns even before items are added", () => expect(pb({ preview: p({}), lines: [] }).blocked).toBe(true));
   it("negative available credit warns with empty basket", () => expect(pb({ preview: p({ current_owing: 40 }), lines: [] }).blocked).toBe(true));

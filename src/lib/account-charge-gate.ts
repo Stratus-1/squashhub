@@ -54,8 +54,7 @@ export function barChargeErrorMessage(err: unknown, fallback: string): string {
   if (overdue) return overdue[1];
   const info = parseAccountLimit(err);
   if (!info) return (err as any)?.message || fallback;
-  return `Not added to the member account: this would take the account to ${rand(info.projectedOwing)} owing, `
-    + `beyond what it allows (${rand(info.allowance)}). Pay by card, or top up the account first `
+  return `Insufficient funds in member account. Pay by card, or top up the account first `
     + `(${rand(info.shortfall)} short). Nothing was charged.`;
 }
 
@@ -65,8 +64,8 @@ export function barChargeErrorMessage(err: unknown, fallback: string): string {
  * other payment method the club offers when settling.
  */
 export const EARLY_ACCOUNT_WARNING =
-  "Your member account doesn't have enough available credit to settle this. "
-  + "You'll need to pay by card or another payment method available at the club.";
+  "Insufficient funds in member account. Adding to your member account is unavailable. "
+  + "Please top up first or choose another payment method.";
 
 /**
  * Early basket warning: given the club's switches and the member's current owing/allowance,

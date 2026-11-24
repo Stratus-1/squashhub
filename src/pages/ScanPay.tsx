@@ -39,6 +39,8 @@ import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
 import { MemberAccountTipDialog } from "@/components/bar/MemberAccountTipDialog";
 import { memberSettlementTip, type ServingPerson } from "@/lib/bar/member-settlement-tip";
 import { canShowCounterEntry } from "@/lib/bar/counter-entry";
+import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
+import { barChargeErrorMessage, EARLY_ACCOUNT_WARNING, parseAccountLimit } from "@/lib/account-charge-gate";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -214,6 +216,7 @@ export default function ScanPay() {
   const signedInName = isSignedInMember ? signedInMembership!.name || activeMember?.name || "Member" : null;
   const [checkingMembership, setCheckingMembership] = useState(false);
   const [memberTipPending, setMemberTipPending] = useState<{ target: "cart" | "tab"; memberId: string; staff: ServingPerson[]; requestId: string } | null>(null);
+  const [memberChargeError, setMemberChargeError] = useState("");
   const accountChargeBusy = useRef(false);
 
   const chargeSignedInAccount = async (target: "cart" | "tab", memberId: string, choice?: TipChoice, staff: ServingPerson[] = [], requestId?: string) => {
@@ -248,7 +251,9 @@ export default function ScanPay() {
       setTipChoice(emptyTip);
       toast.success("Charged to your member account", { closeButton: true, duration: 8000 });
     } catch (err: any) {
-      toast.error(err?.message || "Could not charge your member account");
+      setMemberChargeError(barChargeErrorMessage(err, "Could not charge your member account"));
+      showBarChargeError(err, "Could not charge your member account");
+      if (parseAccountLimit(err)) queryClient.invalidateQueries({ queryKey: ["bar-account-charge-preview", memberId] });
     } finally {
       accountChargeBusy.current = false;
       setCheckingMembership(false);
@@ -258,6 +263,11 @@ export default function ScanPay() {
   /** Start a member-account charge: direct for a confirmed signed-in member, number entry + one-time code otherwise. */
   const startAccountCharge = async (target: "cart" | "tab") => {
     if (checkingMembership || memberTipPending) return;
+    setMemberChargeError("");
+    if ((target === "tab" ? tabAccountGate : cartAccountGate).blocked) {
+      toast.error(EARLY_ACCOUNT_WARNING);
+      return;
+    }
     setAccountChargeTarget(target);
     if (!club || !activeMember) { setNumberEntry(true); return; }
     setCheckingMembership(true);
@@ -281,7 +291,7 @@ export default function ScanPay() {
       }
       await chargeSignedInAccount(target, start.memberId);
     } catch (err: any) {
-      toast.error(err?.message || "Could not charge your member account");
+      showBarChargeError(err, "Could not charge your member account");
     } finally {
       setCheckingMembership(false);
     }
@@ -353,6 +363,13 @@ export default function ScanPay() {
     [cart, menu, buddyItems],
   );
   const total = cartLines.reduce((s, l) => s + l.line, 0);
+  const accountMemberId = signedInMembership?.id;
+  const tabAccountLines = (tab?.lines ?? []).map(line => ({
+    total: Number(line.total), division: menu.find(item => item.name === line.name)?.division ?? "bar",
+  }));
+  const cartAccountLines = cartLines.map(line => ({ total: line.line, division: line.item.division }));
+  const tabAccountGate = useAccountChargePreview(accountMemberId, tabAccountLines);
+  const cartAccountGate = useAccountChargePreview(accountMemberId, cartAccountLines);
   const count = cartLines.reduce((s, l) => s + l.qty, 0);
   const cartLabel =
     cartLines.length === 0
@@ -1094,7 +1111,7 @@ export default function ScanPay() {
                       {!numberEntry || accountChargeTarget !== "tab" ? (
                         <Button
                           className="w-full gap-2 h-11"
-                          disabled={submitting || checkingMembership || tab.total <= 0}
+                          disabled={submitting || checkingMembership || tab.total <= 0 || tabAccountGate.blocked}
                           onClick={() => startAccountCharge("tab")}
                         >
                           <Wallet className="w-4 h-4" /> Charge tab to my member account
@@ -1140,6 +1157,7 @@ export default function ScanPay() {
                           </div>
                         </div>
                       )}
+                      {tabAccountGate.blocked && <p role="alert" className="rounded-md border border-destructive p-3 text-sm font-medium text-destructive">{EARLY_ACCOUNT_WARNING}</p>}
                     </div>
                   )}
                   {club.account_tab_enabled !== false && club.pay_online_enabled !== false && (!numberEntry || accountChargeTarget !== "tab") && (
@@ -1390,7 +1408,7 @@ export default function ScanPay() {
                   {!member && club.account_tab_enabled !== false && (
                     <div className="space-y-2">
                       {!numberEntry ? (
-<Button className="w-full gap-2 h-11" disabled={checkingMembership} onClick={() => startAccountCharge("cart")}>
+<Button className="w-full gap-2 h-11" disabled={checkingMembership || cartAccountGate.blocked} onClick={() => startAccountCharge("cart")}>
                           <Wallet className="w-4 h-4" /> Add to my member account
                         </Button>
                       ) : (
@@ -1425,6 +1443,7 @@ export default function ScanPay() {
                           </div>
                         </div>
                       )}
+                      {cartAccountGate.blocked && <p role="alert" className="rounded-md border border-destructive p-3 text-sm font-medium text-destructive">{EARLY_ACCOUNT_WARNING}</p>}
                     </div>
                   )}
                   {club.account_tab_enabled !== false && club.pay_online_enabled !== false && (member || !numberEntry) && (
@@ -1576,6 +1595,9 @@ export default function ScanPay() {
         subtotal={memberTipPending.target === "tab" && tab ? tab.subtotal ?? tab.total : total}
         staff={memberTipPending.staff}
         busy={checkingMembership}
+        memberId={memberTipPending.memberId}
+        accountLines={memberTipPending.target === "tab" ? tabAccountLines : cartAccountLines}
+        paymentError={memberChargeError}
         onClose={() => setMemberTipPending(null)}
         onConfirm={choice => chargeSignedInAccount(memberTipPending.target, memberTipPending.memberId, choice, memberTipPending.staff, memberTipPending.requestId)}
       />}

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ScanPay from "@/pages/ScanPay";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), error: vi.fn(), mode: false, enabled: true }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), error: vi.fn(), mode: false, enabled: true, credit: 2000 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc,
   from: () => { const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { id: "member", name: "Fictional member" }, error: null }) }; return q; },
   auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn() } } }), getUser: async () => ({ data: { user: { id: "user" } } }) },
@@ -20,12 +20,13 @@ vi.mock("@/lib/bar-categories", () => ({ BAR_CATEGORY_EMOJI: {}, barProductEmoji
 }));
 
 beforeEach(() => {
-  vi.clearAllMocks(); localStorage.clear(); mocks.enabled = true;
+  vi.clearAllMocks(); localStorage.clear(); mocks.enabled = true; mocks.credit = 2000;
   localStorage.setItem("sh.scanpay.guest", "1");
   localStorage.setItem("sh.scanpay.tab.test-menu", JSON.stringify({ tab_id: "test-tab", token: "synthetic-token" }));
   mocks.rpc.mockImplementation(async (name: string) => ({ data: name === "resolve_qr_short_code"
     ? { found: true, kind: "venue", club: { id: "riverside-synthetic", name: "Fictional Riverside", currency_code: "ZAR" }, menu: [] }
-    : name === "get_bar_guest_tab" ? { found: true, tab_id: "test-tab", guest_name: "Fictional member", status: "open", subtotal: 900, total: 900, lines: [] }
+    : name === "get_bar_guest_tab" ? { found: true, tab_id: "test-tab", guest_name: "Fictional member", status: "open", subtotal: 900, total: 900, lines: [{ id: "line", name: "Meal", quantity: 1, total: 900 }] }
+    : name === "bar_account_charge_preview" ? { bar_gated: true, shop_gated: false, current_owing: -mocks.credit, allowance: 0 }
     : name === "bar_tip_config" ? { enabled: mocks.enabled, staff: [] }
     : name === "bar_member_tip_staff" ? [{ id: "grant", name: "Fictional Grant" }]
     : name === "bar_order_process_status" ? mocks.mode
@@ -34,14 +35,33 @@ beforeEach(() => {
 afterEach(cleanup);
 
 async function mount() {
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(["bar-tip-config", "riverside-synthetic"], { enabled: mocks.enabled, staff: [] });
+  render(<QueryClientProvider client={client}>
     <MemoryRouter initialEntries={["/s/test-menu"]}><Routes><Route path="/s/:code" element={<ScanPay />} /></Routes></MemoryRouter>
   </QueryClientProvider>);
-  await screen.findByText("Your open tab · Fictional member");
+  await screen.findByText("My tab · Fictional member");
+  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("bar_account_charge_preview", { _club_member_id: "member" }));
   await act(async () => {});
 }
 
 describe("signed-in account settlement", () => {
+  it("does not offer account settlement when R900 exceeds the available R98.40", async () => {
+    mocks.credit = 98.4;
+    await mount();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Charge tab to my member account" })).toBeDisabled());
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_member_tab_account_with_tip")).toBe(false);
+  });
+  it("does not charge a 10% tip when R900 credit only covers the R900 sale", async () => {
+    mocks.credit = 900;
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "Charge tab to my member account" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "10%" }));
+    expect(screen.getByRole("button", { name: "Add tip & charge account" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "No tip — add to account" })).toBeEnabled();
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "bar_member_tab_account_with_tip")).toBe(false);
+  });
   it.each([false, true])("only prompts on account settlement with order process %s; adds R90 without OTP", async mode => {
     mocks.mode = mode;
     await mount();
@@ -77,7 +97,7 @@ describe("signed-in account settlement", () => {
     await screen.findByRole("dialog");
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "Declined" } });
     fireEvent.click(screen.getByRole("button", { name: "No tip — add to account" }));
-    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Declined"));
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Declined", { duration: 10000 }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByText("Thank you!")).toBeNull();
   });

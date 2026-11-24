@@ -300,6 +300,8 @@ export type StepAnswers = {
   playoffSync: boolean | "later" | null;
   /** Event level / owner context (planning only). */
   scope: Scope | null;
+  /** Selected zone org id when scope = "zone". */
+  zoneId?: string | null;
   /** Explicit opt-in: registered visitors (club sign-ins) may be picked and invited. Default off. */
   includeVisitors?: boolean;
   /** Players may enter (and pay for) a doubles partner from outside the invite list. */
@@ -370,9 +372,9 @@ const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.m
 /** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
 type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
 const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals (8 remain)", sf: "Semifinals (4 remain)", final: "Final only (2 remain)", custom: "Custom stage", none: "No separate playoff phase (format decides the finish)", later: "Decide later" };
-type Scope = "club" | "regional" | "national";
-const SCOPE_LABEL: Record<Scope, string> = { club: "Club", regional: "Regional / Association", national: "National / Federation" };
-const SCOPE_DESC: Record<Scope, string> = { club: "Run by your club.", regional: "Run by an association or region for its clubs and members.", national: "Run by the federation for associations, clubs and members." };
+type Scope = "club" | "regional" | "zone" | "national";
+const SCOPE_LABEL: Record<Scope, string> = { club: "Club", regional: "Regional / Association", zone: "Zone", national: "National / Federation" };
+const SCOPE_DESC: Record<Scope, string> = { club: "Run by your club.", regional: "Run by an association or region for its clubs and members.", zone: "A whole zone — every district and club under the zone you pick.", national: "Every zone, district and club in the country." };
 type ChampsSplit = { mainEnd: string; start: PlayoffStart; custom: string };
 const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 
@@ -609,17 +611,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (!hierarchy) return null;
     const own = assocTenant.isAssociation ? assocTenant.orgId : hierarchy.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null;
     // An association/junior body workspace owns its own regional events.
+    if (a.scope === "zone") return hierarchy.orgs.find((o) => o.id === a.zoneId && o.kind === "zone")?.name ?? null;
     if (a.scope === "regional" && assocTenant.isAssociation) return hierarchy.orgs.find((o) => o.id === own)?.name ?? assocTenant.name ?? null;
     if (a.scope === "regional") return owningAssociation(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
     return federationRoot(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
-  }, [a.scope, clubId, clubName, hierarchy, assocTenant.isAssociation, assocTenant.orgId]);
+  }, [a.scope, a.zoneId, clubId, clubName, hierarchy, assocTenant.isAssociation, assocTenant.orgId]);
   useEffect(() => {
     if (a.scope && (a.ownerName ?? "") !== (derivedOwner ?? "")) setA((prev) => ({ ...prev, ownerName: derivedOwner ?? "" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [derivedOwner, a.scope]);
   // Association/junior-body workspaces run events for their clubs and beyond — "Club" level is meaningless there.
   useEffect(() => {
-    if (assocTenant.isAssociation && a.scope === "club") setA((prev) => ({ ...prev, scope: null, ownerName: "" }));
+    if ((assocTenant.isAssociation && a.scope === "club") || (!assocTenant.isAssociation && a.scope === "zone")) setA((prev) => ({ ...prev, scope: null, ownerName: "" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assocTenant.isAssociation, a.scope]);
   const chAvail = (c: Channel) => c === "in_app" || c === "email" || phoneCh[c];
@@ -1564,7 +1567,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
-        ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true, eventLevel: a.scope ?? undefined, allowExternalEntries: a.allowExternalEntries,
+        ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true, eventLevel: (a.scope === "zone" ? "regional" : a.scope) ?? undefined, allowExternalEntries: a.allowExternalEntries,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => { const t = String(u.categoryType ?? "open").toLowerCase(); return t === "men" ? "mens" : (["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"); }),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: `${u.key.split("::").join(" › ")} · ${u.disc ? PLAY_LABEL[u.disc] : "Singles or Doubles?"}` /* unit identity — downstream matches on it; display names resolve via categoryLabels */, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, playoffPointsPerGame: sc.playoffPointsPerGame ?? null, playoffMatchFormat: sc.playoffMatchFormat ?? null, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
@@ -2713,17 +2716,26 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-1">
                 <Label>Event level</Label>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(Object.keys(SCOPE_LABEL) as Scope[]).filter((s) => !(assocTenant.isAssociation && s === "club")).map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={SCOPE_LABEL[s]} desc={SCOPE_DESC[s]} />)}
+                  {(Object.keys(SCOPE_LABEL) as Scope[]).filter((s) => assocTenant.isAssociation ? s !== "club" : s !== "zone").map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={assocTenant.isAssociation && s === "regional" ? "This body only" : SCOPE_LABEL[s]} desc={assocTenant.isAssociation && s === "regional" ? "Only clubs and members under this body." : SCOPE_DESC[s]} />)}
                 </div>
               </div>
+              {a.scope === "zone" && <div className="max-w-[460px] space-y-1">
+                <Label htmlFor="sbs-zone">Which zone?</Label>
+                <select id="sbs-zone" className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={a.zoneId ?? ""} onChange={(e) => setA({ ...a, zoneId: e.target.value || null })}>
+                  <option value="">Choose a zone…</option>
+                  {(hierarchy?.orgs ?? []).filter((o) => o.kind === "zone").sort((x, y) => x.name.localeCompare(y.name)).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>}
               {a.scope && <div className="max-w-[460px] space-y-1 rounded-md border border-border bg-muted/40 p-3">
                 <p className="text-sm">Owner: <b>{derivedOwner ?? (ownerLoading ? "Looking up…" : "Not found")}</b> <Lock className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" /></p>
                 <p className="text-xs text-muted-foreground">
                   {derivedOwner
                     ? a.scope === "club" ? "Your club. Only this club's members fall under this level."
+                      : a.scope === "zone" ? "This zone. Every district, club and member under it falls under this level."
                       : a.scope === "regional" ? (assocTenant.isAssociation ? "This body. Clubs and members under it fall under this level." : "The association your club belongs to, taken from the SquashHub federation tree. Clubs and members under it fall under this level.")
-                      : "The national federation at the top of the SquashHub federation tree."
+                      : "The whole country — every zone, district, club and member."
                     : ownerLoading ? "Reading the SquashHub federation tree…"
+                      : a.scope === "zone" ? "Choose a zone above."
                       : a.scope === "regional" ? "Your club isn't linked to an association in the SquashHub federation tree yet. A super admin must link it before a regional event can be owned." : "No national federation is set up in the SquashHub federation tree yet."}
                 </p>
                 <p className="text-xs text-muted-foreground">Set automatically — it can't be typed or changed here.</p>

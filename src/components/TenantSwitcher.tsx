@@ -17,6 +17,7 @@ import {
 import { ChevronDown, Check, ShieldCheck } from "lucide-react";
 import { ORG_LEVEL_STYLES, orgLevel, type OrgLevel } from "@/lib/federation/org-kind-style";
 import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 interface TenantOption {
   id: string;
@@ -37,10 +38,14 @@ export function TenantSwitcher() {
   const { user } = useAuth();
   const { club: currentClub, subdomain: currentSubdomain } = useClubContext();
   const [search, setSearch] = useState("");
-  const isPlatformAdmin = useIsSuperAdmin();
+  const realPlatformAdmin = useIsSuperAdmin();
+  const { isViewingAs, activeMember } = useMemberContext();
+  const viewedMemberId = isViewingAs ? activeMember?.id ?? null : null;
+  // While viewing as a member, show exactly that member's workspaces — never the viewer's own.
+  const isPlatformAdmin = realPlatformAdmin && !viewedMemberId;
 
   const { data: tenants = [] } = useQuery({
-    queryKey: ["my-tenants", user?.id],
+    queryKey: ["my-tenants", user?.id, viewedMemberId],
     enabled: !!user?.id,
     queryFn: async (): Promise<TenantOption[]> => {
       const seen = new Set<string>();
@@ -51,6 +56,18 @@ export function TenantSwitcher() {
         list.push({ id: c.id, name: c.name, subdomain: c.subdomain, tenant_type: c.tenant_type || "club", level: orgLevel(c.tenant_type || "club") });
       };
 
+      if (viewedMemberId) {
+        // Viewed member: every workspace linked to the same person or login (incl. association admin rows).
+        const { data: me } = await fromExt("club_members").select("person_id, user_id").eq("id", viewedMemberId).maybeSingle();
+        const ors = [`id.eq.${viewedMemberId}`];
+        if ((me as any)?.person_id) ors.push(`person_id.eq.${(me as any).person_id}`);
+        if ((me as any)?.user_id) ors.push(`user_id.eq.${(me as any).user_id}`);
+        const { data, error } = await fromExt("club_members")
+          .select("status, club:club_id(id, name, subdomain, tenant_type)")
+          .or(ors.join(","));
+        if (error) throw error;
+        for (const row of (data || []) as any[]) if (row.status !== "resigned") push(row.club);
+      } else {
       // Platform super admin: browse all clubs/associations.
       const { data: roles } = await supabase
         .from("user_roles")
@@ -77,6 +94,7 @@ export function TenantSwitcher() {
         // Association tenants the user administers (RLS-safe RPC).
         const { data: adminTenants } = await (supabase as any).rpc("my_admin_tenants");
         for (const c of (adminTenants || []) as any[]) push(c);
+      }
       }
 
       // Zone / provincial / national workspaces get their own level (colour) from the structure.

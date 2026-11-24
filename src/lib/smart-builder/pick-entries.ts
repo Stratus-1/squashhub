@@ -35,10 +35,10 @@ export function pickCounts(picks: Picks): { uniquePlayers: number; totalEntries:
 }
 
 /** Why a person can't enter an event (null = eligible). Mirrors isPlayerEligibleForCategory. */
-export function blockedReason(eligible: boolean, categoryType: string | null | undefined): string | null {
+export function blockedReason(eligible: boolean, categoryType: string | null | undefined, junior?: boolean): string | null {
   if (eligible) return null;
-  if (categoryType === "mens") return "Men only";
-  if (categoryType === "ladies") return "Ladies only";
+  if (categoryType === "mens") return junior ? "Boys only" : "Men only";
+  if (categoryType === "ladies") return junior ? "Girls only" : "Ladies only";
   if (categoryType === "mixed") return "Needs gender on profile";
   return "Not eligible";
 }

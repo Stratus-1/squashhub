@@ -616,6 +616,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (self?.kind === "zone") return self;
     return parentZoneOf(ownOrgId, hierarchy.orgs, hierarchy.groupings);
   }, [hierarchy, ownOrgId]);
+  // Junior bodies (zones, provincials and the regional associations grouped under them) say Boys/Girls.
+  const isJuniorBody = useMemo(() => {
+    if (!hierarchy || !ownOrgId) return false;
+    const self = hierarchy.orgs.find((o) => o.id === ownOrgId);
+    return self?.kind === "zone" || self?.kind === "provincial" || !!ownZone;
+  }, [hierarchy, ownOrgId, ownZone]);
   const derivedOwner: string | null = useMemo(() => {
     if (!a.scope) return null;
     if (a.scope === "club") return clubName || hierarchy?.clubNames.get(clubId) || null;
@@ -1710,7 +1716,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
             </>
           )}
 
-          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} visualEnabled={visualStructurePilot(clubId, true, window.location.hostname)} />}
+          {cur === "Categories" && rowStructure && <StructureRowsEditor answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} visualEnabled={visualStructurePilot(clubId, true, window.location.hostname)} junior={isJuniorBody} />}
           {cur === "Categories" && !rowStructure && (
             <>
               <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
@@ -1734,7 +1740,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
           )}
 
           {cardStructure && cur === "Structure" && !serverReady && <p className="text-xs text-muted-foreground" role="status">Loading the saved tournament structure…</p>}
-          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} onSave={(next) => { const nameOnly = categoryLabelOnlyChange(a, next); setA(next); void persistStructureAnswers(tournamentId ?? a.createdTournamentId, next, nameOnly); if (!nameOnly) void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
+          {cardStructure && cur === "Structure" && serverReady && <CardStructureEditor key={`structure-${tournamentId ?? "new"}`} clubId={clubId} answers={a} junior={isJuniorBody} onSave={(next) => { const nameOnly = categoryLabelOnlyChange(a, next); setA(next); void persistStructureAnswers(tournamentId ?? a.createdTournamentId, next, nameOnly); if (!nameOnly) void pushStructureRoundsLive(clubId, tournamentId ?? a.createdTournamentId, next); }} onDirtyChange={setRowStructureDirty} />}
           {cardStructure && cur === "StructureReview" && <CardStructureReview answers={a} onSave={setA} onDirtyChange={setRowStructureDirty} dirty={rowStructureDirty} onEdit={() => go("Structure")} />}
           {isStruct && <>
             <Q t="Tournament structure" h="One place for categories, subcategories/pools and every stage each category will play. Match scoring lives in Match format." />
@@ -2135,7 +2141,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                             <ol className={cn("min-h-[4rem] space-y-1 p-1", !boardFull && "max-h-[32rem] overflow-auto")}>
                               {c.ids.map((id, i) => {
                                 const mine = placesFor(id); const hit = q && memberName(id).toLowerCase().includes(q);
-                                const why = c.key ? blockedReason(manualFits(id, c.key), units.find((u) => u.key === c.key)?.categoryType) : null;
+                                const why = c.key ? blockedReason(manualFits(id, c.key), units.find((u) => u.key === c.key)?.categoryType, isJuniorBody) : null;
                                 return (
                                   <li key={id} draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", `${id}|${c.key}`)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, c.key, id)}
                                     className={cn("cursor-grab rounded border px-1 py-1 text-xs", lockedSet.has(id) ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary/40" : hit ? "bg-background border-primary ring-1 ring-primary" : "bg-background border-border")} data-testid={`pick-row-${id}`} data-locked={lockedSet.has(id)}>
@@ -2167,7 +2173,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="max-h-80 overflow-auto">
                                           <DropdownMenuLabel>Add to</DropdownMenuLabel>
-                                          {pickUnits.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(manualFits(id, u.key), u.categoryType); return <DropdownMenuItem key={u.key} disabled={!manualFits(id, u.key)} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
+                                          {pickUnits.filter((u) => !mine.includes(u.key)).map((u) => { const w = blockedReason(manualFits(id, u.key), u.categoryType, isJuniorBody); return <DropdownMenuItem key={u.key} disabled={!manualFits(id, u.key)} onSelect={() => addTo(id, u.key)}>{u.label}{w ? ` (${w})` : ""}</DropdownMenuItem>; })}
                                         </DropdownMenuContent>
                                       </DropdownMenu>}
                                       <Button type="button" size="sm" variant="ghost" aria-pressed={lockedSet.has(id)} aria-label={lockedSet.has(id) ? `Unlock ${memberName(id)}` : `Lock ${memberName(id)} in place`} title={lockedSet.has(id) ? "Locked — click to unlock this player only" : "Unlocked — click to lock this player's ladder-refresh position"} className={cn("h-auto min-h-0 shrink-0 gap-1 rounded px-1 py-0.5 text-[10px]", lockedSet.has(id) ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => toggleLock(id)}>{lockedSet.has(id) ? <><Lock className="h-3.5 w-3.5" /><span>Locked</span></> : <LockOpen className="h-3.5 w-3.5" />}</Button>

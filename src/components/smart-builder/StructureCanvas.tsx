@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StepAnswers } from "./StepByStepBuilder";
 import { addCanvasDivision, attachCanvasBlock, canvasProjection, divisionNodeId, type CanvasBlock, type CanvasItem } from "@/lib/smart-builder/structure-canvas";
-import { renameStructureKey, rowStages, structureEligibility, STRUCTURE_ELIGIBILITY_LABELS, writeRowStages } from "@/lib/smart-builder/structure-rows";
+import { renameStructureKey, rowStages, structureEligibility, structureEligibilityLabels, writeRowStages } from "@/lib/smart-builder/structure-rows";
 import { stageKindLabel, type StageKind, type StagePlanItem } from "@/lib/smart-builder/stage-plan";
 import { unitCapacity } from "@/lib/smart-builder/structure-capacity";
 import { RRTopologyEditor } from "./RRTopologyEditor";
@@ -25,7 +25,8 @@ function StructureNode({ data, selected }: NodeProps<FlowNode>) {
 }
 const nodeTypes = { structure: StructureNode };
 
-function CanvasContent({ answers, onChange, onPendingChange }: { answers: StepAnswers; onChange: (a: StepAnswers) => void; onPendingChange: (pending: boolean) => void }) {
+function CanvasContent({ answers, onChange, onPendingChange, junior = false }: { answers: StepAnswers; onChange: (a: StepAnswers) => void; onPendingChange: (pending: boolean) => void; junior?: boolean }) {
+  const eligibilityLabels = structureEligibilityLabels(junior);
   const flow = useReactFlow<FlowNode>();
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<FlowNode[]>([]);
@@ -78,7 +79,7 @@ function CanvasContent({ answers, onChange, onPendingChange }: { answers: StepAn
         {item && (item.type === "division" || item.type === "subdivision") && <>
           <label className="block space-y-1">Name<Input key={item.id} aria-label="Node name" className="h-8 text-xs" defaultValue={item.label} onBlur={(e) => { const a = renameStructureKey(answers, item.key, e.target.value); if (a !== answers) { const dest = item.type === "division" ? e.target.value.trim() : `${item.key.split("::")[0]}::${e.target.value.trim()}`; onChange(setPosition(divisionNodeId(dest), nodes.find((n) => n.id === item.id)?.position ?? { x: 25, y: 30 }, a)); setSelected(divisionNodeId(dest)); } }} /></label>
           <label className="block space-y-1">Match discipline<select className="h-8 w-full rounded-md border border-input bg-background px-2" aria-label="Node discipline" value={answers.disc[item.key] ?? answers.disc[item.key.split("::")[0]] ?? "singles"} onChange={(e) => onChange({ ...answers, disc: { ...answers.disc, [item.key]: e.target.value as "singles" | "doubles" } })}><option value="singles">Singles</option><option value="doubles">Doubles</option></select></label>
-          {item.type === "division" ? <label className="block space-y-1">Eligibility<select className="h-8 w-full rounded-md border border-input bg-background px-2" aria-label="Node eligibility" value={structureEligibility(answers, item.key) ?? "open"} onChange={(e) => onChange({ ...answers, categoryTypes: { ...answers.categoryTypes, [item.key]: e.target.value as "open" | "mens" | "ladies" | "mixed" } })}>{Object.entries(STRUCTURE_ELIGIBILITY_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}</select></label> : <p className="text-muted-foreground">Eligibility: {structureEligibility(answers, item.key)} · inherited</p>}
+          {item.type === "division" ? <label className="block space-y-1">Eligibility<select className="h-8 w-full rounded-md border border-input bg-background px-2" aria-label="Node eligibility" value={structureEligibility(answers, item.key) ?? "open"} onChange={(e) => onChange({ ...answers, categoryTypes: { ...answers.categoryTypes, [item.key]: e.target.value as "open" | "mens" | "ladies" | "mixed" } })}>{Object.entries(eligibilityLabels).map(([k, label]) => <option key={k} value={k}>{label}</option>)}</select></label> : <p className="text-muted-foreground">Eligibility: {structureEligibility(answers, item.key)} · inherited</p>}
           {!(item.type === "division" && answers.subcats[item.key]?.length) && <label className="block space-y-1">Expected entries<Input type="number" min={2} className="h-8 text-xs" aria-label="Node expected entries" value={answers.unitEntries[item.key] ?? ""} onChange={(e) => onChange({ ...answers, unitEntries: { ...answers.unitEntries, [item.key]: e.target.value } })} /></label>}
         </>}
         {stage && item?.type === "stage" && <>
@@ -100,4 +101,4 @@ function CanvasContent({ answers, onChange, onPendingChange }: { answers: StepAn
   </div>;
 }
 
-export function StructureCanvas(props: { answers: StepAnswers; onChange: (a: StepAnswers) => void; onPendingChange: (pending: boolean) => void }) { return <ReactFlowProvider><CanvasContent {...props} /></ReactFlowProvider>; }
+export function StructureCanvas(props: { answers: StepAnswers; onChange: (a: StepAnswers) => void; onPendingChange: (pending: boolean) => void; junior?: boolean }) { return <ReactFlowProvider><CanvasContent {...props} /></ReactFlowProvider>; }

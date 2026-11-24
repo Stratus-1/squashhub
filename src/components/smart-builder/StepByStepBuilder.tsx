@@ -608,6 +608,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
     if (a.scope === "club") return clubName || hierarchy?.clubNames.get(clubId) || null;
     if (!hierarchy) return null;
     const own = assocTenant.isAssociation ? assocTenant.orgId : hierarchy.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null;
+    // An association/junior body workspace owns its own regional events.
+    if (a.scope === "regional" && assocTenant.isAssociation) return hierarchy.orgs.find((o) => o.id === own)?.name ?? assocTenant.name ?? null;
     if (a.scope === "regional") return owningAssociation(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
     return federationRoot(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
   }, [a.scope, clubId, clubName, hierarchy, assocTenant.isAssociation, assocTenant.orgId]);

@@ -185,6 +185,8 @@ export type CreateInput = {
   avoidBackToBack?: boolean;
   /** Basics "Event level" → tournament_governance.eligibility_scope (invite audience/club picker). undefined = leave as is. */
   eventLevel?: "club" | "regional" | "national" | null;
+  /** Basics owner pick → tournaments.owner_org_id: the body that runs the event (a club, association or junior zone/district). undefined = leave as is. */
+  ownerOrgId?: string | null;
   /** Who may enter "Allow players to enter a partner from outside". undefined = leave as is. */
   allowExternalEntries?: boolean;
 };
@@ -227,6 +229,9 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   if (i.existingId) assertTournamentPairingWritable(i.existingId);
   const row = sanitizeDraftPayload({
     club_id: i.clubId,
+    // The owning body decides the invitation audience and entry eligibility; without it a
+    // junior body's event only ever reaches its own workspace club.
+    ...(i.ownerOrgId ? { owner_org_id: i.ownerOrgId } : {}),
     name: i.name.trim(),
     start_date: i.startDate || null,
     end_date: i.endDate || null,

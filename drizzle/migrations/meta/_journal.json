@@ -3557,6 +3557,27 @@
       "when": 1795552711235,
       "tag": "0507_restrict_national_body_fee_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 508,
+      "version": "7",
+      "when": 1795554061584,
+      "tag": "0508_junior_invite_district_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 509,
+      "version": "7",
+      "when": 1795554081148,
+      "tag": "0509_keep_tournament_owner_on_update",
+      "breakpoints": true
+    },
+    {
+      "idx": 510,
+      "version": "7",
+      "when": 1795554150796,
+      "tag": "0510_restore_tournament_update_columns",
+      "breakpoints": true
     }
   ]
 }

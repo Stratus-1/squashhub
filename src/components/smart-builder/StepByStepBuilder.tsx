@@ -128,7 +128,7 @@ import { categoryEstimate, estimateConflicts, resolveEstimate, setEstimate, stru
 import type { RegLite } from "@/lib/smart-builder/step-draw";
 import { evaluateStructures, materiallyDifferent, type GuideAnswers, type StructureOption } from "@/lib/smart-builder/structure-guide";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
-import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
+import { owningAssociation, federationRoot, parentZoneOf } from "@/lib/tournaments/eligibility";
 import { drawPlanOf } from "@/lib/smart-builder/step-draw";
 import { pickPoolPreview } from "@/lib/smart-builder/pick-pool-preview";
 import { PickPoolPreview } from "./PickPoolPreview";
@@ -374,7 +374,7 @@ type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
 const START_LABEL: Record<PlayoffStart, string> = { qf: "Quarterfinals (8 remain)", sf: "Semifinals (4 remain)", final: "Final only (2 remain)", custom: "Custom stage", none: "No separate playoff phase (format decides the finish)", later: "Decide later" };
 type Scope = "club" | "regional" | "zone" | "national";
 const SCOPE_LABEL: Record<Scope, string> = { club: "Club", regional: "Regional / Association", zone: "Zone", national: "National / Federation" };
-const SCOPE_DESC: Record<Scope, string> = { club: "Run by your club.", regional: "Run by an association or region for its clubs and members.", zone: "A whole zone — every district and club under the zone you pick.", national: "Every zone, district and club in the country." };
+const SCOPE_DESC: Record<Scope, string> = { club: "Run by your club.", regional: "Run by an association or region for its clubs and members.", zone: "A whole zone — every district and club under the zone you pick.", national: "Every zone, district and club in the country — other zones' players may enter too." };
 type ChampsSplit = { mainEnd: string; start: PlayoffStart; custom: string };
 const DEFAULT_SPLIT: ChampsSplit = { mainEnd: "", start: "later", custom: "" };
 
@@ -605,17 +605,31 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   const { data: hierarchy, isLoading: hierLoading } = useOrgHierarchyLite();
   const assocTenant = useAssociationTenant(clubId);
   const ownerLoading = hierLoading;
+  const ownOrgId = useMemo(() => {
+    if (!hierarchy) return null;
+    return assocTenant.isAssociation ? assocTenant.orgId : hierarchy.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null;
+  }, [hierarchy, assocTenant.isAssociation, assocTenant.orgId, clubId]);
+  // The body's master zone: its own zone row when it is one, otherwise the zone above it in the junior groupings.
+  const ownZone = useMemo(() => {
+    if (!hierarchy || !ownOrgId) return null;
+    const self = hierarchy.orgs.find((o) => o.id === ownOrgId);
+    if (self?.kind === "zone") return self;
+    return parentZoneOf(ownOrgId, hierarchy.orgs, hierarchy.groupings);
+  }, [hierarchy, ownOrgId]);
   const derivedOwner: string | null = useMemo(() => {
     if (!a.scope) return null;
     if (a.scope === "club") return clubName || hierarchy?.clubNames.get(clubId) || null;
     if (!hierarchy) return null;
-    const own = assocTenant.isAssociation ? assocTenant.orgId : hierarchy.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null;
+    const own = ownOrgId;
     // An association/junior body workspace owns its own regional events.
-    if (a.scope === "zone") return hierarchy.orgs.find((o) => o.id === a.zoneId && o.kind === "zone")?.name ?? null;
+    if (a.scope === "zone") {
+      const zid = a.zoneId ?? ownZone?.id ?? null;
+      return hierarchy.orgs.find((o) => o.id === zid && o.kind === "zone")?.name ?? null;
+    }
     if (a.scope === "regional" && assocTenant.isAssociation) return hierarchy.orgs.find((o) => o.id === own)?.name ?? assocTenant.name ?? null;
     if (a.scope === "regional") return owningAssociation(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
     return federationRoot(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
-  }, [a.scope, a.zoneId, clubId, clubName, hierarchy, assocTenant.isAssociation, assocTenant.orgId]);
+  }, [a.scope, a.zoneId, clubId, clubName, hierarchy, assocTenant.isAssociation, ownOrgId, ownZone]);
   useEffect(() => {
     if (a.scope && (a.ownerName ?? "") !== (derivedOwner ?? "")) setA((prev) => ({ ...prev, ownerName: derivedOwner ?? "" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1568,6 +1582,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         drawChannels: msg.channels.filter(chAvail),
         drawNotify: a.drawNotify === "auto" ? "auto" : a.drawNotify !== false,
         ladderAffects: a.ladderAffects, avoidBackToBack: a.scheduling?.avoidBackToBack ?? true, eventLevel: (a.scope === "zone" ? "regional" : a.scope) ?? undefined, allowExternalEntries: a.allowExternalEntries,
+        // A Zone event is owned by the zone the organiser picked, so its invitations and
+        // entry rules cover every district under it — not just the body that created it.
+        ownerOrgId: a.scope === "zone" ? (a.zoneId ?? ownZone?.id ?? null) : ownOrgId ?? null,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         categoryTypes: units.map((u) => { const t = String(u.categoryType ?? "open").toLowerCase(); return t === "men" ? "mens" : (["mens", "ladies", "mixed", "open"].includes(t) ? t : "open"); }),
         divisions: units.map((u) => { const sc = scoringFor(u.key); return { leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: u.categoryType, label: `${u.key.split("::").join(" › ")} · ${u.disc ? PLAY_LABEL[u.disc] : "Singles or Doubles?"}` /* unit identity — downstream matches on it; display names resolve via categoryLabels */, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null, feeCents: fee.has ? Math.round((Number(feeFor(u.key)) || 0) * 100) : null, scoring: sc ? { mode: sc.mode, pointsPerGame: sc.pointsPerGame, bestOf: sc.bestOf, playAllGames: sc.playAllGames ?? false, winCondition: sc.winCondition, playoffPointsPerGame: sc.playoffPointsPerGame ?? null, playoffMatchFormat: sc.playoffMatchFormat ?? null, slotMinutes: sc.mode === "time_capped_points" ? slotMinutes(sc) || null : null, breakMinutes: sc.mode === "time_capped_points" && Number(sc.timeCapPlay) > 0 ? Math.max(0, Number(sc.timeCapBreak) || 0) : null } : null }; }),
@@ -2716,12 +2733,12 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
               <div className="space-y-1">
                 <Label>Event level</Label>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {(Object.keys(SCOPE_LABEL) as Scope[]).filter((s) => assocTenant.isAssociation ? s !== "club" : s !== "zone").map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={assocTenant.isAssociation && s === "regional" ? "This body only" : SCOPE_LABEL[s]} desc={assocTenant.isAssociation && s === "regional" ? "Only clubs and members under this body." : SCOPE_DESC[s]} />)}
+                  {(Object.keys(SCOPE_LABEL) as Scope[]).filter((s) => assocTenant.isAssociation ? s !== "club" : s !== "zone").map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s, ...(s === "zone" && !a.zoneId ? { zoneId: ownZone?.id ?? null } : {}) })} title={assocTenant.isAssociation && s === "regional" ? "This body only" : SCOPE_LABEL[s]} desc={assocTenant.isAssociation && s === "regional" ? "Only clubs and members under this body." : SCOPE_DESC[s]} />)}
                 </div>
               </div>
               {a.scope === "zone" && <div className="max-w-[460px] space-y-1">
                 <Label htmlFor="sbs-zone">Which zone?</Label>
-                <select id="sbs-zone" className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={a.zoneId ?? ""} onChange={(e) => setA({ ...a, zoneId: e.target.value || null })}>
+                <select id="sbs-zone" className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={a.zoneId ?? ownZone?.id ?? ""} onChange={(e) => setA({ ...a, zoneId: e.target.value || null })}>
                   <option value="">Choose a zone…</option>
                   {(hierarchy?.orgs ?? []).filter((o) => o.kind === "zone").sort((x, y) => x.name.localeCompare(y.name)).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
@@ -2731,9 +2748,9 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
                 <p className="text-xs text-muted-foreground">
                   {derivedOwner
                     ? a.scope === "club" ? "Your club. Only this club's members fall under this level."
-                      : a.scope === "zone" ? "This zone. Every district, club and member under it falls under this level."
+                      : a.scope === "zone" ? `Your master zone. Every district, club and member under it falls under this level.${a.zoneId && ownZone?.id && a.zoneId !== ownZone.id ? " You picked a different zone." : ""}`
                       : a.scope === "regional" ? (assocTenant.isAssociation ? "This body. Clubs and members under it fall under this level." : "The association your club belongs to, taken from the SquashHub federation tree. Clubs and members under it fall under this level.")
-                      : "The whole country — every zone, district, club and member."
+                      : "The whole country — your zone and every other zone, district, club and member."
                     : ownerLoading ? "Reading the SquashHub federation tree…"
                       : a.scope === "zone" ? "Choose a zone above."
                       : a.scope === "regional" ? "Your club isn't linked to an association in the SquashHub federation tree yet. A super admin must link it before a regional event can be owned." : "No national federation is set up in the SquashHub federation tree yet."}

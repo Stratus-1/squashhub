@@ -175,3 +175,44 @@ describe("clubs audience resolution", () => {
     expect(res.summary).toContain("plus 1 individually picked");
   });
 });
+
+// A junior body's invite tree is grouped by district (the zone/provincial it is grouped
+// under), so the organiser picks districts instead of hunting through every club.
+describe("district audience selection for junior bodies", () => {
+  const districtRows = [
+    { association_id: "mp", association_name: "Mpumalanga Junior Squash", club_id: "sec", club_name: "Secunda", is_own_club: false, member_count: 4, registered_count: 0, email_count: 4, has_members: true },
+    { association_id: "mp", association_name: "Mpumalanga Junior Squash", club_id: "nel", club_name: "Nelspruit", is_own_club: false, member_count: 6, registered_count: 1, email_count: 6, has_members: true },
+    { association_id: "nw", association_name: "North West Junior Squash", club_id: "pot", club_name: "Potchefstroom Boys High", is_own_club: false, member_count: 3, registered_count: 0, email_count: 3, has_members: true },
+    { association_id: "lp", association_name: "Limpopo Junior Squash", club_id: "pol", club_name: "Polokwane Squash Club", is_own_club: false, member_count: 2, registered_count: 0, email_count: 2, has_members: true },
+  ];
+  const tree = buildScopeTree(districtRows as any);
+
+  it("offers every district as its own pickable group", () => {
+    expect(tree.map((g) => g.associationName).sort()).toEqual(
+      ["Limpopo Junior Squash", "Mpumalanga Junior Squash", "North West Junior Squash"],
+    );
+    expect(tree.flatMap((g) => g.clubs.map((c) => c.clubId)).sort()).toEqual(["nel", "pol", "pot", "sec"]);
+  });
+
+  it("ticking one district invites exactly its clubs and leaves the others out", () => {
+    const mp = tree.find((g) => g.associationName === "Mpumalanga Junior Squash")!;
+    const picked = toggleAssociation(mp, []);
+    expect(picked.sort()).toEqual(["nel", "sec"]);
+    const res = resolveInviteAudience({
+      mode: "clubs",
+      members: [],
+      clubIds: picked,
+      memberIdsByClub: new Map([["nel", ["n1", "n2"]], ["sec", ["s1"]], ["pot", ["p1"]], ["pol", ["l1"]]]),
+    });
+    expect(res.memberIds.sort()).toEqual(["n1", "n2", "s1"]);
+    expect(res.summary).toContain("2 selected clubs");
+  });
+
+  it("keeps two districts selected at once and clears only the one toggled off", () => {
+    const mp = tree.find((g) => g.associationName === "Mpumalanga Junior Squash")!;
+    const nw = tree.find((g) => g.associationName === "North West Junior Squash")!;
+    const both = toggleAssociation(nw, toggleAssociation(mp, []));
+    expect(both.sort()).toEqual(["nel", "pot", "sec"]);
+    expect(toggleAssociation(mp, both).sort()).toEqual(["pot"]);
+  });
+});

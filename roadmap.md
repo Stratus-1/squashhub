@@ -259,3 +259,4 @@
 ## Uitsig bar pictures (24 Nov)
 - [x] Buddy item shows the small single-serve Coke container; brandy-plus-Buddy specials keep their existing pictures.
 - [x] Checked for a Secunda Squash Club: none on the platform (nearest: Highveld Squash Club Witbank, Mpumalanga Highveld Squash Association).
+- [x] Invites step: let the organiser pick which zones or districts to include in a junior tournament invite (zone/district audience selection).

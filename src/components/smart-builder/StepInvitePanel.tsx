@@ -329,6 +329,7 @@ export function StepInvitePanel({ h, lifecycle, onLifecycle, onSent }: {
 
         {aud.mode === "clubs" && (
           <div className="mt-2 max-h-60 space-y-1 overflow-auto pr-0.5">
+            <p className="text-[11px] text-muted-foreground">Tick a district or association to invite every club under it, or open it to pick single clubs.</p>
             {scopeTree.length === 0 && <p className="text-[11px] text-muted-foreground">Loading clubs…</p>}
             {scopeTree.map((g) => {
               const state = associationTickState(g, new Set(aud.clubIds));

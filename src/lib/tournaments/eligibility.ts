@@ -115,6 +115,29 @@ export function federationRoot(orgId: string | null, orgs: OrgRow[], rels: RelRo
   return orgs.find((o) => o.kind === "national") || null;
 }
 
+/**
+ * Nearest zone body above `orgId`, walking up through junior groupings only
+ * (never the senior affiliation tree). Used to show a junior body's master zone.
+ */
+export function parentZoneOf<T extends Pick<OrgRow, "id" | "kind">>(orgId: string | null, orgs: T[], groupings: GroupingRow[]): T | null {
+  if (!orgId) return null;
+  const byId = new Map(orgs.map((o) => [o.id, o]));
+  const seen = new Set<string>([orgId]);
+  let frontier = [orgId];
+  while (frontier.length) {
+    const direct = groupings.find((r) => r.mode === "include" && frontier.includes(r.child_org_id) && byId.get(r.parent_org_id)?.kind === "zone");
+    if (direct) return byId.get(direct.parent_org_id) ?? null;
+    const next: string[] = [];
+    for (const r of groupings) {
+      if (r.mode !== "include" || !frontier.includes(r.child_org_id) || seen.has(r.parent_org_id)) continue;
+      seen.add(r.parent_org_id);
+      next.push(r.parent_org_id);
+    }
+    frontier = next;
+  }
+  return null;
+}
+
 /** Junior/provincial grouping link (separate from the senior affiliation tree). */
 export interface GroupingRow {
   parent_org_id: string;

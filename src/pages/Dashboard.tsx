@@ -146,7 +146,8 @@ export default function Dashboard() {
   const tournamentsEnabled = capOn("tournaments");
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");
-  const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
+  // Explicitly switched-on Leagues shows the tile even before a league is linked.
+  const hasLeagues = capOn("leagues") && (hasCapRows || (clubLeagueAssociations || []).length > 0);
   /** Independent visitor — they need a visitor pass before they can book. */
   const isVisitorRoleMember =
     String((myClubMember as any)?.role || "").toLowerCase() === "visitor";

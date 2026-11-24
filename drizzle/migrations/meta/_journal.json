@@ -3515,6 +3515,13 @@
       "when": 1795524365828,
       "tag": "0501_unsigned_club_existing_unlisted_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 502,
+      "version": "7",
+      "when": 1795524749477,
+      "tag": "0502_default_on_competition_finance_caps",
+      "breakpoints": true
     }
   ]
 }

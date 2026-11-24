@@ -22,6 +22,8 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { CreditCard, Gift, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
+import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
+import { AccountChargeWarning } from "./AccountChargeWarning";
 
 interface BarItem {
   id: string;
@@ -31,6 +33,7 @@ interface BarItem {
   image_url?: string | null;
   stock_qty: number;
   item_kind?: string | null;
+  division?: string | null;
 }
 
 interface MemberHit {
@@ -89,6 +92,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
   const total = cartLines.reduce((s, l) => s + l.line, 0);
   const count = cartLines.reduce((s, l) => s + l.qty, 0);
   const lines = cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty }));
+  const accountPreview = useAccountChargePreview(open && customer === "member" && !clubUseOnly ? selected?.id : null,
+    cartLines.map(l => ({ total: l.line, division: l.item.division })));
 
   const { data: hits = [], isFetching } = useQuery({
     queryKey: ["bar-member-search", clubId, search],
@@ -482,12 +487,13 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId, clubUseOn
             {!clubUseOnly && customer === "member" && (
               <Button
                 className="w-full h-11 gap-2"
-                disabled={busy || count === 0 || !selected}
+                disabled={busy || count === 0 || !selected || accountPreview.blocked}
                 onClick={() => setPinOpen(true)}
               >
                 <Wallet className="w-4 h-4" /> Charge to member account
               </Button>
             )}
+            {!clubUseOnly && customer === "member" && <AccountChargeWarning show={accountPreview.blocked} />}
             {!clubUseOnly && (
               <>
                 <Button

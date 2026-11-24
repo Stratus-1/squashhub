@@ -3,6 +3,7 @@
 - Finding: ScanPay bypassed the shared preview and displayed raw errors; its tip prompt had no inline payment error.
 - Fix: use the existing read-only basket preview to disable unavailable account payment with an inline insufficient-funds notice; include tips in the preview and show server refusals inside the prompt and as readable persistent messages.
 - Guard: existing account limits, club/member authorization, stock and settlement writers remain unchanged; no member balances adjusted.
+- Sweep: legacy counter sale now previews credit; QR/counter OTP dialogs show inline readable refusals; admin open-tab conversion uses the persistent shared message; Player bridge translates account-limit errors without changing status, ownership checks or settlement. Honesty Bar, admin Add Charge, Shop and main counter already use the shared message. Native client rendering and Deon's phone remain unverified.
 
 ## 2026-11-05 — Clear once-off payment sign-in rejection
 - Replace Unauthorized/HTTP 401 checkout errors with a request to log in again in the shared once-off payment dispatcher. Ownership, provider and other failures remain distinct; no auth settings, automatic retries, recurring mandate handlers or financial writes changed.

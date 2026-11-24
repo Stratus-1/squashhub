@@ -1,5 +1,6 @@
 # Roadmap
 - [x] Bar checkout: clearly explain insufficient member-account credit before payment and within the tip confirmation; preserve balances and server rules.
+- [x] Sweep other bar account-payment paths: counter sale, QR/OTP, admin open tabs and Player error responses; preserve settled records and permissions.
 - [x] Invite list: real names + "No contact · share link" for cross-club players; Share open entry link.
 - [x] Regional open entry link /t/:id/join, organiser claim review, outside-partner setting + picker, host-only account charge (backend + UI). Not yet tried: real sign-up/email round trip and an outside-partner entry on a live tournament.
 - [ ] Optional "you've been entered" message to outside partners with contact details (plan C) — not built; waits on owner confirmation.

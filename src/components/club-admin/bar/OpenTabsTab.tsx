@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { canPutTabOnAccount } from "@/lib/bar/open-tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { showBarChargeError } from "@/lib/bar-charge-toast";
 
 type TabLine = { name: string | null; quantity: number; total: number; operator?: string | null; operator_id?: string | null };
 type OpenTab = {
@@ -64,10 +65,7 @@ export function OpenTabsTab({ clubId }: { clubId: string }) {
       qc.invalidateQueries({ queryKey: ["bar-counter-board"] });
     },
     onError: (error: Error) => {
-      const msg = error.message || "";
-      toast.error(msg.startsWith("ACCOUNT_LIMIT")
-        ? "This member's account limit would be exceeded. They need to pay or top up first."
-        : msg || "Could not put tab on member account");
+      showBarChargeError(error, "Could not put tab on member account");
     },
   });
   const { data: memberHits = [] } = useQuery({

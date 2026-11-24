@@ -7,12 +7,13 @@ const compiled = ts.transpile(readFileSync("supabase/functions/player-admin-insp
 const clubId = "11111111-1111-4111-8111-111111111111";
 const memberId = "22222222-2222-4222-8222-222222222222";
 const itemId = "33333333-3333-4333-8333-333333333333";
-function bridge(club: Record<string, unknown> = {}, credentials: Record<string, unknown> = {}, options: { order?: boolean; error?: boolean; previewError?: boolean; email?: string; status?: string; secret?: boolean } = {}) {
+function bridge(club: Record<string, unknown> = {}, credentials: Record<string, unknown> = {}, options: { order?: boolean; error?: boolean; previewError?: boolean; email?: string; status?: string; secret?: boolean; accountLimit?: boolean } = {}) {
   const rpc = vi.fn(async (name: string) => {
     if (name === "mobile_internal_secret_ok") return { data: options.secret !== false };
     if (name === "resolve_qr_short_code") return { data: { found: true, bar_enabled: true, club: {}, menu: [{id:itemId}] } };
     if (name === "bar_order_process_status") return { data: options.order ?? false, error: options.error ? {} : null };
     if (name === "bar_account_charge_preview") return { data: [{ bar_gated: true, shop_gated: false, current_owing: 750, allowance: 1050, private_field: "excluded" }], error: options.previewError ? {} : null };
+    if (name === "bar_qr_charge_guest_tab_member_session" && options.accountLimit) return { data: null, error: { code: "P0001", message: "ACCOUNT_LIMIT|27.60|27.60|0.00" } };
     return { data: null };
   });
   const from = vi.fn((table: string) => {
@@ -36,6 +37,14 @@ function bridge(club: Record<string, unknown> = {}, credentials: Record<string, 
   return { send, rpc, from, fetchPayment };
 }
 describe("Player Bar settings parity", () => {
+  it("insufficient funds retain the server refusal and never retry or report settlement", async () => {
+    const b = bridge({}, {}, { accountLimit: true });
+    const response = await b.send("player_bar_settle_tab", { tabId: memberId, method: "member_account" });
+    expect(response.status).toBe(400);
+    expect((await response.json()).ok).toBeUndefined();
+    expect(b.rpc.mock.calls.filter(([name]) => name === "bar_qr_charge_guest_tab_member_session")).toHaveLength(1);
+    expect(b.fetchPayment).not.toHaveBeenCalled();
+  });
   it.each([false,true])("PayFast fallback delegates %s tab-mode checkout to existing processor", async (tab) => {
     const b = bridge({payment_gateway:"paynow",payment_gateways:["payfast"]},{__gateways:{payfast:{merchant_id:"id",merchant_key:"key"}}});
     const response = await b.send("player_bar_online_checkout",tab ? {tabId:memberId} : {lines:[{bar_item_id:itemId,quantity:1}]});

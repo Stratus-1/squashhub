@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { Delete, Loader2, MessageCircle, MessageSquare, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { barChargeErrorMessage } from "@/lib/account-charge-gate";
+import { showBarChargeError } from "@/lib/bar-charge-toast";
 
 interface Props {
   open: boolean;
@@ -66,12 +68,14 @@ export function BarOtpDialog({
   const [sending, setSending] = useState<"whatsapp" | "sms" | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [sentVia, setSentVia] = useState<string | null>(null);
+  const [chargeError, setChargeError] = useState("");
 
   useEffect(() => {
     if (!open) {
       setDigits("");
       setSentTo(null);
       setSentVia(null);
+      setChargeError("");
     }
   }, [open]);
 
@@ -106,12 +110,14 @@ export function BarOtpDialog({
   const submit = async () => {
     if (digits.length !== 6) return;
     setBusy(true);
+    setChargeError("");
     try {
       await onVerified({ secret: digits, method: "otp" });
       setDigits("");
     } catch (err: any) {
       setDigits("");
-      toast.error(err?.message || "That verification code is not valid");
+      setChargeError(barChargeErrorMessage(err, "That verification code is not valid"));
+      showBarChargeError(err, "That verification code is not valid");
     } finally {
       setBusy(false);
     }
@@ -165,6 +171,7 @@ export function BarOtpDialog({
           ))}
         </div>
 
+        {chargeError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm font-medium text-destructive">{chargeError}</p>}
         <Keypad
           disabled={busy}
           onDigit={(d) => setDigits((prev) => (prev.length >= 6 ? prev : prev + d))}

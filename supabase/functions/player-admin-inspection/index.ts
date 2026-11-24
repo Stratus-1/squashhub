@@ -5,8 +5,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const json = (status: number, body: unknown) => {
+  // Translate machine refusals at the response boundary; keep status and all other payload fields.
+  if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+    const limit = body.error.match(/ACCOUNT_LIMIT\|(-?[\d.]+)\|(-?[\d.]+)\|(-?[\d.]+)/);
+    if (limit) body = { ...body, error: `Insufficient funds in member account. Please top up first or choose another payment method (R${Number(limit[1]).toFixed(2)} short). Nothing was charged.` };
+  }
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);

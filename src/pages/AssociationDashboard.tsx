@@ -39,6 +39,7 @@ import { AssociationFeesTab } from "@/components/association-admin/AssociationFe
 import { AssociationSetupTab } from "@/components/association-admin/AssociationSetupTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { AssociationLeaguesTab } from "@/components/association-admin/AssociationLeaguesTab";
+import { ClubTournamentBeta } from "@/components/smart-builder/ClubTournamentBeta";
 import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
@@ -183,7 +184,8 @@ export default function AssociationDashboard() {
       case "junior-leaders": return <JuniorLeadersTab clubId={association.id} />;
       case "junior-squads": return juniorOrg ? <JuniorSquadsBoard orgId={juniorOrg.id} /> : null;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
-      case "champs": return <TournamentPlanner mode="club" clubId={association.id} />;
+      case "champs": return <ClubTournamentBeta clubId={association.id} clubName={(association as any)?.name}
+        renderList={(manage) => <TournamentPlanner mode="club" clubId={association.id} hideCreateButton onManageBeta={manage} />} />;
       case "rankings": return <AssociationRankingsTab clubId={association.id} />;
       case "members": return <AssociationMembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;

@@ -3501,6 +3501,13 @@
       "when": 1795517327108,
       "tag": "0499_member_tab_reuse_counter_tab",
       "breakpoints": true
+    },
+    {
+      "idx": 500,
+      "version": "7",
+      "when": 1795517379881,
+      "tag": "0500_member_tab_single_open_tab",
+      "breakpoints": true
     }
   ]
 }

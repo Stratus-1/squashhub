@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Signed-in users can view national body fees" ON public.national_body_fee_schedule;

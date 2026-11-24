@@ -3536,6 +3536,13 @@
       "when": 1795525316758,
       "tag": "0504_junior_leaders_auto_league_tournament_perms",
       "breakpoints": true
+    },
+    {
+      "idx": 505,
+      "version": "7",
+      "when": 1795525995240,
+      "tag": "0505_junior_provincial_leaders_zone_admins",
+      "breakpoints": true
     }
   ]
 }

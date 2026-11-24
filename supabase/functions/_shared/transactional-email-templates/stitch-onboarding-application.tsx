@@ -123,7 +123,7 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }
 const container = { padding: '24px 28px', maxWidth: '620px', margin: '0 auto' }
 const h1 = { fontSize: '22px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 16px' }
 const h3 = { fontSize: '14px', fontWeight: 700, color: '#1E3A5F', margin: '20px 0 6px' }

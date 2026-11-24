@@ -73,7 +73,7 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: '-apple-system, Segoe UI, Roboto, Arial, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: '-apple-system, Segoe UI, Roboto, Arial, sans-serif', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }
 const container = { padding: '24px 28px', maxWidth: '620px', color: '#0f172a' }
 const h1 = { color: '#1E3A5F', fontSize: '22px', margin: '0 0 12px' }
 const intro = { fontSize: '15px', lineHeight: '1.55', margin: '0 0 10px' }

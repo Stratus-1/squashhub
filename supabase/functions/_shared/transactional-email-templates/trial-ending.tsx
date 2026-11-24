@@ -152,7 +152,7 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }
 const container = { maxWidth: '560px', margin: '0 auto', padding: '20px 0' }
 const header = { padding: '16px 24px', borderBottom: '1px solid #e5e7eb' }
 const logoImg = { display: 'block', borderRadius: '8px' }

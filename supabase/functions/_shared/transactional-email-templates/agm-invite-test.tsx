@@ -58,7 +58,7 @@ export const template = {
 const sig = { borderTop: '1px solid #e2e8f0', paddingTop: '14px', marginTop: '24px' };
 const sigLine = { margin: '0', fontSize: '13px', color: '#1f2937', lineHeight: '20px' };
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' };
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' };
 const container = { maxWidth: '580px', padding: '28px', margin: '0 auto' };
 const heading = { color: '#1e3a5f', fontSize: '24px' };
 const action = { backgroundColor: '#1e3a5f', color: '#ffffff', padding: '12px 18px', borderRadius: '4px', display: 'inline-block' };

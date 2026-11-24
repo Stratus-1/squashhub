@@ -95,6 +95,8 @@ export const template = {
 const main = {
   backgroundColor: '#ffffff',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+  WebkitTextSizeAdjust: '100%',
+  textSizeAdjust: '100%',
 }
 const container = { padding: '24px 28px', maxWidth: '560px', margin: '0 auto' }
 const h1 = { fontSize: '22px', fontWeight: 'bold', color: '#1E3A5F', margin: '0 0 16px' }

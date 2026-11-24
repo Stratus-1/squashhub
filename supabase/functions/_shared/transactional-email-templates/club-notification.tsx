@@ -105,7 +105,7 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '24px 0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '24px 0', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }
 const logoRow = { margin: '0 0 16px' }
 const clubLogoImg = { display: 'inline-block', maxHeight: '36px', maxWidth: '140px', borderRadius: '6px' }
 const platformLogoImg = { display: 'inline-block', maxHeight: '28px', maxWidth: '120px' }

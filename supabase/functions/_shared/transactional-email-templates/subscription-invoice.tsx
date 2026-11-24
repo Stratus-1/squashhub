@@ -282,7 +282,7 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }
 const container = { padding: '24px', maxWidth: '600px' }
 const h1 = { color: '#1E3A5F', fontSize: '22px', margin: '0 0 16px' }
 const h2 = { color: '#1E3A5F', fontSize: '16px', margin: '24px 0 8px' }

@@ -3487,6 +3487,13 @@
       "when": 1795516711360,
       "tag": "0497_banking_guard_operational_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 498,
+      "version": "7",
+      "when": 1795517048059,
+      "tag": "0498_banking_permission_club_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -4964,3 +4964,10 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Uitsig (SLA signed 18 Sep 2026) home page showed "Full stats will be activated once your club subscribes to SquashHub" to a viewer without an Uitsig membership.
 - Cause: `MyStatsCard` reads `club.sla_accepted_at`; for non-member viewers the club comes from `ClubContext`, whose public/restricted column lists omitted `sla_accepted_at`.
 - Fix: added `sla_accepted_at` to `RESTRICTED_CLUB_COLS` (authenticated only). Stats RPCs were never SLA-gated. Tests in `MyStatsCard.test.tsx`.
+
+### 2026-11-24 — Uitsig bar blocked by banking guard ("Banking permission only allows..." / "bar closed")
+- Symptom: Uitsig bar staff got "Banking permission only allows bank and payment gateway changes" when opening the counter; members ordering from the app saw "bar closed" even though the counter screen looked open.
+- Cause: `guard_banking_only_write` (trigger on `clubs`) treated staff who also hold the banking permission as banking-only writers and rejected updates to operational columns, so `bar_orders_open_until` / `bar_orders_opened_by` / `bar_order_process_enabled` / `member_number_prefix` / `bar_card_provider` could never be saved — the bar could not be opened for orders.
+- Fix: migration 0497 adds those operational columns to the trigger's allowlist. Banking-only users can still change nothing but banking/payment gateway fields.
+- Follow-up (owner approved): migration 0498 lets Banking permission holders also manage the club billing profile, billing frequency (`set_club_billing_frequency`) and club feature switches (`club_capabilities`, e.g. turning the Bar feature on/off). Club claim approval stays platform-admin only; `issue_member_invoice` had no guard to begin with.
+- Cleanup: a broken helper `user_club_permission_area(uuid,uuid,integer)` created during diagnosis (wrong column names, no callers anywhere) was dropped.

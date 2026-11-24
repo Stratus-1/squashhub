@@ -12,6 +12,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 export function letter(first: string, role: string, email: string) {
   return [
     `Hi ${first},`,
+    `Following our discussions with Vian Crafford about running junior squash on SquashHub, we've set up the following for you.`,
     `You've been added to Potchefstroom Squash Club on SquashHub. You're also an administrator of:\n• North West Junior Squash (the provincial junior association)\n• Northern Country Districts Juniors (the junior zone)`,
     `YOUR TEMPORARY CLUB ROLE\nPotchefstroom isn't fully activated on SquashHub yet. Until it is, we've made you ${role} of the club. This gives you admin rights in the Potchefstroom club app, so you can run the junior squad and manage the club. We'll review these roles once the club is fully activated.`,
     `STEP 1 – ACTIVATE YOUR ACCOUNT\nClick the button at the bottom of this email and choose your password.\nUse this email address (${email}) to sign in.\nThe link is for you only, so please don't forward it.`,

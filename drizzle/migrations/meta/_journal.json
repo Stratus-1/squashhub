@@ -3480,6 +3480,13 @@
       "when": 1795427544808,
       "tag": "0496_visitor_fee_prepay",
       "breakpoints": true
+    },
+    {
+      "idx": 497,
+      "version": "7",
+      "when": 1795516711360,
+      "tag": "0497_banking_guard_operational_columns",
+      "breakpoints": true
     }
   ]
 }

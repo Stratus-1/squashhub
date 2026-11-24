@@ -206,6 +206,22 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
+/** Members currently ticked as playing junior squash (same data as the Junior squads board). */
+function useJuniorPlayerIds(clubId?: string) {
+  const { data } = useQuery({
+    queryKey: ["junior-squads", clubId ?? null, null],
+    enabled: !!clubId,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("junior_squads_for", { _club_id: clubId, _org_id: null });
+      if (error) return [];
+      return data || [];
+    },
+  });
+  return new Set<string>(((data || []) as any[]).filter((r) => r.junior_player).map((r) => r.member_id));
+}
+
 function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, onResolveDuplicate, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
@@ -233,6 +249,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   const displayPhone = m.phone || m.profiles?.phone || "";
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
+  const isJuniorPlayer = useJuniorPlayerIds((m as any).club_id).has(m.id);
   const isDelegate = !!delegateTitle;
   const isProtected = isDelegate && !isSuperAdmin;
 
@@ -271,6 +288,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
           </DropdownMenuContent>
         </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
+        {isJuniorPlayer && <Badge className="text-[9px] px-1 py-0 shrink-0 bg-success/15 text-success border border-success/40 hover:bg-success/15">Junior squash</Badge>}
         {delegateTitle && (
           <Badge variant="default" className="text-[9px] px-1 py-0 bg-amber-600 hover:bg-amber-700 shrink-0">{delegateTitle}</Badge>
         )}

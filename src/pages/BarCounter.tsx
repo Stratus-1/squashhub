@@ -4,6 +4,7 @@ import { TipEditor } from "@/components/bar/TipEditor";
 import { StaffTips } from "@/components/bar/StaffTips";
 import { CashUp } from "@/components/bar/CashUp";
 import { ShiftStartDialog, type CounterShiftStatus } from "@/components/bar/ShiftStartDialog";
+import { PaymentMethodConfirm, PAY_METHOD_STYLE, type CounterPayMethod } from "@/components/bar/PaymentMethodConfirm";
 import { CounterClubUseDialog } from "@/components/bar/CounterClubUseDialog";
 import { ShiftSummary, ShiftTabs, useShiftOverview } from "@/components/bar/ShiftOverview";
 import { emptyTip, tipQuote, type TipChoice } from "@/lib/bar/tips";
@@ -170,6 +171,7 @@ export default function BarCounter() {
   const [cashUpOpen, setCashUpOpen] = useState(false);
   const [clubUseOpen, setClubUseOpen] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
+  const [payConfirm, setPayConfirm] = useState<CounterPayMethod | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpBusy, setTopUpBusy] = useState(false);
@@ -1370,6 +1372,18 @@ export default function BarCounter() {
               <Button className="w-full" onClick={() => { setOnlineOpen(false); refetch(); }}>Done</Button>
             </DialogContent>
           </Dialog>
+          <PaymentMethodConfirm
+            method={payConfirm}
+            amount={money(activeTab.total)}
+            name={activeTab.guest_name}
+            onCancel={() => setPayConfirm(null)}
+            onConfirm={() => {
+              const m = payConfirm; setPayConfirm(null); setSettleOpen(false);
+              if (m === "cash") settle("cash");
+              else if (m === "card") settle("terminal");
+              else if (m === "account") chargeLinkedMember();
+            }}
+          />
           <Dialog open={settleOpen} onOpenChange={open => { if (!busy) setSettleOpen(open); }}>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -1389,35 +1403,35 @@ export default function BarCounter() {
               <div className="space-y-2 pt-2">
                 {board.cash_enabled && (
                   <Button
-                    className="w-full h-12 gap-2 justify-start"
+                    className={`w-full h-16 gap-3 justify-start text-base font-bold ${PAY_METHOD_STYLE.cash.className}`}
                     disabled={busy || activeTab.total <= 0}
-                    onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} cash received?`)) { setSettleOpen(false); settle("cash"); } }}
+                    onClick={() => setPayConfirm("cash")}
                   >
-                    <Banknote className="w-5 h-5" /> Paid cash at counter
+                    <Banknote className="w-7 h-7" /> Paid CASH at counter
                   </Button>
                 )}
                 {board.card_enabled && (
                   <Button
-                    className="w-full h-12 gap-2 justify-start"
+                    className={`w-full h-16 gap-3 justify-start text-base font-bold mt-3 ${PAY_METHOD_STYLE.card.className}`}
                     disabled={busy || activeTab.total <= 0}
-                    onClick={() => { if (window.confirm(`Confirm ${money(activeTab.total)} card machine payment received? Only confirm if the machine showed APPROVED.`)) { setSettleOpen(false); settle("terminal"); } }}
+                    onClick={() => setPayConfirm("card")}
                   >
-                    <CreditCard className="w-5 h-5" /> Swipe at card machine at counter
+                    <CreditCard className="w-7 h-7" /> CARD swiped at card machine
                   </Button>
                 )}
                 {board.account_enabled !== false && (
                   <Button
-                    className="w-full h-12 gap-2 justify-start"
+                    className={`w-full h-16 gap-3 justify-start text-base font-bold mt-3 ${PAY_METHOD_STYLE.account.className}`}
                     disabled={busy || activeTab.total <= 0}
                     onClick={() => {
                       if (activeTab.club_member_id) {
-                        if (window.confirm(`Charge ${money(activeTab.total)} to ${activeTab.guest_name}'s member account?`)) { setSettleOpen(false); chargeLinkedMember(); }
+                        setPayConfirm("account");
                       } else {
                         setSettleOpen(false); setMemberNumber(""); setMemberOpen(true);
                       }
                     }}
                   >
-                    <UserCheck className="w-5 h-5" /> Charge member account
+                    <UserCheck className="w-7 h-7" /> Charge MEMBER ACCOUNT
                   </Button>
                 )}
                 {onlineAvailable && (

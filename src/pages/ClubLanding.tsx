@@ -97,13 +97,24 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     enabled: !!club?.id,
   });
 
-  // Fetch member count (public, no PII)
+  // Fetch member count (public, no PII). Junior bodies get their junior count from the same RPC.
   const { data: memberCount = 0 } = useQuery({
     queryKey: ["club-member-count-public", club?.id],
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("get_club_member_count", { _club_id: club!.id });
       if (error) throw error;
       return (data as number) ?? 0;
+    },
+    enabled: !!club?.id,
+  });
+
+  // Junior bodies label the count "Junior members" (public, boolean only)
+  const { data: isJuniorBody = false } = useQuery({
+    queryKey: ["club-is-junior-body-public", club?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_club_is_junior_body", { _club_id: club!.id });
+      if (error) throw error;
+      return !!data;
     },
     enabled: !!club?.id,
   });
@@ -241,7 +252,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
               {memberCount > 0 && (
                 <div className="flex items-baseline justify-center gap-2 pt-2">
                   <span className="text-5xl font-extrabold font-heading text-white tabular-nums"><AnimatedCount value={memberCount} /></span>
-                  <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
+                  <span className="text-base font-bold text-white/90 uppercase tracking-wide">{isJuniorBody ? "Junior Members" : "Squash Members"}</span>
                 </div>
               )}
 

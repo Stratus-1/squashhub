@@ -22942,6 +22942,7 @@ export type Database = {
         Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
         Returns: boolean
       }
+      _club_junior_body_org: { Args: { _club_id: string }; Returns: string }
       _contact_fixture_opponents: {
         Args: { p_fixture: string; p_kind: string; p_members: string[] }
         Returns: {
@@ -25520,6 +25521,7 @@ export type Database = {
           phone: string
         }[]
       }
+      get_club_is_junior_body: { Args: { _club_id: string }; Returns: boolean }
       get_club_join_fees: {
         Args: { _club_id: string }
         Returns: {

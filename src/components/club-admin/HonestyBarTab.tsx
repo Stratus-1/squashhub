@@ -408,9 +408,10 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 }
 
 
+// Nelspruit's T-shirt sizes and measurement charts as the starting point; clubs edit as needed.
 const DEFAULT_KIT_FITS: KitFitDraft[] = [
-  { key: "mens", label: "Men's", sizes: "XS, S, M, L, XL, 2XL, 3XL" },
-  { key: "ladies", label: "Ladies'", sizes: "S, M, L, XL, 2XL" },
+  { key: "mens", label: "Men's", sizes: "XS, S, M, L, XL, 2XL, 3XL, 4XL, 5XL", chart: [["XS", 49.7, 99.4, 68.1, 20.9], ["S", 53.7, 107.4, 72.1, 22.9], ["M", 56.4, 112.8, 74.3, 23.7], ["L", 59.4, 118.8, 76.3, 24.8], ["XL", 63.1, 126.2, 78.7, 25.7], ["2XL", 67.5, 135.0, 80.5, 27.9], ["3XL", 73.6, 147.2, 86.4, 29.4], ["4XL", 75.5, 151.0, 83.9, 29.9], ["5XL", 80.2, 160.4, 86.4, 30.9]] },
+  { key: "ladies", label: "Ladies'", sizes: "S, M, L, XL, 2XL, 3XL, 4XL", chart: [["S", 48.8, 97.6, 67.5, 17.3], ["M", 51.3, 102.6, 69.8, 17.2], ["L", 54.9, 109.8, 72.1, 19.4], ["XL", 59.8, 119.6, 74.9, 19.5], ["2XL", 64.3, 128.6, 77.2, 20.6], ["3XL", 67.4, 134.8, 78.6, 21.5], ["4XL", 70.5, 141.0, 81.1, 24.2]] },
 ];
 
 /* ─── Item Manager: products, variants, selling options, specials ─── */
@@ -815,7 +816,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       {kitEnabled && form.item_kind === "made_to_order" && (
         <div className="rounded-md border p-2.5 space-y-2">
           <label className="flex items-center gap-2 text-xs font-medium">
-            <Checkbox checked={form.kit_on} onCheckedChange={v => setForm(p => ({ ...p, kit_on: !!v, kit_fits: p.kit_fits.length ? p.kit_fits : DEFAULT_KIT_FITS }))} />
+            <Checkbox checked={form.kit_on} onCheckedChange={v => setForm(p => ({ ...p, kit_on: !!v, kit_fits: p.kit_fits.length ? p.kit_fits : DEFAULT_KIT_FITS, kit_note: p.kit_note || "Club logo on the front, your name on the back." }))} />
             Club Kit item — members choose fit, size and name in the Club shop
           </label>
           {form.kit_on && (

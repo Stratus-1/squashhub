@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useCanManageClubDocuments } from "@/hooks/use-club-documents";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
+import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,6 +22,8 @@ export function CommitteeFeatureNotice() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { club: tenantClub } = useClubContext();
+  // Associations / junior bodies have no committee club features.
+  const { isAssociation } = useAssociationTenant(tenantClub?.id);
   const { data: myClub } = useMyClub();
   const isClubAdmin = useIsClubAdmin();
   // Same club Club Admin opens: the tenant club, else the member's active club.
@@ -60,7 +63,7 @@ export function CommitteeFeatureNotice() {
     navigate(path);
   };
 
-  if (!show || closed) return null;
+  if (!show || closed || isAssociation) return null;
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) void dismiss(); }}>

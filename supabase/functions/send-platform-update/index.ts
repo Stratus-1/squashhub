@@ -175,6 +175,10 @@ async function expandRecipients(c: any) {
     rows = data ?? [];
   }
 
+  // Only people at the target clubs (associations are already excluded from
+  // broad audiences), so in-app/email updates never reach association workspaces.
+  rows = rows.filter((r: any) => clubById.has(r.club_id));
+
   // De-duplicate the same human across several clubs, but keep every club.
   const byPerson = new Map<string, any>();
   for (const r of rows) {

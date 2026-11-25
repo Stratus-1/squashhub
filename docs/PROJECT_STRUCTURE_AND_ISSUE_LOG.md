@@ -4995,3 +4995,4 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ## 25 Nov 2026 - Uitsig: Leon Knoetze tab corrected card -> cash
 - Guest tab 22891c19 (Leon Knoetze (Kentron), R92, 24 Nov 19:03 SAST) was recorded as card-machine (terminal) but was paid in cash.
 - Corrected: bar_guest_tabs.settled_method terminal->cash; 3 bar_visitor_sales lines card->cash; cash-up 97df0607 totals: card_bar sales 5344->5252 (count 48->47), cash sales 382->474 (count 2->3), expected_cash 2328->2420. Total sales unchanged (5777). Audited in audit_events.
+- 25 Nov 2026: Manual 'Post journal' failed with 'COALESCE types gl_account and text' when a line used a club custom account; admin_post_journal now casts base_account to text (migration 0513).

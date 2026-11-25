@@ -3592,6 +3592,13 @@
       "when": 1795583178812,
       "tag": "0512_junior_body_member_count",
       "breakpoints": true
+    },
+    {
+      "idx": 513,
+      "version": "7",
+      "when": 1795605332167,
+      "tag": "0513_fix_admin_post_journal_custom_account",
+      "breakpoints": true
     }
   ]
 }

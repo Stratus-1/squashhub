@@ -25,6 +25,20 @@ export function letter(first: string, role: string, email: string) {
   ].join('\n\n');
 }
 
+export function vaalLetter(first: string, email: string) {
+  return [
+    `Hi ${first},`,
+    `Following our discussions with Vian Crafford about running junior squash on SquashHub, we've set up the following for you.`,
+    `You're now an administrator of:\n• Vaal Triangle Junior Squash (your district junior association)\n• Northern Country Districts Juniors (the junior zone)`,
+    `STEP 1 – ACTIVATE YOUR ACCOUNT\nClick the button at the bottom of this email and choose your password.\nUse this email address (${email}) to sign in.\nThe link is for you only, so please don't forward it.`,
+    `STEP 2 – SWITCH BETWEEN YOUR WORKSPACES\nAfter you sign in, you'll land on Vaal Triangle Junior Squash. To move between your workspaces:\n1. Tap the name / logo at the top to open Switch workspace.\n2. Choose Northern Country Districts Juniors.\n3. Use the same menu to switch back at any time.\nYou log in everywhere with the same email address and password — one login for all your workspaces.`,
+    `STEP 3 – GET YOUR JUNIOR PLAYERS ON BOARD\nIn Vaal Triangle Junior Squash:\n1. Check and confirm the list of clubs in your district.\n2. Create a registration link and share it with your juniors and their parents.\nPlayers under 18 need a parent's name, cell number and consent. Junior bodies have no fees or subscriptions.`,
+    `As an administrator you can also set up tournaments and leagues and edit their results. We'll refine your access rights over the next while, so some screens may change slightly.`,
+    `ALREADY HAVE A LIST OF JUNIOR PLAYERS?\nIf you already have a list of junior players in your district, send it to us and we'll import it for you — quicker than setting up each player by hand:\n• Email it to support@squashhub.co.za\n• Or WhatsApp it to 083 375 9003`,
+    `NEED HELP?\nThis email comes from a no-reply address, so please don't reply here.\n• Email support@squashhub.co.za\n• WhatsApp us on 083 375 9003\n• Or open Support in the app.`,
+  ].join('\n\n');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -33,6 +47,30 @@ Deno.serve(async (req) => {
   const { data: ok } = await admin.rpc('is_platform_admin', { _user_id: auth.user.id });
   if (!ok) return json({ error: 'Super Admin only' }, 403);
   const body = await req.json().catch(() => ({}));
+
+  if (body?.mode === 'live-vaal') {
+    const r = { memberId: 'd3cc3eb8-b115-4897-932e-c2167f197b9e', name: 'Hero Dlamini', email: 'zerod@emfuleni.gov.za' };
+    const { count } = await admin.from('member_activation_invites').select('id', { count: 'exact', head: true })
+      .eq('club_member_id', r.memberId).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    if (count) return json({ skipped: 'activation already sent in the last 24h' });
+    const { data: token, error: tErr } = await admin.rpc('issue_member_activation_token', {
+      _club_member_id: r.memberId, _campaign_id: null, _issued_by: auth.user.id, _days: 14,
+    });
+    if (tErr || !token) return json({ error: tErr?.message || 'no token' }, 500);
+    const base = {
+      clubName: 'SquashHub',
+      url: `https://squashhub.co.za/activate?t=${encodeURIComponent(String(token))}&next=${encodeURIComponent('/')}`,
+      ctaLabel: 'Activate my account', clubLogoUrl: STRATUS_LOGO_URL, signatureHtml: platformSignature('Kind regards,'),
+    };
+    const sent = await sendAppEmail({ templateName: 'club-notification', recipientEmail: r.email,
+      idempotencyKey: `junior-leader-welcome-${r.memberId}`,
+      templateData: { ...base, title: 'Welcome to SquashHub – activate your Vaal Triangle Junior Squash account', messageBody: vaalLetter('Hero', r.email) } });
+    const copy = await sendAppEmail({ templateName: 'club-notification', recipientEmail: 'craffordv@gmail.com',
+      idempotencyKey: `junior-leader-welcome-cc-${r.memberId}`,
+      templateData: { ...base, title: 'Copy: Vaal Triangle Junior Squash welcome – Hero Dlamini',
+        messageBody: `Copy for your information — this activation email was sent to ${r.name} (${r.email}).\n\n` + vaalLetter('Hero', r.email) } });
+    return json({ sent, copy });
+  }
 
   if (body?.mode === 'live') {
     // One-time send: real activation links for the three Potchefstroom junior

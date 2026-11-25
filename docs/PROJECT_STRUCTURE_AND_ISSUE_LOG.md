@@ -4986,3 +4986,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
   - Builder: `persistStepTournament` accepts `ownerOrgId` and `StepByStepBuilder` passes the picked zone for a Zone event (otherwise the body's own org), so a Zone-level event is owned by the zone and its invitations/entry rules cover every district under it.
   - UI: `StepInvitePanel` club picker states that ticking a district or association invites every club under it.
   - Checks: 65 tests across invite-scope-tree, invite-audience, step-invite, event-level-eligibility-scope, smart-builder-scope and junior-zone-owner pass; new district tests assert ticking one district selects exactly its clubs and leaves other districts untouched. Live district mapping verified: Limpopo 24, Mpumalanga 20, North West 12, Vaal Triangle 7 clubs.
+
+### 2026-11-25 — Uitsig 24 Nov cash-up: wallet top-ups added to expected Yoco card figure
+- Symptom: Yoco total R7,018 vs cash-up card R5,720. Cause: three wallet top-ups at the bar (Ryno Coetzee R211, Carel Ras R500, Bradley Hunt R500) were paid on the Yoco machine but the cash-up only counts bar sales paid by card.
+- Member accounts were already correct (bank +amount / debtors -amount + gateway fee per top-up); no balance changes made.
+- Fix (owner-approved): cash-up 97df0607 card_expected 5,720 -> 6,931 with a separate wallet_topups breakdown (count 3, R1,211) in totals; counted figures untouched; audited in audit_events. Remaining R87 difference is small swipes (R44/R44/R34/R34) to confirm with the bar staff.

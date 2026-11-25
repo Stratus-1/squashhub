@@ -262,3 +262,6 @@
 - [x] Checked for a Secunda Squash Club: none on the platform (nearest: Highveld Squash Club Witbank, Mpumalanga Highveld Squash Association).
 - [x] Invites step: let the organiser pick which zones or districts to include in a junior tournament invite (zone/district audience selection).
 - [x] Junior bodies: tournament pick list uses junior squad players, not body management
+
+## 25 Nov 2026
+- [x] Uitsig 24 Nov cash-up: added the three Yoco wallet top-ups (Ryno R211, Carel R500, Bradley R500 = R1,211) to the expected card figure (R5,720 to R6,931), listed separately, counted figures untouched, audited. Member accounts already had the top-ups correctly; no balance changes.

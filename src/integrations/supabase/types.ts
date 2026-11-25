@@ -24104,6 +24104,20 @@ export type Database = {
         Args: { _club_id?: string; _status?: string; _token?: string }
         Returns: Json
       }
+      bar_counter_recent_app_orders: {
+        Args: {
+          _club_id?: string
+          _minutes?: number
+          _tab_id: string
+          _token: string
+        }
+        Returns: {
+          bar_item_id: string
+          item_name: string
+          ordered_at: string
+          quantity: number
+        }[]
+      }
       bar_counter_remove_operator: {
         Args: { _club_id: string; _device_id: string }
         Returns: Json

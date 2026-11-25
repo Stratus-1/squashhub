@@ -3599,6 +3599,13 @@
       "when": 1795605332167,
       "tag": "0513_fix_admin_post_journal_custom_account",
       "breakpoints": true
+    },
+    {
+      "idx": 514,
+      "version": "7",
+      "when": 1795614878693,
+      "tag": "0514_bar_counter_recent_app_orders",
+      "breakpoints": true
     }
   ]
 }

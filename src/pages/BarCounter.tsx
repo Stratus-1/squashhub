@@ -40,6 +40,7 @@ import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { cancelTabCardPayment, cancelTabCardMessage } from "@/lib/bar/cancel-tab-card-payment";
 import { sortAndFilterOpenTabs } from "@/lib/bar/open-tabs";
+import { appOrderDuplicates } from "@/lib/bar/app-order-duplicates";
 import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone, QrCode, LogOut, XCircle, Wallet, Gift, Search, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -103,6 +104,7 @@ export default function BarCounter() {
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
   const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
+  const [dupConfirm, setDupConfirm] = useState<{ names: string[]; resolve: (ok: boolean) => void } | null>(null);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [switchPin, setSwitchPin] = useState("");
   const [servers, setServers] = useState<CounterServer[]>(() => storedServers(code));
@@ -498,6 +500,13 @@ export default function BarCounter() {
       .filter(([, q]) => q > 0)
       .map(([bar_item_id, quantity]) => ({ bar_item_id, quantity }));
     if (!lines.length) return true;
+    // Warn when the customer already ordered the same item on the app for this tab
+    // in the last few minutes, so it isn't rung up twice. Fails open.
+    try {
+      const { data: recent } = await (supabase as any).rpc("bar_counter_recent_app_orders", { _tab_id: tabId, _token: token, _club_id: clubId, _minutes: 10 });
+      const names = appOrderDuplicates(lines, (recent as any[]) ?? []);
+      if (names.length && !(await new Promise<boolean>((resolve) => setDupConfirm({ names, resolve })))) return false;
+    } catch { /* never block a sale on the warning */ }
     const { error } = await supabase.rpc("bar_counter_add_to_tab", {
        _tab_id: tabId, _lines: lines, _token: token, _club_id: clubId, _operator: operator,
     } as any);
@@ -1664,6 +1673,20 @@ export default function BarCounter() {
             </div>
           )}
           <Button className="w-full" onClick={() => setMenuQrOpen(false)}>Done</Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!dupConfirm} onOpenChange={(o) => { if (!o && dupConfirm) { dupConfirm.resolve(false); setDupConfirm(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Already ordered on the app</DialogTitle>
+            <DialogDescription>
+              The customer already ordered {dupConfirm?.names.join(", ")} on the app for this tab in the last 10 minutes. It's already on the tab. Add another one?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" className="h-12" onClick={() => { dupConfirm?.resolve(false); setDupConfirm(null); }}>No, don't add it</Button>
+            <Button className="h-12" onClick={() => { dupConfirm?.resolve(true); setDupConfirm(null); }}>Yes, add another</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { CAPABILITY_META } from "@/lib/capabilities";
-import { ChevronRight, CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleDashed, Download, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import {
@@ -676,14 +676,30 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 equipment such as geysers, air conditioners and pumps.
               </p>
             </div>
-            <Button
-              size="sm"
-              className="h-9 shrink-0 gap-1.5 px-3"
-              onClick={() => setAddPickerOpen(true)}
-              aria-label="Add an IoT device"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add
-            </Button>
+            <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 px-3"
+                asChild
+              >
+                <a
+                  href="/downloads/shelly-club-setup-guide.pdf"
+                  download="Shelly Club Setup Guide.pdf"
+                  aria-label="Download the Shelly club setup guide"
+                >
+                  <Download className="w-3.5 h-3.5" /> Setup guide
+                </a>
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 shrink-0 gap-1.5 px-3"
+                onClick={() => setAddPickerOpen(true)}
+                aria-label="Add an IoT device"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>

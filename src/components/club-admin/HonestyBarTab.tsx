@@ -1,5 +1,8 @@
 import { OrderProcessSwitch } from "@/components/bar/OrderProcessSwitch";
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
+import { kitFormFrom, kitOptionsFrom, type KitFitDraft } from "@/lib/shop/kit-editor";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { BarStaffPay } from "@/components/bar/BarStaffPay";
 import { StaffTips } from "@/components/bar/StaffTips";
@@ -405,6 +408,11 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 }
 
 
+const DEFAULT_KIT_FITS: KitFitDraft[] = [
+  { key: "mens", label: "Men's", sizes: "XS, S, M, L, XL, 2XL, 3XL" },
+  { key: "ladies", label: "Ladies'", sizes: "S, M, L, XL, 2XL" },
+];
+
 /* ─── Item Manager: products, variants, selling options, specials ─── */
 type ItemKind = "stock" | "option" | "special" | "made_to_order";
 interface ComponentLine { component_item_id: string; quantity: string }
@@ -416,12 +424,14 @@ const emptyForm = (division = "bar", category = "") => ({
   product_group: "", variant_label: "", stock_parent_id: "", consume_units: "1",
   valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
   allow_negative: "default" as "default" | "allow" | "block",
+  kit_on: false, kit_note: "", kit_back_name: true, kit_fits: [] as KitFitDraft[], kit_raw: null as Record<string, unknown> | null,
 });
 
 function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels }: { clubId: string; items: BarItem[]; soldCounts: Map<string, number>; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const canPrices = useHasPermission("bar.prices");
+  const kitEnabled = useHasCapability("club_kit", clubId);
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -502,6 +512,7 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       valid_from: item.valid_from || "", valid_to: item.valid_to || "", valid_days: item.valid_days || [],
       valid_start_time: (item.valid_start_time || "").slice(0, 5), valid_end_time: (item.valid_end_time || "").slice(0, 5),
       allow_negative: item.allow_negative_stock === true ? "allow" : item.allow_negative_stock === false ? "block" : "default",
+      ...kitFormFrom((item as { order_options?: unknown }).order_options),
     });
     setComponents(allComponents.filter(c => c.special_item_id === item.id)
       .map(c => ({ component_item_id: c.component_item_id, quantity: String(c.quantity) })));
@@ -536,6 +547,9 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
         valid_start_time: form.valid_start_time || null, valid_end_time: form.valid_end_time || null,
       });
     }
+    // Club Kit: only touch order_options when the club uses Club Kit, so
+    // other clubs' items are never changed; existing size charts are kept.
+    if (kitEnabled) base.order_options = form.item_kind === "made_to_order" && form.kit_on ? kitOptionsFrom(form) : null;
     return base;
   };
 
@@ -795,6 +809,42 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
             <Label className="text-xs">Variant (size / model / colour)</Label>
             <Input value={form.variant_label} onChange={e => setForm(p => ({ ...p, variant_label: e.target.value }))} placeholder="e.g. UK 9" />
           </div>
+        </div>
+      )}
+
+      {kitEnabled && form.item_kind === "made_to_order" && (
+        <div className="rounded-md border p-2.5 space-y-2">
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Checkbox checked={form.kit_on} onCheckedChange={v => setForm(p => ({ ...p, kit_on: !!v, kit_fits: p.kit_fits.length ? p.kit_fits : DEFAULT_KIT_FITS }))} />
+            Club Kit item — members choose fit, size and name in the Club shop
+          </label>
+          {form.kit_on && (
+            <>
+              <div>
+                <Label className="text-xs">Short description</Label>
+                <Input value={form.kit_note} onChange={e => setForm(p => ({ ...p, kit_note: e.target.value }))} placeholder="Club logo on the front, your name on the back." />
+              </div>
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={form.kit_back_name} onCheckedChange={v => setForm(p => ({ ...p, kit_back_name: !!v }))} />
+                Ask for a name on the back
+              </label>
+              {form.kit_fits.map((f, i) => (
+                <div key={i} className="grid grid-cols-[1fr_2fr_auto] gap-2 items-end">
+                  <div>
+                    <Label className="text-xs">Fit</Label>
+                    <Input value={f.label} onChange={e => setForm(p => ({ ...p, kit_fits: p.kit_fits.map((x, j) => j === i ? { ...x, label: e.target.value } : x) }))} placeholder="Men's" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Sizes (comma separated)</Label>
+                    <Input value={f.sizes} onChange={e => setForm(p => ({ ...p, kit_fits: p.kit_fits.map((x, j) => j === i ? { ...x, sizes: e.target.value } : x) }))} placeholder="S, M, L, XL" />
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setForm(p => ({ ...p, kit_fits: p.kit_fits.filter((_, j) => j !== i) }))}>Remove</Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setForm(p => ({ ...p, kit_fits: [...p.kit_fits, { key: "", label: "", sizes: "" }] }))}>Add fit</Button>
+              <p className="text-[11px] text-muted-foreground">Orders go on the member's bar tab. Download the printer list from Club shop → Club orders.</p>
+            </>
+          )}
         </div>
       )}
 

@@ -3606,6 +3606,20 @@
       "when": 1795614878693,
       "tag": "0514_bar_counter_recent_app_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 515,
+      "version": "7",
+      "when": 1795619913999,
+      "tag": "0515_shop_orders_require_payment",
+      "breakpoints": true
+    },
+    {
+      "idx": 516,
+      "version": "7",
+      "when": 1795619943897,
+      "tag": "0516_shop_status_needs_payment",
+      "breakpoints": true
     }
   ]
 }

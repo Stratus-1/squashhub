@@ -27,7 +27,7 @@ import {
 } from "@/lib/shop/garment-order";
 
 const STATUS: Record<string, string> = {
-  ordered: "Ordered", with_printer: "With printer", ready: "Ready for collection", collected: "Collected", cancelled: "Cancelled",
+  awaiting_payment: "Awaiting payment", ordered: "Ordered (paid)", with_printer: "With printer", ready: "Ready for collection", collected: "Collected", cancelled: "Cancelled",
 };
 type Item = { id: string; name: string; price: number; image_url: string | null; order_options: unknown };
 type OrderRow = { id: string; fit: string; size: string; back_name: string; unit_price: number; status: string; created_at: string; club_member_id: string; bar_item_id: string; club_members?: { name: string | null } | null };
@@ -60,8 +60,9 @@ export default function ShopOrder() {
 
   const { data: myOrders = [] } = useQuery({
     queryKey: ["shop-my-orders", memberId],
-    enabled: !!memberId,
+    enabled: !!memberId && !!clubId,
     queryFn: async () => {
+      await (supabase as any).rpc("shop_reconcile_order_payments", { _club_id: clubId });
       const { data, error } = await (supabase as any).from("shop_orders").select("*").eq("club_member_id", memberId).order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as OrderRow[];
@@ -138,7 +139,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
         _lines: lines.map(({ fit, size, back_name }) => ({ fit, size, back_name: back_name.trim() })),
       });
       if (error) throw error;
-      toast.success("Order saved — now choose how to pay");
+      toast.success("Order saved — it is only placed once you have paid");
       const dest = await placeMemberCounterOrder(clubId, memberId, { [item.id]: lines.length }, requestId.current);
       requestId.current = crypto.randomUUID();
       onDone(dest);
@@ -217,7 +218,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
         <div><div className="text-sm text-muted-foreground">{lines.length} shirt{lines.length > 1 ? "s" : ""}</div><div className="text-xl font-semibold">{money(total)}</div></div>
         <Button disabled={busy} onClick={submit}>{busy ? "Saving…" : "Order and pay"}</Button>
       </Card>
-      <p className="text-xs text-muted-foreground">You'll pay using the club's normal bar payment options.</p>
+      <p className="text-xs text-muted-foreground">Your order is only placed once it is paid by card/EFT or accepted on your member account.</p>
 
       <Dialog open={!!chart} onOpenChange={o => !o && setChartFit(null)}>
         <DialogContent className="max-w-lg">
@@ -241,6 +242,7 @@ function ClubOrders({ clubId, items, money }: { clubId: string; items: Item[]; m
   const { data: rows = [] } = useQuery({
     queryKey: ["shop-club-orders", clubId],
     queryFn: async () => {
+      await (supabase as any).rpc("shop_reconcile_order_payments", { _club_id: clubId });
       const { data, error } = await (supabase as any).from("shop_orders").select("*, club_members:club_member_id(name)").eq("club_id", clubId).order("created_at");
       if (error) throw error;
       return (data || []) as OrderRow[];
@@ -293,7 +295,7 @@ function ClubOrders({ clubId, items, money }: { clubId: string; items: Item[]; m
             </div>
             <Select value={r.status} onValueChange={v => setStatus(r.id, v)}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>{Object.entries(STATUS).map(([k, v]) => <SelectItem key={k} value={k} disabled={k === "cancelled" && r.status !== "ordered"}>{v}</SelectItem>)}</SelectContent>
+              <SelectContent>{Object.entries(STATUS).map(([k, v]) => <SelectItem key={k} value={k} disabled={(k === "cancelled" ? !["ordered", "awaiting_payment"].includes(r.status) : r.status === "awaiting_payment" || k === "awaiting_payment")}>{v}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         ))}

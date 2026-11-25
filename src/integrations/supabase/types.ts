@@ -27809,6 +27809,10 @@ export type Database = {
         }
         Returns: number
       }
+      shop_reconcile_order_payments: {
+        Args: { _club_id: string }
+        Returns: undefined
+      }
       shop_set_order_status: {
         Args: { _order_id: string; _status: string }
         Returns: undefined

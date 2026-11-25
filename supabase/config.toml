@@ -127,3 +127,6 @@ verify_jwt = false
 
 [functions.approval-link]
 verify_jwt = false
+
+[functions.send-stratus-invoice]
+verify_jwt = true

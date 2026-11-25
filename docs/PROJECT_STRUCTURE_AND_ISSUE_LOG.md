@@ -4991,3 +4991,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Symptom: Yoco total R7,018 vs cash-up card R5,720. Cause: three wallet top-ups at the bar (Ryno Coetzee R211, Carel Ras R500, Bradley Hunt R500) were paid on the Yoco machine but the cash-up only counts bar sales paid by card.
 - Member accounts were already correct (bank +amount / debtors -amount + gateway fee per top-up); no balance changes made.
 - Fix (owner-approved): cash-up 97df0607 card_expected 5,720 -> 6,931 with a separate wallet_topups breakdown (count 3, R1,211) in totals; counted figures untouched; audited in audit_events. Remaining R87 difference is small swipes (R44/R44/R34/R34) to confirm with the bar staff.
+
+## 25 Nov 2026 - Uitsig: Leon Knoetze tab corrected card -> cash
+- Guest tab 22891c19 (Leon Knoetze (Kentron), R92, 24 Nov 19:03 SAST) was recorded as card-machine (terminal) but was paid in cash.
+- Corrected: bar_guest_tabs.settled_method terminal->cash; 3 bar_visitor_sales lines card->cash; cash-up 97df0607 totals: card_bar sales 5344->5252 (count 48->47), cash sales 382->474 (count 2->3), expected_cash 2328->2420. Total sales unchanged (5777). Audited in audit_events.

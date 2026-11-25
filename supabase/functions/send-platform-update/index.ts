@@ -80,6 +80,12 @@ async function targetClubs(c: any): Promise<any[]> {
   }
 
   let q = admin.from("clubs").select("id,name,email,phone,subdomain").order("name");
+  // Associations / junior bodies have no members, family packages or club
+  // admin features, so broad updates skip them. They only receive an update
+  // when explicitly picked (specific clubs or specific admins).
+  if (c.audience_type !== "clubs" && c.audience_type !== "admins") {
+    q = q.neq("tenant_type", "association");
+  }
   if (ids) {
     if (!ids.length) return [];
     q = q.in("id", ids);

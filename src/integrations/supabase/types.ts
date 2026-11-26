@@ -22876,6 +22876,10 @@ export type Database = {
         }
         Returns: number
       }
+      _bar_subset: {
+        Args: { _actor: string[]; _slugs: string[] }
+        Returns: boolean
+      }
       _bar_tab_is_overdue: { Args: { _tab_id: string }; Returns: boolean }
       _bar_tab_sales: { Args: { _tab: string }; Returns: number }
       _bar_tip_authorise: {
@@ -23096,6 +23100,7 @@ export type Database = {
         Args: { _club_id: string; _member_id: string }
         Returns: number
       }
+      _member_perm_slugs: { Args: { _member_id: string }; Returns: string[] }
       _post_booking_penalty: {
         Args: {
           _amount: number
@@ -25137,6 +25142,7 @@ export type Database = {
         Args: { _capability: string; _club_id: string }
         Returns: boolean
       }
+      club_has_chairman: { Args: { _club_id: string }; Returns: boolean }
       club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
       club_ledger_audit_trail: {
         Args: { p_club_id: string }
@@ -26040,6 +26046,10 @@ export type Database = {
         Returns: boolean
       }
       is_club_chairman: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_chairman_strict: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }

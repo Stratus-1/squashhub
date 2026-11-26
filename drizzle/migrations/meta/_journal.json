@@ -3648,6 +3648,13 @@
       "when": 1795721877683,
       "tag": "0520_shop_orders_optional_back_name",
       "breakpoints": true
+    },
+    {
+      "idx": 521,
+      "version": "7",
+      "when": 1795734700261,
+      "tag": "0521_chairman_only_permission_allocation",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,7 @@ import { transferProblem } from "@/lib/finance/manual-journal";
 export const CREDIT_TRANSFER_KEYS = ["member-credit-transfers", "member-transferable-credit"];
 
 /**
- * Start a credit transfer from one member to another. The receiver must accept before any credit moves.
+ * Transfer available account credit immediately to another club member.
  * `from` is the sender; when `chooseSender` is set (admin on a member's behalf) the sender is picked here.
  */
 export function CreditTransferDialog({ clubId, open, onOpenChange, from, chooseSender = false, money }: {
@@ -31,7 +31,8 @@ export function CreditTransferDialog({ clubId, open, onOpenChange, from, chooseS
     queryKey: ["member-transferable-credit", clubId, sender?.id],
     enabled: open && !!sender?.id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("member_transferable_credit", { _club_id: clubId, _member_id: sender!.id });
+      if (!sender) return 0;
+      const { data, error } = await (supabase as any).rpc("member_transferable_credit", { _club_id: clubId, _member_id: sender.id });
       if (error) throw error;
       return Number(data || 0);
     },
@@ -46,8 +47,8 @@ export function CreditTransferDialog({ clubId, open, onOpenChange, from, chooseS
         _club_id: clubId, _from_member_id: sender.id, _to_member_id: to.id, _amount: Number(amount), _note: note.trim() || null,
       });
       if (error) throw error;
-      toast.success(`Transfer sent — ${to.name} needs to accept it`);
-      CREDIT_TRANSFER_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      toast.success(`${money(Number(amount))} transferred to ${to.name}`);
+      qc.invalidateQueries();
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message || "Could not start the transfer");
@@ -62,7 +63,7 @@ export function CreditTransferDialog({ clubId, open, onOpenChange, from, chooseS
         <DialogHeader>
           <DialogTitle>Transfer credit</DialogTitle>
           <DialogDescription className="text-xs">
-            The other member gets a notice and must accept. Nothing moves until they do, and pending transfers expire after 14 days.
+            Credit moves immediately to the selected member’s account. No acceptance is needed. Check the member and amount before sending.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

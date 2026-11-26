@@ -13,5 +13,5 @@ export async function listCreditTransfers(clubId: string, scope: "mine" | "club"
 }
 
 export const TRANSFER_STATUS_LABEL: Record<CreditTransfer["status"], string> = {
-  pending: "Waiting", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", expired: "Expired",
+  pending: "Incomplete", accepted: "Transferred", declined: "Declined", cancelled: "Cancelled", expired: "Expired",
 };

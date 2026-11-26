@@ -47,9 +47,6 @@ export function MemberCreditTransfersCard({ clubId, memberId, memberName, money,
       setBusy(null);
     }
   };
-  const respond = (t: CreditTransfer, accept: boolean) =>
-    run(t.id, () => (supabase as any).rpc("respond_member_credit_transfer", { _transfer_id: t.id, _accept: accept }),
-      accept ? `${money(t.amount)} added to your account` : "Transfer declined");
   const cancel = (t: CreditTransfer) =>
     run(t.id, () => (supabase as any).rpc("cancel_member_credit_transfer", { _transfer_id: t.id }), "Transfer cancelled");
 
@@ -70,33 +67,29 @@ export function MemberCreditTransfersCard({ clubId, memberId, memberName, money,
       {incoming.map((t) => (
         <div key={t.id} className="rounded-md border border-primary/40 bg-primary/5 p-2.5 space-y-2">
           <p className="text-xs">
-            <b>{t.from_name}</b> wants to transfer <b>{money(t.amount)}</b> credit to your account.
+            Older transfer from <b>{t.from_name}</b>: <b>{money(t.amount)}</b>.
             {t.note ? <span className="text-muted-foreground"> “{t.note}”</span> : null}
           </p>
-          <p className="text-[11px] text-muted-foreground">Expires {format(new Date(t.expires_at), "d MMM yyyy")}. Anything you owe is paid from it first.</p>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8 text-xs" disabled={busy === t.id} onClick={() => respond(t, true)}>Accept</Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs" disabled={busy === t.id} onClick={() => respond(t, false)}>Decline</Button>
-          </div>
+          <p className="text-[11px] text-muted-foreground">Not completed. Ask the sender to cancel and resend for an immediate transfer.</p>
         </div>
       ))}
 
       {outgoing.map((t) => (
         <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5 text-xs">
-          <span>Waiting for <b>{t.to_name}</b> to accept <b>{money(t.amount)}</b></span>
+          <span>Older incomplete transfer to <b>{t.to_name}</b> · <b>{money(t.amount)}</b>. Cancel and resend.</span>
           <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={busy === t.id} onClick={() => cancel(t)}>Cancel</Button>
         </div>
       ))}
 
       {incoming.length === 0 && outgoing.length === 0 && (
-        <p className="text-[11px] text-muted-foreground">Send some of your account credit to another member. They accept it before it moves.</p>
+        <p className="text-[11px] text-muted-foreground">Send available account credit to your children or another club member. It reflects immediately.</p>
       )}
 
       {history.length > 0 && (
         <div>
-          <button type="button" className="text-[11px] text-primary underline-offset-2 hover:underline" onClick={() => setShowHistory((v) => !v)}>
+          <Button variant="link" className="h-auto p-0 text-[11px]" onClick={() => setShowHistory((v) => !v)}>
             {showHistory ? "Hide" : "Show"} recent transfers
-          </button>
+          </Button>
           {showHistory && (
             <div className="mt-1 space-y-1">
               {history.map((t) => (

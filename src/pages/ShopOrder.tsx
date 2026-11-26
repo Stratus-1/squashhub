@@ -212,7 +212,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
                 <Label>Size</Label>
                 <Select value={l.size} onValueChange={v => set(i, { size: v })}>
                   <SelectTrigger aria-label={`Size for ${unit} ${i + 1}`}><SelectValue placeholder="Choose size" /></SelectTrigger>
-                  <SelectContent>{fit.sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  <SelectContent>{fit.sizes.map(s => <SelectItem key={s} value={s}>{opts.size_labels?.[s] ?? s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>

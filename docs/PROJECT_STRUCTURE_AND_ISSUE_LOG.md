@@ -5008,3 +5008,8 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 ### 26 Nov 2026 — Public club office bearers
 - Landing pages now show all appointed roles, including Vice Chairman, Treasurer and Club Manager, through a names-only public RPC that honors the visibility switch and same-club member identity.
 - Corrects CSIR Secretary showing login name Willem SA instead of club member name Willem Pretorius; no member records or appointments changed.
+
+### 26 Nov 2026 — Kentron duplicate member merge: Vivian Alan Gray
+- Owner confirmed the duplicate Kentron rows are one person. Kept KEN0005 (`3f78f367-c475-4f06-8070-19c3c8666a9c`) with its confirmed login, email, phone and current Uitsig No Frills Doubles entry; retired NSF3491 (`e3ea6f18-0443-4664-b7d7-2db678323fff`) as a resigned duplicate.
+- Moved the active NSA affiliation NSF3491, level-4 league allocation and SportyHQ organisation link to KEN0005; retained league participation and ladder position 31 without reordering anyone. Merged the old person record into the authenticated person and moved its 2026 affiliation.
+- Cancelled only the old unpaid duplicate Uitsig invitation; the current entry remains pending payment with its existing fee row. No fees, journals, payments or balances were created or changed, and the original billing-exempt setting was preserved. Audit event `6c5dbd15-b85f-4499-a623-c686991247f4`.

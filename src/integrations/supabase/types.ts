@@ -25583,6 +25583,14 @@ export type Database = {
           rules_text: string
         }[]
       }
+      get_club_office_bearers_public: {
+        Args: { _club_id: string }
+        Returns: {
+          id: string
+          name: string
+          office: string
+        }[]
+      }
       get_club_public_fees: {
         Args: { _club_id: string }
         Returns: {

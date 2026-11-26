@@ -27,6 +27,7 @@ import { MembershipUnavailableNotice } from "@/components/auth/MembershipUnavail
 interface ClubDelegate {
   id: string;
   name: string | null;
+  office: string;
 }
 
 interface ClubData {
@@ -84,14 +85,15 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
 
   // Fetch public delegate details via safe security-definer function (no PII exposed)
   const { data: delegates = [] } = useQuery({
-    queryKey: ["club-delegates", club?.id],
+    queryKey: ["club-office-bearers-public", club?.id],
     queryFn: async () => {
       if (!club?.id) return [];
-      const { data, error } = await (supabase.rpc as any)("get_club_delegates_public", { _club_id: club.id });
+      const { data, error } = await supabase.rpc("get_club_office_bearers_public", { _club_id: club.id });
       if (error) throw error;
       return (data || []).map((d: any) => ({
         id: d.id,
         name: d.name || "Unknown",
+        office: d.office,
       })) as ClubDelegate[];
     },
     enabled: !!club?.id,
@@ -149,16 +151,6 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   };
 
 
-  const getDelegateName = (memberId: string | null | undefined) => {
-    if (!memberId) return null;
-    return delegates.find(d => d.id === memberId) || null;
-  };
-
-  const chairmanDelegate = getDelegateName(club?.chairman_member_id);
-  const secretaryDelegate = getDelegateName(club?.secretary_member_id);
-  const captainDelegate = getDelegateName(club?.club_captain_member_id);
-  const treasurerDelegate = getDelegateName(club?.treasurer_member_id);
-
   const signInUrl = displaySubdomain
     ? buildClubPublicUrl(displaySubdomain, "/auth")
     : "/auth";
@@ -201,7 +193,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
-  const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate || treasurerDelegate;
+  const hasDelegates = delegates.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -264,31 +256,13 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
               )}
 
               {hasDelegates && club.show_delegates_on_landing !== false && (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
-                  {chairmanDelegate && (
-                    <div>
-                      <div className="font-bold text-sm">Chairman:</div>
-                      <div className="text-sm">{chairmanDelegate.name}</div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-foreground">
+                  {delegates.map(delegate => (
+                    <div key={`${delegate.office}-${delegate.id}`} className="min-w-0 break-words">
+                      <div className="font-bold text-sm">{delegate.office}:</div>
+                      <div className="text-sm">{delegate.name}</div>
                     </div>
-                  )}
-                  {secretaryDelegate && (
-                    <div>
-                      <div className="font-bold text-sm">Secretary:</div>
-                      <div className="text-sm">{secretaryDelegate.name}</div>
-                    </div>
-                  )}
-                  {captainDelegate && (
-                    <div>
-                      <div className="font-bold text-sm">Captain:</div>
-                      <div className="text-sm">{captainDelegate.name}</div>
-                    </div>
-                  )}
-                  {treasurerDelegate && (
-                    <div>
-                      <div className="font-bold text-sm">Treasurer:</div>
-                      <div className="text-sm">{treasurerDelegate.name}</div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
               {publicFees.length > 0 && (

@@ -5004,3 +5004,7 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Disposable-local PostgreSQL regression tests cover immediate child credit, insufficient funds, club isolation, sender ownership, receiving debt and duplicate settlement; no synthetic hosted financial writes.
 - Verified Vian's actual My Account balance R592 and completed R150 history entry to Josh. Announcement delivered through the platform engine to 527 members, zero failures or association recipients; close/X dismisses once-up updates durably without changing invitation behaviour.
 - Verified Vian sees the announcement, closing it stores read=true and reloading does not repeat it. All 17 focused checks passed. Database/functions are live; updated web screens await explicit publishing permission.
+
+### 26 Nov 2026 — Public club office bearers
+- Landing pages now show all appointed roles, including Vice Chairman, Treasurer and Club Manager, through a names-only public RPC that honors the visibility switch and same-club member identity.
+- Corrects CSIR Secretary showing login name Willem SA instead of club member name Willem Pretorius; no member records or appointments changed.

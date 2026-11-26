@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Use Willem Pretorius from the club member record on the landing page; no login profile change needed.
+- [x] Show all configured office bearers on club landing pages using club member names, including Vice Chairman, Treasurer and Club Manager.
 - [x] Make member credit transfers immediate, settle Vian’s saved R150 transfer to Josh, and send the in-app update to 527 active club members; tests and Vian’s actual history verified.
 - [ ] Transfer to Sherique Crafford — waiting for Willem’s amount; no pending request was saved.
 - [ ] Publish updated transfer/once-up screens — waiting for explicit publishing permission; immediate transfer rules and announcement delivery are already live.

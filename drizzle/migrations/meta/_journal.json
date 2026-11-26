@@ -3634,6 +3634,13 @@
       "when": 1795695764724,
       "tag": "0518_immediate_member_credit_transfers",
       "breakpoints": true
+    },
+    {
+      "idx": 519,
+      "version": "7",
+      "when": 1795701360051,
+      "tag": "0519_public_club_office_bearers",
+      "breakpoints": true
     }
   ]
 }

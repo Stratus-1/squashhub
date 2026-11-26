@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export type GarmentFit = { key: string; label: string; sizes: string[]; chart?: [string, number, number, number, number][]; image?: string; swatch?: string[] };
 /** choice_label: what the fit buttons are called (e.g. "Colour"); unit: noun for one item (e.g. "pair"); size_note: extra size guidance. */
-export type GarmentOptions = { back_name?: boolean; note?: string; fits: GarmentFit[]; choice_label?: string; unit?: string; size_note?: string; size_labels?: Record<string, string> };
+export type GarmentOptions = { back_name?: boolean; note?: string; fits: GarmentFit[]; choice_label?: string; unit?: string; size_note?: string; size_labels?: Record<string, string>; size_views?: { key: string; label: string; labels: Record<string, string> }[] };
 export type GarmentLine = { fit: string; size: string; back_name: string };
 
 export const BACK_NAME_MAX = 20;

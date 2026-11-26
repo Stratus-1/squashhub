@@ -129,6 +129,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
 }) {
   const blank = (name = ""): GarmentLine & { confirmed: boolean } => ({ fit: opts.fits[0].key, size: "", back_name: name, confirmed: false });
   const [lines, setLines] = useState([blank(memberName.toUpperCase())]);
+  const [views, setViews] = useState<Record<number, string>>({});
   const [chartFit, setChartFit] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestId = useRef<string>(crypto.randomUUID());
@@ -210,9 +211,17 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
               </div>
               <div className="space-y-1">
                 <Label>Size</Label>
+                {opts.size_views?.length ? (
+                  <div className="flex gap-1">
+                    {opts.size_views.map(v => (
+                      <Button key={v.key} type="button" size="sm" className="flex-1" variant={(views[i] ?? opts.size_views![0].key) === v.key ? "default" : "outline"}
+                        onClick={() => setViews(p => ({ ...p, [i]: v.key }))}>{v.label}</Button>
+                    ))}
+                  </div>
+                ) : null}
                 <Select value={l.size} onValueChange={v => set(i, { size: v })}>
                   <SelectTrigger aria-label={`Size for ${unit} ${i + 1}`}><SelectValue placeholder="Choose size" /></SelectTrigger>
-                  <SelectContent>{fit.sizes.map(s => <SelectItem key={s} value={s}>{opts.size_labels?.[s] ?? s}</SelectItem>)}</SelectContent>
+                  <SelectContent>{fit.sizes.map(s => <SelectItem key={s} value={s}>{(opts.size_views?.find(v => v.key === (views[i] ?? opts.size_views![0].key))?.labels[s]) ?? opts.size_labels?.[s] ?? s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>

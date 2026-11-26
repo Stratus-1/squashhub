@@ -3620,6 +3620,13 @@
       "when": 1795619943897,
       "tag": "0516_shop_status_needs_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 517,
+      "version": "7",
+      "when": 1795682561003,
+      "tag": "0517_migration",
+      "breakpoints": true
     }
   ]
 }

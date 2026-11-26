@@ -664,9 +664,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   }, [derivedOwner, a.scope]);
   // Association/junior-body workspaces run events for their clubs and beyond — "Club" level is meaningless there.
   useEffect(() => {
+    if (!assocTenant.isResolved) return;
     if ((assocTenant.isAssociation && a.scope === "club") || (!assocTenant.isAssociation && a.scope === "zone")) setA((prev) => ({ ...prev, scope: null, ownerName: "" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assocTenant.isAssociation, a.scope]);
+  }, [assocTenant.isResolved, assocTenant.isAssociation, a.scope]);
   const chAvail = (c: Channel) => c === "in_app" || c === "email" || phoneCh[c];
   const msg: MsgCfg = { ...DEFAULT_MSG, ...(a.msg ?? {}) };
   const setMsg = (p: Partial<MsgCfg>) => setA({ ...a, msg: { ...msg, ...p } });

@@ -22,8 +22,8 @@ const EMPTY: AssociationTenantContext = { isAssociation: false, name: null, orgI
  * on every affiliated club: those clubs' courts are the venues and their members
  * are the entrant pool.
  */
-export function useAssociationTenant(clubId: string | null | undefined): AssociationTenantContext {
-  const { data } = useQuery({
+export function useAssociationTenant(clubId: string | null | undefined): AssociationTenantContext & { isResolved: boolean } {
+  const { data, isFetched } = useQuery({
     queryKey: ["association-tenant-context", clubId],
     enabled: !!clubId,
     staleTime: 5 * 60_000,
@@ -81,5 +81,5 @@ export function useAssociationTenant(clubId: string | null | undefined): Associa
     },
   });
 
-  return data ?? EMPTY;
+  return { ...(data ?? EMPTY), isResolved: !clubId || isFetched };
 }

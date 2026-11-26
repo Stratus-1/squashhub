@@ -4996,3 +4996,11 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Guest tab 22891c19 (Leon Knoetze (Kentron), R92, 24 Nov 19:03 SAST) was recorded as card-machine (terminal) but was paid in cash.
 - Corrected: bar_guest_tabs.settled_method terminal->cash; 3 bar_visitor_sales lines card->cash; cash-up 97df0607 totals: card_bar sales 5344->5252 (count 48->47), cash sales 382->474 (count 2->3), expected_cash 2328->2420. Total sales unchanged (5777). Audited in audit_events.
 - 25 Nov 2026: Manual 'Post journal' failed with 'COALESCE types gl_account and text' when a line used a club custom account; admin_post_journal now casts base_account to text (migration 0513).
+
+### 26 Nov 2026 — Immediate member credit transfers
+- Removed recipient acceptance and login requirement. The authorized request settles in one transaction through a private trigger, with available-credit checks, same-club membership, ordered locks, balanced journals and audit; old response calls cannot post again.
+- Completed Vian's saved R150 transfer to Josh; no other recipients or amounts invented. My Account removes acceptance controls and refreshes balances after sending.
+- The existing platform update dispatcher carries the owner-requested in-app-only announcement, restricted to active club members, excluding visitors and associations. Dismissal uses the existing server-side read flag.
+- Disposable-local PostgreSQL regression tests cover immediate child credit, insufficient funds, club isolation, sender ownership, receiving debt and duplicate settlement; no synthetic hosted financial writes.
+- Verified Vian's actual My Account balance R592 and completed R150 history entry to Josh. Announcement delivered through the platform engine to 527 members, zero failures or association recipients; close/X dismisses once-up updates durably without changing invitation behaviour.
+- Verified Vian sees the announcement, closing it stores read=true and reloading does not repeat it. All 17 focused checks passed. Database/functions are live; updated web screens await explicit publishing permission.

@@ -8,6 +8,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { renderMerge, htmlToPlainText } from "../_shared/comms-render.ts";
 import { sendAppEmail } from "../_shared/send-app-email.ts";
+import { receivesMemberFeatureUpdate } from "../_shared/member-update-audience.ts";
 import {
   PLATFORM_SIGNATURE_HTML,
   PLATFORM_EMAIL_FOOTER_HTML,
@@ -141,7 +142,8 @@ async function expandRecipients(c: any) {
         .from("club_members")
         .select("id,club_id,user_id,name,email,phone,role,status,whatsapp_opt_out,sms_opt_out")
         .not("user_id", "is", null)
-        .neq("status", "resigned")
+        .eq("status", "active")
+        .neq("role", "visitor")
         .order("id")
         .range(from, from + 999);
       rows.push(...(data ?? []));
@@ -178,6 +180,7 @@ async function expandRecipients(c: any) {
   // Only people at the target clubs (associations are already excluded from
   // broad audiences), so in-app/email updates never reach association workspaces.
   rows = rows.filter((r: any) => clubById.has(r.club_id));
+  if (c.audience_type === "members") rows = rows.filter((r: any) => receivesMemberFeatureUpdate(r, "club"));
 
   // De-duplicate the same human across several clubs, but keep every club.
   const byPerson = new Map<string, any>();
@@ -288,10 +291,12 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0, skipped = 0;
 
     for (const r of recipients) {
-      const vars = await mergeVars(r, {
+      const extraVars = {
         action_label: String(campaign.action_label || ""),
         action_url: String(campaign.action_url || ""),
-      });
+      };
+      const usesMergeFields = [campaign.subject, campaign.body_html, campaign.action_url].some((v) => String(v || "").includes("{{"));
+      const vars = usesMergeFields ? await mergeVars(r, extraVars) : extraVars;
       const subject = renderMerge(campaign.subject || "Update from SquashHub", vars);
       const html = renderMerge(campaign.body_html || "", vars);
       const plain = htmlToPlainText(html);
@@ -332,15 +337,16 @@ Deno.serve(async (req) => {
           if (ch === "in_app") {
             await log("sent", r.user_id ?? null);
             if (r.user_id) {
-              await admin.from("notifications").insert({
+              const { error: notificationError } = await admin.from("notifications").insert({
                 user_id: r.user_id,
                 club_member_id: r.id,
                 title: subject,
                 message: plain.slice(0, 500),
                 type: "platform_update",
                 url: campaign.audience_type === "members" ? "/updates" : "/club-admin?tab=updates",
-                data: { platform_campaign_id: campaignId, action_label: actionLabel, action_url: actionUrl },
+                data: { platform_campaign_id: campaignId, action_label: actionLabel, action_url: actionUrl, once_up_notice: campaign.audience_type === "members" },
               });
+              if (notificationError) throw notificationError;
             }
             sent++;
           } else if (ch === "email") {

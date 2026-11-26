@@ -7,6 +7,10 @@ export type NotificationNavigationInput = {
   data?: Record<string, unknown> | null;
 };
 
+export function isOneTimeFeatureUpdate(notification: NotificationNavigationInput): boolean {
+  return notification.type === "platform_update" && notification.data?.once_up_notice === true;
+}
+
 const LEGACY_NOTIFICATION_ROUTES: Record<string, string> = {
   "/admin/ai-assistance": "/admin/support?view=ai",
 };

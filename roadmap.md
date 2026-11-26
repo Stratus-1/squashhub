@@ -1,5 +1,7 @@
 # Roadmap
-- [ ] Make member credit transfers immediate, settle Vian’s pending transfers, and send one-time in-app club-member update.
+- [x] Make member credit transfers immediate, settle Vian’s saved R150 transfer to Josh, and send the in-app update to 527 active club members; tests and Vian’s actual history verified.
+- [ ] Transfer to Sherique Crafford — waiting for Willem’s amount; no pending request was saved.
+- [ ] Publish updated transfer/once-up screens — waiting for explicit publishing permission; immediate transfer rules and announcement delivery are already live.
 - [x] Prepare the branded club Shelly setup guide: verified app/browser instructions, Stratus sharing and safe door-button configuration; Word validated and all six PDF pages inspected. Hardware commissioning is a club/installer handover step.
 - [x] Bar checkout: clearly explain insufficient member-account credit before payment and within the tip confirmation; preserve balances and server rules.
 - [x] Sweep other bar account-payment paths: counter sale, QR/OTP, admin open tabs and Player error responses; preserve settled records and permissions.

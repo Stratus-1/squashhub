@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink, ThumbsUp, ThumbsDown, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { getNotificationNavigation, isOneTimeFeatureUpdate } from "@/lib/notification-navigation";
 import { notificationActions, messageWithoutActionLinks } from "@/lib/notification-actions";
 import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 import { EventInviteActions, isEventInviteNotification } from "@/components/EventInviteActions";
@@ -277,6 +277,10 @@ export function NotificationActionModal() {
     <Dialog
       open={open}
       onOpenChange={(v) => {
+        if (!v && current && isOneTimeFeatureUpdate(current)) {
+          void handleDismiss();
+          return;
+        }
         if (!v) {
           setDismissed(true);
         }

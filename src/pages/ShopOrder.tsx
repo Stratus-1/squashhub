@@ -33,7 +33,7 @@ type Item = { id: string; name: string; price: number; image_url: string | null;
 type OrderRow = { id: string; fit: string; size: string; back_name: string; unit_price: number; status: string; created_at: string; club_member_id: string; bar_item_id: string; club_members?: { name: string | null } | null };
 
 export default function ShopOrder() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { club } = useClubContext();
@@ -84,10 +84,18 @@ export default function ShopOrder() {
           <TabsContent value="order">
             {!item || !opts ? (
               <Card className="p-6 text-center text-muted-foreground">There is nothing to order at the moment.</Card>
-            ) : (
+            ) : (<>
+              {items.length > 1 && (
+                <div className="flex gap-2 mb-3 overflow-x-auto">
+                  {items.map(i => (
+                    <Button key={i.id} size="sm" variant={i.id === item.id ? "default" : "outline"}
+                      onClick={() => setParams(prev => { const n = new URLSearchParams(prev); n.set("item", i.id); return n; }, { replace: true })}>{i.name}</Button>
+                  ))}
+                </div>
+              )}
               <OrderForm key={item.id} item={item} opts={opts} clubId={clubId} memberId={memberId} memberName={activeMember?.name || ""}
                 money={money} onDone={(dest) => { qc.invalidateQueries({ queryKey: ["shop-my-orders"] }); navigate(dest); }} />
-            )}
+            </>)}
           </TabsContent>
           <TabsContent value="mine">
             <Card className="divide-y">
@@ -125,7 +133,10 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
   const [busy, setBusy] = useState(false);
   const requestId = useRef<string>(crypto.randomUUID());
   const total = orderTotal(lines.length, Number(item.price));
-  const errors = lines.map(l => lineError(l, opts) ?? (l.confirmed ? null : "Confirm the name on the back"));
+  const needName = opts.back_name !== false;
+  const unit = opts.unit || "shirt";
+  const choiceLabel = opts.choice_label || "Fit";
+  const errors = lines.map(l => lineError(l, opts) ?? (l.confirmed || !needName ? null : "Confirm the name on the back"));
   const set = (i: number, patch: Partial<GarmentLine & { confirmed: boolean }>) =>
     setLines(prev => prev.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
@@ -136,7 +147,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
     try {
       const { error } = await (supabase as any).rpc("shop_place_order", {
         _club_member_id: memberId, _bar_item_id: item.id, _request_id: requestId.current,
-        _lines: lines.map(({ fit, size, back_name }) => ({ fit, size, back_name: back_name.trim() })),
+        _lines: lines.map(({ fit, size, back_name }) => ({ fit, size, back_name: needName ? back_name.trim() : "" })),
       });
       if (error) throw error;
       toast.success("Order saved — it is only placed once you have paid");
@@ -159,6 +170,7 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
           <h2 className="text-lg font-semibold">{item.name}</h2>
           <p className="text-primary font-semibold">{money(Number(item.price))} each</p>
           {opts.note && <p className="text-sm text-muted-foreground">{opts.note}</p>}
+          {opts.size_note && <p className="text-xs text-muted-foreground mt-1">{opts.size_note}</p>}
           <div className="flex gap-2 mt-2 flex-wrap">
             {opts.fits.filter(f => f.chart?.length).map(f => (
               <Button key={f.key} size="sm" variant="outline" className="gap-1" onClick={() => setChartFit(f.key)}><Ruler className="w-3.5 h-3.5" />{f.label} size chart</Button>
@@ -172,17 +184,25 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
         return (
           <Card key={i} className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-medium">Shirt {i + 1}</span>
-              {lines.length > 1 && <Button size="icon" variant="ghost" aria-label={`Remove shirt ${i + 1}`} onClick={() => setLines(p => p.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></Button>}
+              <span className="font-medium capitalize">{unit} {i + 1}</span>
+              {lines.length > 1 && <Button size="icon" variant="ghost" aria-label={`Remove ${unit} ${i + 1}`} onClick={() => setLines(p => p.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></Button>}
             </div>
-            <div className={item.image_url ? "grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start" : ""}>
-            {item.image_url && <img src={item.image_url} alt={`${item.name}, front and back`} className="w-full rounded-md bg-muted" loading="lazy" />}
+            {(() => { const img = fit.image || item.image_url; return (
+            <div className={img ? "grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start" : ""}>
+            {img && <img src={img} alt={fit.image ? `${item.name}, ${fit.label}` : `${item.name}, front and back`} className="w-full rounded-md bg-muted" loading="lazy" />}
             <div className="space-y-3 min-w-0">
-            <div className="grid grid-cols-2 gap-3">
+            <div className={fit.image ? "space-y-3" : "grid grid-cols-2 gap-3"}>
               <div className="space-y-1">
-                <Label>Fit</Label>
-                <div className="flex gap-1">
-                  {opts.fits.map(f => (
+                <Label>{choiceLabel}{fit.image ? `: ${fit.label}` : ""}</Label>
+                <div className={fit.image ? "grid grid-cols-2 sm:grid-cols-4 gap-2" : "flex gap-1"}>
+                  {opts.fits.map(f => f.image ? (
+                    <button key={f.key} type="button" aria-pressed={l.fit === f.key} aria-label={f.label}
+                      className={`rounded-md border-2 p-1 text-xs font-medium bg-card ${l.fit === f.key ? "border-primary" : "border-border opacity-80"}`}
+                      onClick={() => set(i, { fit: f.key, size: f.sizes.includes(l.size) ? l.size : "" })}>
+                      <img src={f.image} alt="" className="w-full aspect-[4/3] object-cover rounded" loading="lazy" />
+                      <span className="block mt-1 leading-tight">{f.label}</span>
+                    </button>
+                  ) : (
                     <Button key={f.key} type="button" size="sm" variant={l.fit === f.key ? "default" : "outline"} className="flex-1"
                       onClick={() => set(i, { fit: f.key, size: f.sizes.includes(l.size) ? l.size : "" })}>{f.label}</Button>
                   ))}
@@ -191,12 +211,12 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
               <div className="space-y-1">
                 <Label>Size</Label>
                 <Select value={l.size} onValueChange={v => set(i, { size: v })}>
-                  <SelectTrigger aria-label={`Size for shirt ${i + 1}`}><SelectValue placeholder="Choose size" /></SelectTrigger>
+                  <SelectTrigger aria-label={`Size for ${unit} ${i + 1}`}><SelectValue placeholder="Choose size" /></SelectTrigger>
                   <SelectContent>{fit.sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="space-y-1">
+            {needName && <div className="space-y-1">
               <Label htmlFor={`back-${i}`}>Name on the back — type it exactly as it must be printed</Label>
               <Input id={`back-${i}`} value={l.back_name} maxLength={BACK_NAME_MAX}
                 onChange={e => set(i, { back_name: e.target.value, confirmed: false })} />
@@ -205,17 +225,18 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
                 <input type="checkbox" checked={l.confirmed} onChange={e => set(i, { confirmed: e.target.checked })} />
                 Yes, this is exactly the name I want on the back
               </label>
-              {errors[i] && <p className="text-xs text-destructive">{errors[i]}</p>}
+            </div>}
+            {errors[i] && <p className="text-xs text-destructive">{errors[i]}</p>}
             </div>
             </div>
-            </div>
+            ); })()}
           </Card>
         );
       })}
 
-      <Button variant="outline" className="w-full gap-2" disabled={lines.length >= 20} onClick={() => setLines(p => [...p, blank()])}><Plus className="w-4 h-4" />Add another shirt</Button>
+      <Button variant="outline" className="w-full gap-2" disabled={lines.length >= 20} onClick={() => setLines(p => [...p, blank()])}><Plus className="w-4 h-4" />Add another {unit}</Button>
       <Card className="p-4 flex items-center justify-between gap-3">
-        <div><div className="text-sm text-muted-foreground">{lines.length} shirt{lines.length > 1 ? "s" : ""}</div><div className="text-xl font-semibold">{money(total)}</div></div>
+        <div><div className="text-sm text-muted-foreground">{lines.length} {unit}{lines.length > 1 ? "s" : ""}</div><div className="text-xl font-semibold">{money(total)}</div></div>
         <Button disabled={busy} onClick={submit}>{busy ? "Saving…" : "Order and pay"}</Button>
       </Card>
       <p className="text-xs text-muted-foreground">Your order is only placed once it is paid by card/EFT or accepted on your member account.</p>
@@ -255,13 +276,17 @@ function ClubOrders({ clubId, items, money }: { clubId: string; items: Item[]; m
     qc.invalidateQueries({ queryKey: ["shop-club-orders"] });
   };
   const counts = useMemo(() => {
-    const opts = parseGarmentOptions(items[0]?.order_options);
     const toPrint = rows.filter(r => r.status === "ordered").map(r => ({ ...r, member: r.club_members?.name || "" }));
-    return opts ? sizeCounts(toPrint, opts) : [];
+    return items.flatMap(it => {
+      const opts = parseGarmentOptions(it.order_options);
+      if (!opts) return [];
+      const prefix = items.length > 1 ? `${it.name} · ` : "";
+      return sizeCounts(toPrint.filter(r => r.bar_item_id === it.id), opts).map(c => ({ ...c, fit: prefix + c.fit }));
+    });
   }, [rows, items]);
   const download = () => {
     const toPrint = rows.filter(r => r.status === "ordered");
-    const csv = [["Fit", "Size", "Name on back", "Member"], ...toPrint.map(r => [fitLabel(items, r.bar_item_id, r.fit), r.size, r.back_name, r.club_members?.name || ""])]
+    const csv = [["Item", "Fit / colour", "Size", "Name on back", "Member"], ...toPrint.map(r => [items.find(i => i.id === r.bar_item_id)?.name || "", fitLabel(items, r.bar_item_id, r.fit), r.size, r.back_name, r.club_members?.name || ""])]
       .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));

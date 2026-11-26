@@ -26,6 +26,8 @@ export function kitOptionsFrom(f: KitForm): GarmentOptions | null {
       while (used.has(key)) key += "_2";
       used.add(key);
       const fit: GarmentOptions["fits"][number] = { key, label: d.label.trim(), sizes };
+      const prev = (f.kit_raw as GarmentOptions | null)?.fits?.find(p => p.key === key);
+      if (prev?.image) fit.image = prev.image;
       if (Array.isArray(d.chart)) fit.chart = (d.chart as [string, number, number, number, number][]).filter(r => sizes.includes(r[0]));
       return fit;
     });

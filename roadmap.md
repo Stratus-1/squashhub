@@ -273,3 +273,5 @@
 - [x] Shirts follow bar rules: account charge only with sufficient balance/credit
 
 - [x] Nelspruit Teuton ST2 shoes in Club Kit: colour photos, supplier sizes, order-on-demand (no stock held)
+
+- [x] Kayla de Jager / Reinhardt Falk Mixed Doubles: pair confirmed with Reinhardt as payer covering both fees. Server amounts checked — his link owes R310 (own R100 + her R210), her link owes R0. Offline marking or a payer switch needs Willem's go-ahead; neither screen opened as them.

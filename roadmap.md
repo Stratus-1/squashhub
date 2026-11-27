@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Removed owner-approved old orphan NSA R160 / SSA R300 preload charges: 996 journal lines at 12 clubs, R114,540; all archived in finance audit, Martin PCC now R0. Actual payments and unrelated fees preserved.
 - [x] Investigate Martin's R460: old PCC NSA R160 + SSA R300 journals from 30 August, no matching fee-payment rows; activation/tournament did not create it. Kayla net R0 at Kentron/Uitsig; Jan Goosen has R110 credit. No balances changed; correction requires Willem's approval.
 - [x] Email Martin his direct paid tournament entry link from Uitsig (one email sent, no failures).
 - [x] Check Kayla's activation email: sent; activation button returns her to her tournament entry.

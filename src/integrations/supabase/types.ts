@@ -27775,6 +27775,16 @@ export type Database = {
         }
         Returns: Json
       }
+      set_doubles_pair_payer: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_mode: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean

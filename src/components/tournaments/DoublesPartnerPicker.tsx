@@ -23,6 +23,8 @@ import {
   pairAmountOwedCents,
   partnerPickDueCents,
   pairPaymentLabel,
+  pairPayerChoices,
+  setPairPayer,
   pairStatusLabel,
   partnerOptionSubtitle,
   partnerReadinessBadge,
@@ -388,8 +390,10 @@ function DivisionPartner({
         | { kind: "external"; partner: Parameters<typeof proposeExternalPartner>[2] }
         | { kind: "accept" }
         | { kind: "reject" }
-        | { kind: "cancel" },
+        | { kind: "cancel" }
+        | { kind: "payer"; mode: "self" | "both" },
     ) => {
+      if (job.kind === "payer") return setPairPayer(champId, division.group_number, job.mode, auth);
       if (job.kind === "propose")
         return proposePartner(champId, division.group_number, job.memberId, auth, job.payForPartner);
       if (job.kind === "external")
@@ -461,6 +465,20 @@ function DivisionPartner({
 
       <p className="text-xs text-muted-foreground">{pairStatusLabel(pair)}</p>
       {paymentLine && <p className="text-xs font-medium">{paymentLine}</p>}
+      {pairPayerChoices(pair, locked, feeCents).map((mode) => (
+        <Button
+          key={mode}
+          size="sm"
+          variant="outline"
+          className="w-full"
+          disabled={busy}
+          onClick={() => act.mutate({ kind: "payer", mode })}
+        >
+          {mode === "both"
+            ? `Pay ${pair?.partner_name || "my partner"}'s ${money(feeCents)} fee too`
+            : "Pay only my own entry fee"}
+        </Button>
+      ))}
 
       {action === "locked" && (
         <p className="text-[11px] text-muted-foreground">

@@ -529,3 +529,26 @@ export function entryHasDoubles(matchType: string | null | undefined, categoryMa
     : categoryMatchTypes && typeof categoryMatchTypes === "object" ? Object.values(categoryMatchTypes as Record<string, unknown>) : [];
   return vals.some((v) => String(v || "").toLowerCase() === "doubles");
 }
+
+/** Either partner may pay only their own fee or both fees, until the event is paid. */
+export function pairPayerChoices(pair: MyPair | null, locked: boolean, feeCents: number): Array<"self" | "both"> {
+  if (!pair || locked || feeCents <= 0 || !["pending", "awaiting_payment"].includes(pair.status)) return [];
+  const iCoverBoth = !!pair.payer_is_me && !!pair.pays_for_partner;
+  const out: Array<"self" | "both"> = [];
+  if (!pair.my_fee_paid && pair.covered_by_partner) out.push("self");
+  if (iCoverBoth && !pair.partner_fee_paid) out.push("self");
+  if (!iCoverBoth && !pair.partner_fee_paid) out.push("both");
+  return out;
+}
+
+export async function setPairPayer(champId: string, groupNumber: number, mode: "self" | "both", auth: TokenAuth = {}) {
+  const { data, error } = await (supabase as any).rpc("set_doubles_pair_payer", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_mode: mode,
+    p_token: auth.token || null,
+    p_verify: auth.verify || null,
+  });
+  if (error) throw error;
+  return data as { ok: boolean };
+}

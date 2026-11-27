@@ -3662,6 +3662,20 @@
       "when": 1795758631923,
       "tag": "0522_allow_eligible_external_doubles_partners",
       "breakpoints": true
+    },
+    {
+      "idx": 523,
+      "version": "7",
+      "when": 1795759180294,
+      "tag": "0523_doubles_either_partner_can_pay",
+      "breakpoints": true
+    },
+    {
+      "idx": 524,
+      "version": "7",
+      "when": 1795759208399,
+      "tag": "0524_doubles_either_partner_can_pay_fix",
+      "breakpoints": true
     }
   ]
 }

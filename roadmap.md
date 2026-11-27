@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Investigate Martin's R460: old PCC NSA R160 + SSA R300 journals from 30 August, no matching fee-payment rows; activation/tournament did not create it. Kayla net R0 at Kentron/Uitsig; Jan Goosen has R110 credit. No balances changed; correction requires Willem's approval.
 - [x] Email Martin his direct paid tournament entry link from Uitsig (one email sent, no failures).
 - [x] Check Kayla's activation email: sent; activation button returns her to her tournament entry.
 - [x] Use Willem Pretorius from the club member record on the landing page; no login profile change needed.

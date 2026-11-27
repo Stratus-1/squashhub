@@ -134,6 +134,8 @@ import { useMyClub, useMyClubMember, useIsSuperAdmin, useSuperAdminStatus } from
 import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";
+import { productionRootHost, isSafeSubdomain, buildHandoffUrl } from "@/lib/session-handoff";
+import { supabase as sbClient } from "@/integrations/supabase/client";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PayInvoice from "./pages/PayInvoice";
@@ -381,14 +383,28 @@ function RootClubGate({ children }: { children: React.ReactNode }) {
       setNeedsClub(false);
       return;
     }
+    const root = typeof window !== "undefined" ? productionRootHost(window.location.hostname) : null;
     fromExt("club_members")
-      .select("id")
+      .select("id, status, role, joined_at, clubs(subdomain)")
       .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle()
-      .then(async ({ data, error }) => {
+      .order("joined_at", { ascending: true })
+      .then(async ({ data: rows, error }) => {
         if (cancelled) return;
-        if (error || data) { setNeedsClub(false); return; }
+        const list = (rows as any[]) || [];
+        // Main SquashHub page: send the member straight to their own club.
+        if (root && !error) {
+          const home = list.find((r) => r.status === "active" && r.role !== "visitor" && isSafeSubdomain(r.clubs?.subdomain))
+            || list.find((r) => isSafeSubdomain(r.clubs?.subdomain));
+          if (home) {
+            const { data: s } = await sbClient.auth.getSession();
+            if (cancelled) return;
+            if (s.session) {
+              window.location.replace(buildHandoffUrl(window.location.protocol, root, home.clubs.subdomain, s.session.access_token, s.session.refresh_token));
+              return;
+            }
+          }
+        }
+        if (error || list.length) { setNeedsClub(false); return; }
         // Unclaimed member row matching the login email still counts as a club.
         const email = user.email?.trim();
         if (email) {

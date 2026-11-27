@@ -3683,6 +3683,13 @@
       "when": 1795767129021,
       "tag": "0525_pair_payment_reads_doubles_pairs",
       "breakpoints": true
+    },
+    {
+      "idx": 526,
+      "version": "7",
+      "when": 1795768693452,
+      "tag": "0526_join_find_member_word_match",
+      "breakpoints": true
     }
   ]
 }

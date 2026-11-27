@@ -5027,3 +5027,5 @@ No Frills Doubles join page showed all NSA clubs although the organiser selected
 - Every removed line survives in `club_journal_entry_changes`; per-club `audit_events` records preserve full original rows and Willem's approval. Verified no matching orphan preload lines remain, and Martin's PCC account is R0. No website, registration policy, fee schedule or automatic seeding rule changed.
 
 - 2026-11-27: Tournament card payments by players from another club opened the home club gateway ("Stitch is not configured for this club"). stitch-create-payment now routes tournament payments to the host club Stitch account via resolve_host_billing_member.
+
+- 2026-11-27: "Pay my partner too" refused despite setup partner_pay=true — step_pair_payment_context only read legacy registration.partner_member_id; now falls back to champ_doubles_pairs (migration 0525).

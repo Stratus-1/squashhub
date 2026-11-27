@@ -3676,6 +3676,13 @@
       "when": 1795759208399,
       "tag": "0524_doubles_either_partner_can_pay_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 525,
+      "version": "7",
+      "when": 1795767129021,
+      "tag": "0525_pair_payment_reads_doubles_pairs",
+      "breakpoints": true
     }
   ]
 }

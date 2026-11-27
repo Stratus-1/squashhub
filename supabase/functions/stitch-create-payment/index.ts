@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
     let inviteContext: any = null;
+    let hostRouted = false;
     let sessionMeta: Record<string, unknown> | null = null;
 
     if (pay_scope === "partner" || pay_scope === "both") {
@@ -138,6 +139,37 @@ Deno.serve(async (req) => {
       }
       if (fs === "paid" || fs === "waived") return json({ error: "This entry fee is already paid.", already_settled: true }, 200);
     }
+    // Tournament fees are paid to the HOST club: a player entering from another
+    // club must reach the host's Stitch account, billed via their host-club
+    // (visitor) record, never their home club's gateway.
+    if (purpose === "tournament" && champ_registration_id) {
+      const { data: regClub } = await admin.from("club_champs_registrations")
+        .select("champ_id").eq("id", champ_registration_id).maybeSingle();
+      const { data: champRow } = regClub?.champ_id
+        ? await admin.from("club_champs").select("club_id").eq("id", regClub.champ_id).maybeSingle()
+        : { data: null } as any;
+      const hostClubId = (champRow as any)?.club_id as string | undefined;
+      if (hostClubId && hostClubId !== club_id) {
+        const { data: hostIsClub } = await admin.from("clubs").select("id").eq("id", hostClubId).maybeSingle();
+        if (hostIsClub) {
+          const { data: hostMember, error: hostErr } = await admin.rpc("resolve_host_billing_member", {
+            p_club_member_id: club_member_id, p_host_club_id: hostClubId,
+          });
+          if (hostErr || !hostMember) {
+            console.error("host billing member error", hostErr);
+            return json({ error: "Could not prepare the host club payment" }, 200);
+          }
+          if (!inviteContext) {
+            // Signed-in caller must own the home record being paid for.
+            const { data: home } = await admin.from("club_members").select("user_id").eq("id", club_member_id).maybeSingle();
+            if (!home || home.user_id !== userId) return json({ error: "Member not found or not yours" }, 200);
+            hostRouted = true;
+          }
+          club_id = hostClubId;
+          club_member_id = hostMember as string;
+        }
+      }
+    }
     const amt = Number(amount);
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 200);
     const amountCents = Math.round(amt * 100);
@@ -148,7 +180,7 @@ Deno.serve(async (req) => {
       .select("id, club_id, user_id, name, email, phone, club_member_number")
       .eq("id", club_member_id).maybeSingle();
     if (memberErr) console.error("member lookup error", memberErr);
-    if (!member || member.club_id !== club_id || (!inviteContext && member.user_id !== userId)) {
+    if (!member || member.club_id !== club_id || (!inviteContext && !hostRouted && member.user_id !== userId)) {
       return json({ error: "Member not found or not yours" }, 200);
     }
 

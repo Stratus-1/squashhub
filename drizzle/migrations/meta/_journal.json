@@ -3697,6 +3697,13 @@
       "when": 1795772243462,
       "tag": "0527_shop_dated_special_price",
       "breakpoints": true
+    },
+    {
+      "idx": 528,
+      "version": "7",
+      "when": 1795791961302,
+      "tag": "0528_shop_orders_allow_blank_back_name",
+      "breakpoints": true
     }
   ]
 }

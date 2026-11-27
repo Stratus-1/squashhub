@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Ruler, Shirt, Trash2, Download } from "lucide-react";
+import { Plus, Ruler, Shirt, Tag, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -177,7 +177,12 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
             {discounted && <del className="text-muted-foreground font-normal mr-2">{money(Number(item.price))}</del>}
             {money(unitPrice)} each
           </p>
-          {discounted && special && <p className="text-xs text-muted-foreground">Special until {format(new Date(`${special.until}T12:00:00`), "d MMMM yyyy")}</p>}
+          {discounted && special && (
+            <p className="mt-1.5 flex w-fit items-center gap-1.5 rounded-full bg-success px-2.5 py-1 text-sm font-bold text-primary-foreground">
+              <Tag className="w-4 h-4 shrink-0" aria-hidden="true" />
+              Special until {format(new Date(`${special.until}T12:00:00`), "d MMMM yyyy")}
+            </p>
+          )}
           {opts.note && <p className="text-sm text-muted-foreground">{opts.note}</p>}
           {opts.size_note && <p className="text-xs text-muted-foreground mt-1">{opts.size_note}</p>}
           <div className="flex gap-2 mt-2 flex-wrap">

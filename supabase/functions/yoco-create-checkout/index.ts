@@ -1,5 +1,6 @@
 // Creates a Yoco checkout for a member: fee payment or wallet top-up.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { routeTournamentToHost } from "../_shared/tournament-host-billing.ts";
 import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 import { isYocoTestKey } from "../_shared/gateway-test-mode.ts";
 
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const {
+    let {
       club_id,
       club_member_id,
       amount,
@@ -63,12 +64,22 @@ Deno.serve(async (req) => {
       if (notPayable) return json({ error: String(notPayable) }, 400);
     }
 
+    // Tournament fees are paid to the HOST club's gateway (see _shared/tournament-host-billing.ts).
+    let hostRouted = false;
+    if (purpose === "tournament" && champ_registration_id) {
+      const host = await routeTournamentToHost(admin, champ_registration_id, club_member_id);
+      if (host.error) return json({ error: host.error }, 400);
+      if (host.routed) {
+        if (host.homeUserId !== userId) return json({ error: "Member not found or not yours" }, 403);
+        club_id = host.clubId; club_member_id = host.clubMemberId; hostRouted = true;
+      }
+    }
     const { data: member, error: memberErr } = await admin
       .from("club_members")
       .select("id, club_id, user_id")
       .eq("id", club_member_id)
       .maybeSingle();
-    if (memberErr || !member || member.club_id !== club_id || member.user_id !== userId) {
+    if (memberErr || !member || member.club_id !== club_id || (!hostRouted && member.user_id !== userId)) {
       return json({ error: "Member not found or not yours" }, 403);
     }
 

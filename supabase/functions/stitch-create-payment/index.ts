@@ -16,6 +16,7 @@ const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
 const STITCH_API_BASE = "https://api.stitch.money/v2";
 const PUBLIC_APP_ORIGIN = "https://www.squashhub.co.za";
 
+import { routeTournamentToHost } from "../_shared/tournament-host-billing.ts";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -139,35 +140,13 @@ Deno.serve(async (req) => {
       }
       if (fs === "paid" || fs === "waived") return json({ error: "This entry fee is already paid.", already_settled: true }, 200);
     }
-    // Tournament fees are paid to the HOST club: a player entering from another
-    // club must reach the host's Stitch account, billed via their host-club
-    // (visitor) record, never their home club's gateway.
+    // Tournament fees are paid to the HOST club's gateway (see _shared/tournament-host-billing.ts).
     if (purpose === "tournament" && champ_registration_id) {
-      const { data: regClub } = await admin.from("club_champs_registrations")
-        .select("champ_id").eq("id", champ_registration_id).maybeSingle();
-      const { data: champRow } = regClub?.champ_id
-        ? await admin.from("club_champs").select("club_id").eq("id", regClub.champ_id).maybeSingle()
-        : { data: null } as any;
-      const hostClubId = (champRow as any)?.club_id as string | undefined;
-      if (hostClubId && hostClubId !== club_id) {
-        const { data: hostIsClub } = await admin.from("clubs").select("id").eq("id", hostClubId).maybeSingle();
-        if (hostIsClub) {
-          const { data: hostMember, error: hostErr } = await admin.rpc("resolve_host_billing_member", {
-            p_club_member_id: club_member_id, p_host_club_id: hostClubId,
-          });
-          if (hostErr || !hostMember) {
-            console.error("host billing member error", hostErr);
-            return json({ error: "Could not prepare the host club payment" }, 200);
-          }
-          if (!inviteContext) {
-            // Signed-in caller must own the home record being paid for.
-            const { data: home } = await admin.from("club_members").select("user_id").eq("id", club_member_id).maybeSingle();
-            if (!home || home.user_id !== userId) return json({ error: "Member not found or not yours" }, 200);
-            hostRouted = true;
-          }
-          club_id = hostClubId;
-          club_member_id = hostMember as string;
-        }
+      const host = await routeTournamentToHost(admin, champ_registration_id, club_member_id);
+      if (host.error) return json({ error: host.error }, 200);
+      if (host.routed) {
+        if (!inviteContext && host.homeUserId !== userId) return json({ error: "Member not found or not yours" }, 200);
+        club_id = host.clubId; club_member_id = host.clubMemberId; hostRouted = true;
       }
     }
     const amt = Number(amount);

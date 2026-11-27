@@ -105,7 +105,29 @@ export function EmailLogTab({ clubId, mode = "club" }: { clubId: string; mode?: 
         const key = row.message_id || row.id;
         if (!seen.has(key)) seen.set(key, row);
       }
-      return Array.from(seen.values());
+      const smtpRows = Array.from(seen.values());
+      // Campaign emails are logged per recipient in comms_deliveries, not in
+      // email_send_log — merge them so admins see every email the club sent,
+      // labelled with the campaign (message) name.
+      if (isAssociation) return smtpRows;
+      const { data: deliveries } = await supabase
+        .from("comms_deliveries")
+        .select("id,target,status,error_message,created_at,campaign:comms_campaigns(name)")
+        .eq("club_id", clubId)
+        .eq("channel", "email")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      const campaignRows: LogRow[] = ((deliveries || []) as any[]).map((d) => ({
+        id: `campaign-${d.id}`,
+        message_id: null,
+        template_name: "campaign",
+        recipient_email: d.target || "",
+        status: d.status,
+        error_message: d.error_message || (d.campaign?.name ? `Message: ${d.campaign.name}` : null),
+        created_at: d.created_at,
+      }));
+      return [...smtpRows, ...campaignRows].sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
   });
 

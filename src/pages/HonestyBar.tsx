@@ -1,4 +1,5 @@
 import { spiritMixers, withSpiritMixers } from "@/lib/bar-spirit-menu";
+import { shopPrice } from "@/lib/shop/special-price";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import { useAccountChargePreview } from "@/hooks/use-account-charge-preview";
 import { AccountChargeWarning } from "@/components/bar/AccountChargeWarning";
@@ -43,6 +44,7 @@ interface BarItem {
   id: string;
   name: string;
   price: number;
+  regular_price?: number;
   category: string;
   division?: string;
   active: boolean;
@@ -110,7 +112,7 @@ export default function HonestyBar() {
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
-    queryFn: async () => {
+    queryFn: async (): Promise<BarItem[]> => {
       const { data, error } = await fromExt("bar_items")
         .select("*")
         .eq("club_id", clubId)
@@ -118,7 +120,7 @@ export default function HonestyBar() {
         .order("sort_order")
         .order("name");
       if (error) throw error;
-      return data as BarItem[];
+      return (data as (BarItem & { order_options?: unknown })[]).map(item => ({ ...item, regular_price: Number(item.price), price: shopPrice(Number(item.price), item.order_options) }));
     },
     enabled: !!clubId,
   });
@@ -543,7 +545,7 @@ export default function HonestyBar() {
                             </div>
                           ) : (
                             <>
-                              <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{money(first.price)}</p>
+                              <p className="text-[11px] xl:text-[10px] text-muted-foreground leading-none">{(first as BarItem).regular_price && Number((first as BarItem).regular_price) > first.price ? <><del className="mr-1">{money(Number((first as BarItem).regular_price))}</del><span className="text-primary">{money(first.price)}</span></> : money(first.price)}</p>
                               <div className="flex items-center justify-center gap-1 w-full" onClick={event => event.stopPropagation()}>
                                 <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`One less ${entry.title}`} disabled={submitting || !cart[first.id]} onClick={() => updateCart(first.id, -1)}><Minus className="h-3.5 w-3.5" /></Button>
                                 <span className="w-6 text-center text-xs font-semibold tabular-nums">{cart[first.id] || 0}</span>

@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { placeMemberCounterOrder } from "@/lib/bar/member-tab-handoff";
+import { shopPrice, shopSpecial } from "@/lib/shop/special-price";
 import { showBarChargeError } from "@/lib/bar-charge-toast";
 import {
   BACK_NAME_MAX, lineError, orderTotal, parseGarmentOptions, sizeCounts,
@@ -133,7 +134,10 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
   const [chartFit, setChartFit] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestId = useRef<string>(crypto.randomUUID());
-  const total = orderTotal(lines.length, Number(item.price));
+  const unitPrice = shopPrice(Number(item.price), item.order_options);
+  const special = shopSpecial(item.order_options);
+  const discounted = unitPrice < Number(item.price);
+  const total = orderTotal(lines.length, unitPrice);
   const needName = opts.back_name !== false;
   const unit = opts.unit || "shirt";
   const choiceLabel = opts.choice_label || "Fit";
@@ -169,7 +173,11 @@ function OrderForm({ item, opts, clubId, memberId, memberName, money, onDone }: 
           : <div className="w-24 h-24 shrink-0 rounded-md bg-muted flex items-center justify-center"><Shirt className="w-10 h-10 text-muted-foreground" /></div>}
         <div className="min-w-0">
           <h2 className="text-lg font-semibold">{item.name}</h2>
-          <p className="text-primary font-semibold">{money(Number(item.price))} each</p>
+          <p className="text-primary font-semibold">
+            {discounted && <del className="text-muted-foreground font-normal mr-2">{money(Number(item.price))}</del>}
+            {money(unitPrice)} each
+          </p>
+          {discounted && special && <p className="text-xs text-muted-foreground">Special until {format(new Date(`${special.until}T12:00:00`), "d MMMM yyyy")}</p>}
           {opts.note && <p className="text-sm text-muted-foreground">{opts.note}</p>}
           {opts.size_note && <p className="text-xs text-muted-foreground mt-1">{opts.size_note}</p>}
           <div className="flex gap-2 mt-2 flex-wrap">

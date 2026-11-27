@@ -1083,6 +1083,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 ## 4. Issue log
 
+### 2026-11-27 — Nelspruit footwear dated special
+- **Symptom:** Nelspruit needed Teuton shoes at R1,800 instead of R2,500 until an editable end date.
+- **Finding:** Shop orders and checkout functions charged `bar_items.price` directly.
+- **Fix:** `order_options.special` stores amount/end date; `shop_effective_price` drives orders and checkout functions; shop and bar screens show the crossed-out normal price. Default set to R1,800 through 4 December 2026.
+- **Guard:** Five price tests cover the Johannesburg end-of-day expiry and validation; signed-in Nelspruit shop showed R2,500 crossed out, R1,800 payable and the end date. Existing orders unchanged.
+
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
 ### 2026-11-04 · Native payment checkout bridge destination

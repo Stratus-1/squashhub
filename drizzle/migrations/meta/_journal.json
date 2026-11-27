@@ -3690,6 +3690,13 @@
       "when": 1795768693452,
       "tag": "0526_join_find_member_word_match",
       "breakpoints": true
+    },
+    {
+      "idx": 527,
+      "version": "7",
+      "when": 1795772243462,
+      "tag": "0527_shop_dated_special_price",
+      "breakpoints": true
     }
   ]
 }

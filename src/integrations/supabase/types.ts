@@ -27828,6 +27828,10 @@ export type Database = {
         Returns: Json
       }
       shares_club_with: { Args: { _target_user_id: string }; Returns: boolean }
+      shop_effective_price: {
+        Args: { _at?: string; _options: Json; _regular: number }
+        Returns: number
+      }
       shop_place_order: {
         Args: {
           _bar_item_id: string

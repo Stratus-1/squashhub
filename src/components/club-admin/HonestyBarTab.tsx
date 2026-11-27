@@ -3,6 +3,7 @@ import { useHasPermission } from "@/hooks/use-club-permissions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { kitFormFrom, kitOptionsFrom, type KitFitDraft } from "@/lib/shop/kit-editor";
+import { shopSpecial, specialError } from "@/lib/shop/special-price";
 import { useBarTips } from "@/hooks/use-bar-tips";
 import { BarStaffPay } from "@/components/bar/BarStaffPay";
 import { StaffTips } from "@/components/bar/StaffTips";
@@ -426,6 +427,7 @@ const emptyForm = (division = "bar", category = "") => ({
   valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
   allow_negative: "default" as "default" | "allow" | "block",
   kit_on: false, kit_note: "", kit_back_name: true, kit_fits: [] as KitFitDraft[], kit_raw: null as Record<string, unknown> | null,
+  special_price: "", special_until: "",
 });
 
 function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels }: { clubId: string; items: BarItem[]; soldCounts: Map<string, number>; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
@@ -514,6 +516,8 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       valid_start_time: (item.valid_start_time || "").slice(0, 5), valid_end_time: (item.valid_end_time || "").slice(0, 5),
       allow_negative: item.allow_negative_stock === true ? "allow" : item.allow_negative_stock === false ? "block" : "default",
       ...kitFormFrom((item as { order_options?: unknown }).order_options),
+      special_price: shopSpecial((item as { order_options?: unknown }).order_options)?.price.toString() ?? "",
+      special_until: shopSpecial((item as { order_options?: unknown }).order_options)?.until ?? "",
     });
     setComponents(allComponents.filter(c => c.special_item_id === item.id)
       .map(c => ({ component_item_id: c.component_item_id, quantity: String(c.quantity) })));
@@ -550,7 +554,10 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
     }
     // Club Kit: only touch order_options when the club uses Club Kit, so
     // other clubs' items are never changed; existing size charts are kept.
-    if (kitEnabled) base.order_options = form.item_kind === "made_to_order" && form.kit_on ? kitOptionsFrom(form) : null;
+    if (kitEnabled) {
+      const options = form.item_kind === "made_to_order" && form.kit_on ? kitOptionsFrom(form) : null;
+      base.order_options = options ? { ...options, special: form.special_price && form.special_until ? { price: Number(form.special_price), until: form.special_until } : null } : null;
+    }
     return base;
   };
 
@@ -570,6 +577,10 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error("Give the item a name");
+    if (kitEnabled && form.kit_on) {
+      const error = specialError(Number(form.price), form.special_price, form.special_until);
+      if (error) return toast.error(error);
+    }
     if (form.item_kind !== "stock" || form.sellable) { if (!form.price) return toast.error("Enter a selling price"); }
     if (form.item_kind === "option" && !form.stock_parent_id) return toast.error("Choose the stock product this option sells from");
     if (form.item_kind === "special" && !components.some(c => c.component_item_id && parseInt(c.quantity) > 0))
@@ -673,6 +684,16 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
           <Label className="text-xs">Sell price (R){form.item_kind === "stock" && !form.sellable ? " — not sold directly" : ""}</Label>
           <Input type="number" min={0} step={0.5} value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0.00" />
         </div>
+        {kitEnabled && form.item_kind === "made_to_order" && form.kit_on && <>
+          <div>
+            <Label className="text-xs" htmlFor="shop-special-price">Special price (R)</Label>
+            <Input id="shop-special-price" type="number" min={0} step={0.01} value={form.special_price} onChange={e => setForm(p => ({ ...p, special_price: e.target.value }))} />
+          </div>
+          <div>
+            <Label className="text-xs" htmlFor="shop-special-until">Special ends on (inclusive)</Label>
+            <Input id="shop-special-until" type="date" value={form.special_until} onChange={e => setForm(p => ({ ...p, special_until: e.target.value }))} />
+          </div>
+        </>}
         <div>
           <Label className="text-xs">Division</Label>
           <Select value={form.division} onValueChange={div => setForm(p => {

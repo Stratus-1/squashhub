@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Email Martin his direct paid tournament entry link from Uitsig (one email sent, no failures).
+- [x] Check Kayla's activation email: sent; activation button returns her to her tournament entry.
 - [x] Use Willem Pretorius from the club member record on the landing page; no login profile change needed.
 - [x] Show all configured office bearers on club landing pages using club member names, including Vice Chairman, Treasurer and Club Manager.
 - [x] Make member credit transfers immediate, settle Vian’s saved R150 transfer to Josh, and send the in-app update to 527 active club members; tests and Vian’s actual history verified.

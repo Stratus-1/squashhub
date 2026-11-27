@@ -75,4 +75,4 @@ Boundaries preserved; invariants tested; web/PWA/native impact stated; retries s
 - AGM run-offs are immutable-parent child ballots for server-computed tied remaining seats; token resolution follows child rounds and locks each round's voter independently; why: original results and receipts stay intact while every eligible member gets one new secret vote.
 - Ladder moves go through `apply_ladder_result` (club source switches + per-source approval; events only narrow); why: no unchosen reshuffles.
 - Permission changes: `guard_permission_allocation` allows only the strict Chairman (full admins if no Chairman); Bar holders grant equal-or-lower bar slugs only; why: no admin escalation.
-- Members signing in on the main SquashHub page are handed to their own club address by `RootClubGate` via the one-time URL-fragment session hand-off in `src/lib/session-handoff.ts` (active non-visitor membership first); why: sessions are per address and members must land at their club without a second login or re-registering.
+- Main-page sign-in hands members to their club via `src/lib/session-handoff.ts`; why: sessions are per address.

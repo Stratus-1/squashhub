@@ -3655,6 +3655,13 @@
       "when": 1795734700261,
       "tag": "0521_chairman_only_permission_allocation",
       "breakpoints": true
+    },
+    {
+      "idx": 522,
+      "version": "7",
+      "when": 1795758631923,
+      "tag": "0522_allow_eligible_external_doubles_partners",
+      "breakpoints": true
     }
   ]
 }
